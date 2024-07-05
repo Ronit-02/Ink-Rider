@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import fetchUser from "../api/profile"
+import LoginFirst from "../components/LoginFirst"
 
 const ProfilePage = () => {
 
@@ -11,11 +12,14 @@ const ProfilePage = () => {
   if(isLoading)
     return <div>Loading...</div>
   
-  if(isError)
-      return <div>{error?.response?.data?.message || error.message}</div>
+  if(isError){
+    if(error?.response?.data?.message == "Login first")
+        return <LoginFirst />
+    return <div>{error?.response?.data?.message || error.message}</div>
+  }
 
   return (
-    <div className="mt-12 ml-12 w-[400px]">
+    <div className="w-full">
       Check your profile details here
       {
         console.log("resonse data - ", data)

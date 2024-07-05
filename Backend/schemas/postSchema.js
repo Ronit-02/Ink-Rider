@@ -2,6 +2,10 @@ const mongoose = require('mongoose');
 
 // Primary key -> id
 const postSchema = new mongoose.Schema({
+    coverImage: {
+        type: String,
+        required: false
+    },
     title: {
         type: String,
         required: true,
@@ -11,23 +15,34 @@ const postSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    authorId: {
+    author: {
         type: mongoose.Schema.Types.ObjectId,    
         ref: 'User',
         required: true,
     },
     tags: [
         {
-            tag: String,
+            type: String,
         }
     ],
+    // tags: [
+    //     type: String,
+    // ],
     likes: {
         type: Number,
         default: 0
     },
     comments: [
         {
-            comment: String,
+            comment: {
+                type: String,
+                required: true
+            },
+            author: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+                required: true
+            },
             date: {
                 type: Date,
                 default: Date.now,

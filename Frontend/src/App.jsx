@@ -1,28 +1,27 @@
-import { Routes, Route } from "react-router-dom"
+import { useDispatch } from "react-redux";
+import { useEffect } from "react";
+import { isTokenExpiry } from "./utils/helper";
+import { logout } from "./redux/slices/authSlice";
 
-import LoginPage from "./pages/LoginPage"
-import AuthSuccessPage from "./pages/AuthSuccessPage"
-import HomePage from "./pages/HomePage"
-import WritePage from "./pages/WritePage"
-import ProfilePage from "./pages/ProfilePage"
-import SignupPage from "./pages/SignupPage"
-import ForgotPasswordPage from "./pages/ForgotPasswordPage"
-import ResetPasswordPage from "./pages/ResetPasswordPage"
+import AppRoutes from "./routes/AppRoutes";
 
 function App() {
+  
+  // Remove expiry token
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token && isTokenExpiry(token)) {
+      dispatch(logout());
+    }
+  }, [dispatch]);
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/auth/google/success" element={<AuthSuccessPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/" element={<HomePage />} />
-      <Route path="/write" element={<WritePage />} />
-      <Route path="/profile" element={<ProfilePage />} />
-    </Routes>
-  )
+    <div className="w-screen px-12 py-12">
+      <AppRoutes />
+    </div>
+  ) 
 }
 
-export default App
+export default App;

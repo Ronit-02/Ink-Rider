@@ -1,12 +1,11 @@
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { useLocation, useNavigate } from "react-router-dom"
+import { useLocation } from "react-router-dom"
 import { loginSuccess } from "../redux/slices/authSlice";
 
 const AuthSuccessPage = () => {
 
   const location = useLocation();
-  const navigate = useNavigate();
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -16,10 +15,12 @@ const AuthSuccessPage = () => {
 
     if(token){
       dispatch(loginSuccess({username, token}))
-      navigate('/');
+
+      // reloading the whole app once to enable local storage 
+      window.location.reload();
     }
 
-  }, [location, navigate, dispatch])
+  }, [location, dispatch])
 
   return (
     <div>

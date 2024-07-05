@@ -5,11 +5,11 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 
 import {loginUser} from "../api/login";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 const LoginPage = () => {
     const dispatch = useDispatch();
-    const navigate = useNavigate();
+    // const navigate = useNavigate();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -18,7 +18,9 @@ const LoginPage = () => {
         mutationFn: loginUser,
         onSuccess: (data) => {
             dispatch(loginSuccess(data));
-            navigate("/");
+            
+            // reloading the whole app once to enable local storage 
+            window.location.reload();
         },
         onError: (error) => {
             dispatch(loginFailure(error.response?.data?.message || error.message));
@@ -37,7 +39,7 @@ const LoginPage = () => {
     }
 
   return (
-    <div className="mt-12 ml-12 w-[400px]">
+    <div className="w-full max-w-lg ml-auto mr-auto">
         <h1>Login with your account</h1>
         <form 
             className="flex flex-col gap-4 mt-4" 

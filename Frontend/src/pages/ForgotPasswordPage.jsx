@@ -24,7 +24,7 @@ const ForgotPasswordPage = () => {
     }
     
     return (
-    <div className="mt-12 ml-12 w-[400px]" >
+    <div className="w-full max-w-lg ml-auto mr-auto" >
         Send a reset password mail
         <form 
             className="flex flex-col gap-4 mt-4" 

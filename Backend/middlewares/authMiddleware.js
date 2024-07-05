@@ -9,20 +9,22 @@ const validateToken = async (req, res, next) => {
         // }
 
         const token = authHeader.split(' ')[1];
-        if(token === "null"){
-            return res.status(401).send({ message: 'Login first' });
-        }
-
+        // if(token === "null"){
+        //     return res.status(401).send({ message: 'Login first' });
+        // }
+        
         const decoded = verifyToken(token);
         const user = await User.findOne({email: decoded.email});
-        if(!user)
-            return res.sendStatus(401).send({message: 'Invalid Token'});
+        // if(!user)
+        //     return res.sendStatus(401).send({message: 'Invalid Token'});
 
         req.user = user;
+        console.log('Validated token!!')
         next();
     }
     catch(err){
-        res.status(403).send({message: 'Server Error'});
+        // console.log(err)
+        res.status(403).send({message: 'Login first'});
     }
 }
 

@@ -4,7 +4,7 @@ const fetchProfile = async (req, res) => {
         res.status(200).send({user: req.user});
     }
     catch (err){
-        res.status(500).send({message: 'Server Error', error: error.message});
+        res.status(500).send({message: 'Cant fetch user details'});
     }
 }
 
