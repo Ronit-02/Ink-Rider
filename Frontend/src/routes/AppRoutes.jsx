@@ -8,6 +8,7 @@ import HomePage from "../pages/HomePage";
 import CreatePostPage from "../pages/CreatePostPage";
 import ProfilePage from "../pages/ProfilePage";
 import DisplayPostPage from "../pages/DisplayPostPage";
+import EditorPage from "../pages/EditorPage";
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
 
@@ -33,6 +34,7 @@ const AppRoutes = () => {
             path="/write"
             element={<ProtectedRoute> <CreatePostPage/> </ProtectedRoute>}
         />
+        <Route path='/editor' element={<EditorPage />} />
         <Route 
             path="/profile"
             element={<ProtectedRoute> <ProfilePage/> </ProtectedRoute>}

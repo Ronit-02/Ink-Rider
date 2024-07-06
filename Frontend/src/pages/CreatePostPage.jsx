@@ -44,7 +44,7 @@ const CreatePostPage = () => {
 
   return (
     <div className="w-full max-w-lg ml-auto mr-auto">
-      <h1>Create Post</h1>
+      <h1 className="text-3xl">Create Post</h1>
       <form className="flex flex-col gap-4 mt-4" onSubmit={handleSubmit}>
         {
           file && <img className="h-[250px]" src={file} alt="cover-image" />
