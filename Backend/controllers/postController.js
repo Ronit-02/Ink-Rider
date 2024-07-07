@@ -67,7 +67,8 @@ const updatePost = async (req, res) => {
         const id = req.params.id;
         const { imageURL, title, body, tags } = req.body;
 
-        const post = await Post.findById(id);
+        const post = await Post.fin
+        dById(id);
         if(!post) {
             return res.status(404).send({message: "Post not found"});
         }

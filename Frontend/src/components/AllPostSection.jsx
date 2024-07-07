@@ -10,7 +10,8 @@ const AllPostSection = () => {
 
   if (isLoading) return <div>Loading...</div>;
 
-  if (isError) return <div>{error?.response?.data?.message || error.message}</div>;
+  if (isError)
+    return <div>{error?.response?.data?.message || error.message}</div>
 
   return (
     <div className="w-full">

@@ -21,9 +21,6 @@ const ProfilePage = () => {
   return (
     <div className="w-full">
       Check your profile details here
-      {
-        console.log("resonse data - ", data)
-      }
       <p>Username: {data.user.username}</p>
       <p>Email: {data.user.email}</p>
     </div>

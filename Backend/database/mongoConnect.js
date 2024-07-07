@@ -11,3 +11,10 @@ mongoose.connect(mongo_uri)
 .catch((err) => {
     console.log('Error connecting mongodb', err)
 })
+
+const checkMongoConnection = () => {
+    const state = mongoose.connection.readyState;
+    return state === 1
+}
+
+module.exports = {checkMongoConnection};

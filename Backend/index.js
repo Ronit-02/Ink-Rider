@@ -6,7 +6,12 @@ const passport = require('passport')
 
 
 // Connecting Database
-require('./database/mongoConnect')
+// try {
+    require('./database/mongoConnect')
+// }
+// catch (err) {
+//     console.log('Error connecting with database..')
+// }
 
 
 // Building app
@@ -29,12 +34,22 @@ app.use(cors({
 
 
 // Routing
-const routes = require('./routes')
+const routes = require('./routes');
+const { checkMongoConnection } = require('./database/mongoConnect');
 app.use('/api', routes);
 
 
 app.get('/', (req, res) => {
     res.send('Welcome to the app')
+})
+
+// Check status if backend and database is working
+app.get('/status', async (req, res) => {
+    const isDatabaseRunning = await checkMongoConnection()
+    if(isDatabaseRunning)
+        res.status(200).send({status: 'ok'});
+    else    
+        res.status(503).send({status: 'error', message: 'Mongodb connection failed'});
 })
 
 app.listen(port, () => {
