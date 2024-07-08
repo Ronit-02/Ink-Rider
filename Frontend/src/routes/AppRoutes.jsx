@@ -4,6 +4,7 @@ import SignupPage from "../pages/SignupPage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import AuthSuccessPage from "../pages/AuthSuccessPage";
+import AuthFailurePage from "../pages/AuthFailurePage"
 import HomePage from "../pages/HomePage";
 import CreatePostPage from "../pages/CreatePostPage";
 import ProfilePage from "../pages/ProfilePage";
@@ -13,6 +14,7 @@ import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
 import BackendCheck from "./BackendCheck";
 import MaintenancePage from "../pages/MaintenancePage";
+import EditPostPage from "../pages/EditPostPage"
 
 const AppRoutes = () => {
   return (
@@ -38,9 +40,11 @@ const AppRoutes = () => {
                     element={<PublicRoute> <AuthSuccessPage /> </PublicRoute>} 
                 />
                 
+                <Route path="/auth/google/failure" element={<AuthFailurePage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/post/:id" element={<DisplayPostPage />} />
+                <Route path="/post-edit/:id" element={<EditPostPage />} />
 
                 <Route 
                     path="/write"

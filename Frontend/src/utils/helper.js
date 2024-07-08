@@ -1,10 +1,5 @@
 import { jwtDecode } from "jwt-decode";
 
-const decodeTags = (tags) => {
-
-    return tags.split(',').map(tag => tag.trim());
-}
-
 const isTokenExpiry = (token) => {
     try{
         const decoded = jwtDecode(token);
@@ -16,4 +11,4 @@ const isTokenExpiry = (token) => {
     }
 }
 
-export {decodeTags, isTokenExpiry};
+export {isTokenExpiry};

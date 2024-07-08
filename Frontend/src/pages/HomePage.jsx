@@ -6,7 +6,6 @@ import AllPostSection from "../components/AllPostSection";
 const HomePage = () => {
   const dispatch = useDispatch();
   const token = useSelector((state) => state.auth.token);
-  const user = useSelector((state) => state.auth.user);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -31,7 +30,6 @@ const HomePage = () => {
           )}
         </div>
       </nav>
-      {token && <p>Hi, Welcome user {user}</p>}
       <AllPostSection />
     </div>
   );

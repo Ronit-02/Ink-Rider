@@ -1,11 +1,12 @@
 const Post = require('../schemas/postSchema');
-const { uploadOnCloudinary } = require('../utils/cloudinary');
+const { uploadOnCloudinary, removeOnCloudinary } = require('../utils/cloudinary');
 const fs = require('fs');
 
 const createPost = async (req, res) => {
 
     try{
         const {title, body, tags} = req.body;
+        const decodedTags = tags.split(',').map(tag => tag.trim());
         const author = req.user._id;
 
         // Extracting file path and adding to cloudinary
@@ -15,15 +16,13 @@ const createPost = async (req, res) => {
         // if successfull, remove locally temp saved file
         if(result)
             fs.unlinkSync(localImagePath);
-
-        console.log('Uploaded Image Online!!')
     
         const post = new Post({
             coverImage: result.secure_url,
             title,
             body,
             author,
-            tags
+            tags: decodedTags
         });
     
         await post.save();
@@ -39,7 +38,6 @@ const createPost = async (req, res) => {
 const getAllPosts = async (req, res) => {
     try {
         const posts = await Post.find().populate('author', 'username email');
-        // console.log(posts[0].title)
         return res.status(200).json(posts);
     }
     catch (error) {
@@ -51,7 +49,9 @@ const getPost = async (req, res) => {
     try{
         const id = req.params.id;
         const cleanId = id.split(':')[1];
-        const post = await Post.findById(cleanId).populate('author', 'username email')
+
+        // populating related author data inside post data
+        const post = await Post.findById(cleanId).populate('author', 'username email');
         if(!post)
             return res.status(404).send({message: 'Post not found'})
         
@@ -65,10 +65,11 @@ const getPost = async (req, res) => {
 const updatePost = async (req, res) => {
     try {
         const id = req.params.id;
-        const { imageURL, title, body, tags } = req.body;
-
-        const post = await Post.fin
-        dById(id);
+        const { title, body, tags, prevImageUrl } = req.body;
+        const decodedTags = tags.split(',').map(tag => tag.trim());
+        
+        // Verifications
+        const post = await Post.findById(id);
         if(!post) {
             return res.status(404).send({message: "Post not found"});
         }
@@ -76,10 +77,23 @@ const updatePost = async (req, res) => {
             return res.status(403).send({message: "Unathorized access"});
         }
 
-        post.imageURL = imageURL || post.imageURL;
-        post.title  = title || post.title;
-        post.body = body || post.body;
-        post.tags = tags || post.tags;
+        // if prev Image, remove it
+        if(prevImageUrl){
+            await removeOnCloudinary(post.coverImage);
+        }
+
+        // if file changed it is local uploaded, upload on cloud, remove local file and update
+        if(req.file){
+            const result = await uploadOnCloudinary(req.file.path)
+            if(result)
+                fs.unlinkSync(req.file.path);
+
+            post.coverImage = result.secure_url;
+        }
+
+        post.title  = title;
+        post.body = body;
+        post.tags = decodedTags;
 
         await post.save();
 
@@ -102,7 +116,8 @@ const deletePost = async (req, res) => {
             return res.status(403).send({message: "Unathorized access"});
         }
 
-        await post.remove();
+        await removeOnCloudinary(post.coverImage);        
+        await Post.findByIdAndDelete(id);
 
         return res.status(200).send({message: "Post deleted successfully"});
     }

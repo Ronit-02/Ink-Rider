@@ -8,10 +8,7 @@ router.post('/login', login);
 router.post('/signup', signup);
 router.get('/verify-email', verifyEmail);
 router.get('/google', googleAuth);
-router.get('/google/callback',
-    passport.authenticate('google', {failureRedirect: `${process.env.FRONTEND_URL}/login`}),  
-    googleAuthCallback,
-);
+router.get('/google/callback', googleAuthCallback);
 router.post('/forgot-password', forgotPassowrd);
 router.post('/reset-password', resetPassword);
 

@@ -2,9 +2,9 @@ import axios from "axios";
 
 const token = localStorage.getItem('token');
 
-const fetchUser = async () => {
+const fetchProfileAndPosts = async () => {
     const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/user/profile`,
+        `${import.meta.env.VITE_API_URL}/api/user/posts`,
         {
             headers: {
                 Authorization: `Bearer ${token}`
@@ -14,4 +14,4 @@ const fetchUser = async () => {
     return response.data;
 }
 
-export default fetchUser;
+export default fetchProfileAndPosts;

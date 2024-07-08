@@ -21,10 +21,7 @@ const verifyToken = (token) => {
 
 
 const verifyPassword = async (pass1, pass2) => {
-    console.log("pass1 = ", pass1);
-    console.log("pass2 = ", pass2);
     const response = await bcrypt.compare(pass1, pass2);
-    console.log("response - ", response);
     return response;
 }
 

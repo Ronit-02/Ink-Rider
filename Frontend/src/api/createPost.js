@@ -10,7 +10,7 @@ const createPost = async (credentials) => {
             headers: {
                 Authorization: `Bearer ${token}`
             }
-        }
+        },
     )
 
     return response.data;

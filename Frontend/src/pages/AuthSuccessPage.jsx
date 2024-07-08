@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { useLocation } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { loginSuccess } from "../redux/slices/authSlice";
 
 const AuthSuccessPage = () => {
 
   const location = useLocation();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search)
@@ -19,14 +20,17 @@ const AuthSuccessPage = () => {
       // reloading the whole app once to enable local storage 
       window.location.reload();
     }
+    else {
+      navigate('/auth/google/failure');
+    }
 
-  }, [location, dispatch])
+  }, [location, dispatch, navigate]);
 
   return (
-    <div>
+    <div className="flex items-center justify-center h-full">
         Success, Redirecting....
     </div>
   )
 }
 
-export default AuthSuccessPage
+export default AuthSuccessPage;

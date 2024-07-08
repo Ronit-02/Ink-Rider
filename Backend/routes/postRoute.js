@@ -8,7 +8,7 @@ const { upload } = require('../middlewares/multerMiddleware');
 router.post('/', validateToken, upload.single('imageURL') ,createPost);
 router.get('/', getAllPosts);
 router.get('/:id', getPost);
-router.put('/:id', validateToken, updatePost);
+router.put('/:id', validateToken, upload.single('imageURL'), updatePost);
 router.delete('/:id', validateToken, deletePost);
 
 module.exports = router;

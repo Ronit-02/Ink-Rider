@@ -1,9 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import createPost from "../api/createPost";
-import { decodeTags } from '../utils/helper'
 
 const CreatePostPage = () => {
+
   const [image, setImage] = useState('')
   const [file, setFile] = useState('')
   const [title, setTitle] = useState("");
@@ -15,6 +15,11 @@ const CreatePostPage = () => {
     mutationFn: createPost,
     onSuccess: (data) => {
       console.log("Response Data - ", data);
+      setImage('');
+      setFile('');
+      setTitle('');
+      setBody('');
+      setTags([]);
       setMessage(data.message);
     },
     onError: (error) => {
@@ -23,21 +28,19 @@ const CreatePostPage = () => {
     },
   });
 
-  const handleFileChange = (e) => {
+  const handleImage = (e) => {
     setImage(e.target.files[0]);
     setFile(URL.createObjectURL(e.target.files[0]))
   }
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const decodedTags = decodeTags(tags);
-    console.log('Frontend image - ', image)
     
     const formData = new FormData();
     formData.append('imageURL', image);
     formData.append('title', title);
     formData.append('body', body);
-    formData.append('tags', decodedTags);
+    formData.append('tags', tags);
 
     mutate(formData);
   };
@@ -49,7 +52,7 @@ const CreatePostPage = () => {
         {
           file && <img className="h-[250px]" src={file} alt="cover-image" />
         }
-        <input type="file" name="coverImage" onChange={handleFileChange} required />
+        <input type="file" name="coverImage" onChange={handleImage} required />
         <input
           className="p-2 border"
           type="text"

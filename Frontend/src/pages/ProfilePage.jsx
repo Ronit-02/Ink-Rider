@@ -1,30 +1,48 @@
-import { useQuery } from "@tanstack/react-query"
-import fetchUser from "../api/profile"
-import LoginFirst from "../components/LoginFirst"
+import { useQuery } from "@tanstack/react-query";
+import fetchProfileAndPosts from "../api/profile";
+import PostListCard from "../components/PostListCard";
+import profileImage from "../assets/images/Profile-Pic.svg";
 
 const ProfilePage = () => {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["user"],
+    queryFn: fetchProfileAndPosts,
+  });
 
-  const {data, isLoading, isError, error} = useQuery({
-    queryKey: ['user'],
-    queryFn: fetchUser,
-  })
+  if (isLoading) return <div>Loading...</div>;
 
-  if(isLoading)
-    return <div>Loading...</div>
-  
-  if(isError){
-    if(error?.response?.data?.message == "Login first")
-        return <LoginFirst />
-    return <div>{error?.response?.data?.message || error.message}</div>
+  if (isError) {
+    return <div>{error?.response?.data?.message || error.message}</div>;
   }
 
   return (
     <div className="w-full">
-      Check your profile details here
-      <p>Username: {data.user.username}</p>
-      <p>Email: {data.user.email}</p>
+      <div className="flex items-center gap-4">
+        <img className="w-16 h-16" src={profileImage} alt="profile-pic" />
+        <div className="flex flex-col">
+          <h1 className="text-2xl capitalize">{data.username}</h1>
+          <h3 className="text-sm text-gray-500">{data.role} user</h3>
+        </div>
+      </div>
+      <section className="mt-4">
+        <h1 className="text-2xl">Your Posts</h1>
+        <div className="flex flex-row flex-wrap gap-4 mt-6">
+          {data.posts &&
+            data.posts.map((item) => (
+              <PostListCard
+                key={item._id}
+                image={item.coverImage}
+                id={item._id}
+                title={item.title}
+                tags={item.tags}
+                content={item.body}
+              />
+            ))}
+          {data.posts[0] === undefined && <div>No posts yet</div>}
+        </div>
+      </section>
     </div>
-  )
-}
+  );
+};
 
-export default ProfilePage
+export default ProfilePage;

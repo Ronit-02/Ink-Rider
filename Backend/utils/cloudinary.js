@@ -1,7 +1,6 @@
-const v2 = require('cloudinary');
-const fs = require('fs');
+const {v2:cloudinary} = require('cloudinary');
 
-v2.config({
+cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
@@ -13,11 +12,10 @@ const uploadOnCloudinary = async (localFilePath) => {
             return null;
 
         // uploading
-        const response = await v2.uploader.upload(localFilePath, {
+        const response = await cloudinary.uploader.upload(localFilePath, {
             resource_type: "auto"
         })
 
-        console.log('Uploaded Successfully', response.url);
         return response;
     }   
     catch(error){
@@ -26,4 +24,11 @@ const uploadOnCloudinary = async (localFilePath) => {
     }
 }
 
-module.exports = {uploadOnCloudinary};
+const removeOnCloudinary = async (imageURL) => {
+
+    // extracting public id from url
+    const publicId = imageURL.split('/upload/')[1].split('/')[1].split('.')[0];
+    await cloudinary.uploader.destroy(publicId)
+}
+
+module.exports = {uploadOnCloudinary, removeOnCloudinary};

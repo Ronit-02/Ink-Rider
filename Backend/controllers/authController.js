@@ -9,28 +9,29 @@ const login = async (req, res) => {
     const { email, password } = req.body;
     try{
         const user = await User.findOne({email});
+
+        // check if google logged-in
+        if(user && user.googleId)
+            return res.status(400).send({message: 'Account is Google logged-in'})
+
         if(user && await verifyPassword(password, user.password)){
             if(user.verified){
                 
                 // Issuing a JWT
                 const payload = {email: user.email, id: user._id};
                 const token = generateToken(payload);
-                res.status(200).send({token, username: user.username});
-                console.log('login successful');
+                return res.status(200).send({token, username: user.username});
             }
             else{
-                res.status(401).send({message: 'Email not verified'});
-                console.log('email not verified');
+                return res.status(401).send({message: 'Email not verified'});
             }
         }
         else{
-            res.status(500).send({message: 'Invalid credentials'});
-            console.log('invalid credentials');
+            return res.status(500).send({message: 'Invalid credentials'});
         }
     }
     catch(err){
-        res.status(500).send({message: err.toString()});
-        console.log('Error occured during login - ', err);
+        return res.status(500).send({message: err.toString()});
     }
 }
 
@@ -121,6 +122,12 @@ passport.use(new GoogleStrategy({
         try {
             const email = profile.emails[0].value;
             let user = await User.findOne({ email: email });
+
+            // check if email logged-in
+            if(user && !user.googleId){
+                return done(null, false, {message: "Please sign in using email and password"});
+            }
+
             if (!user) {
                 const username = email.split('@')[0];
                 const password = 'default';
@@ -136,14 +143,13 @@ passport.use(new GoogleStrategy({
             return done(null, user);
         } 
         catch (err) {
-            res.send('Error occured while logging in');
-            console.log('Error occured while logging in');
+            return done(err, null);
         }
     }
 ));
 
 passport.serializeUser((user, done) => {
-  done(null, user.id);
+    done(null, user.id);
 });
 
 passport.deserializeUser(async (id, done) => {
@@ -157,11 +163,23 @@ passport.deserializeUser(async (id, done) => {
 
 const googleAuth = passport.authenticate('google', { scope: ['profile', 'email'] });
 
-const googleAuthCallback = (req, res) => {
-    const payload = {email: req.user.email, id: req.user._id};
-    const token = generateToken(payload);
-    res.redirect(`${process.env.FRONTEND_URL}/auth/google/success?token=${token}&username=${req.user.username}`);
-} 
+const googleAuthCallback = (req, res, next) => {
+    passport.authenticate('google', (err, user, info) => {
+        if(err){
+            return next(err);
+        }
+        if(!user){
+            return res.redirect(`${process.env.FRONTEND_URL}/auth/google/failure?message=${info.message}`);
+        }
+        req.logIn(user, (err) => {
+            if(err)
+                return next(err);
+            const payload = {email: req.user.email, id: req.user._id};
+            const token = generateToken(payload);
+            res.redirect(`${process.env.FRONTEND_URL}/auth/google/success?token=${token}&username=${req.user.username}`);
+        })
+    })(req, res, next);
+}
 
 
 const forgotPassowrd = async (req, res) => {
