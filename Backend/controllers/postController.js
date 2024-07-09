@@ -37,7 +37,17 @@ const createPost = async (req, res) => {
 
 const getAllPosts = async (req, res) => {
     try {
-        const posts = await Post.find().populate('author', 'username email');
+        // populating related post-author-data and comments-author-data
+        const posts = await Post.find()
+            .populate({
+                path: 'author', 
+                select: 'username email'
+            })
+            .populate({
+                path: 'comments.author',
+                select: 'username email'
+            });
+
         return res.status(200).json(posts);
     }
     catch (error) {
@@ -47,11 +57,19 @@ const getAllPosts = async (req, res) => {
 
 const getPost = async (req, res) => {
     try{
-        const id = req.params.id;
-        const cleanId = id.split(':')[1];
+        const postId = req.params.id;
 
-        // populating related author data inside post data
-        const post = await Post.findById(cleanId).populate('author', 'username email');
+        // populating related post-author-data and comments-author-data
+        const post = await Post.findById(postId)
+            .populate({
+                path: 'author', 
+                select: 'username email'
+            })
+            .populate({
+                path: 'comments.author',
+                select: 'username email'
+            });
+
         if(!post)
             return res.status(404).send({message: 'Post not found'})
         
@@ -126,4 +144,55 @@ const deletePost = async (req, res) => {
     }
 }
 
-module.exports = {createPost, getAllPosts, getPost, updatePost, deletePost};
+const addComment = async (req, res) => {
+    try{
+        const postId = req.params.id;
+        const commentor = req.user;
+        const { comment } = req.body;
+
+        const post = await Post.findById(postId);
+
+        if(!post)
+            return res.status(400).send({message: "Post doesnt exists"});
+
+        post.comments.push({
+            comment: comment,
+            author: commentor._id,
+            date: new Date()
+        });
+
+        await post.save();
+
+        return res.status(200).send({message: "Comment added to the post"});
+    }
+    catch(error){
+        return res.status(500).send({message: "Cant comment at this moment, try again later"})
+    }
+}
+
+const deleteComment = async (req, res) => {
+    try{
+        const postId = req.params.id;
+        const { commentId } = req.body;
+
+        // Find post
+        const post = await Post.findById(postId);
+
+        if(!post)
+            return res.status(400).send({message: "Post doesnt exists"});
+
+        // Update comments
+        const index = post.comments.findIndex(
+            (comment) => comment._id.toString() === commentId
+        );
+        post.comments.splice(index, 1);
+        await post.save();
+
+        return res.status(200).send({message: "Comment deleted successfully"});
+    }
+    catch(error){
+        return res.status(500).send({message: "Cant delete comment at this moment, try again later"})
+    }
+}
+
+module.exports = {createPost, getAllPosts, getPost, updatePost, deletePost, addComment, deleteComment};

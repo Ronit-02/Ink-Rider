@@ -4,7 +4,7 @@ import Tag from "./Tag";
 import { useMutation } from "@tanstack/react-query";
 import deletePost from "../api/deletePost";
 
-const PostListCard = ({ image, id, title, tags, content }) => {
+const PostListCard = ({ image, id, title, tags, content, owner }) => {
   const { mutate, isLoading, isError, error } = useMutation({
     mutationFn: deletePost,
     onSuccess: (data) => {
@@ -44,10 +44,13 @@ const PostListCard = ({ image, id, title, tags, content }) => {
           <p className="line-clamp-2">{content}</p>
         </div>
       </NavLink>
+      {
+      owner && 
       <div className="flex items-center flex-none gap-4 pr-4 w-fit">
         <button onClick={handleDeletePost}>Delete</button>
         <NavLink to={`/post-edit/${id}`}>Edit</NavLink>
       </div>
+      }
     </div>
   );
 };
@@ -59,6 +62,7 @@ PostListCard.propTypes = {
   author: PropTypes.string,
   tags: PropTypes.array,
   content: PropTypes.string,
+  owner: PropTypes.bool
 };
 
 export default PostListCard;

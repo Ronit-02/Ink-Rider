@@ -48,7 +48,8 @@ const LoginPage = () => {
             <input className="p-2 border" 
                 type="email" 
                 placeholder="email" 
-                value={email} onChange={(e) => setEmail(e.target.value)} 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
             />
             <input className="p-2 border" 
                 type="password" 

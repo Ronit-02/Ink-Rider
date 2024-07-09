@@ -18,7 +18,7 @@ function App() {
   }, [dispatch]);
 
   return (
-    <div className="h-0 min-h-screen px-12 py-12 min-w-screen">
+    <div className="min-h-screen px-12 py-12 mb-24 h-fit min-w-screen">
       <AppRoutes />
     </div>
   ) 

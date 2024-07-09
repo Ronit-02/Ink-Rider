@@ -15,6 +15,7 @@ import PublicRoute from './PublicRoute';
 import BackendCheck from "./BackendCheck";
 import MaintenancePage from "../pages/MaintenancePage";
 import EditPostPage from "../pages/EditPostPage"
+import AuthorPage from "../pages/AuthorPage";
 
 const AppRoutes = () => {
   return (
@@ -45,6 +46,7 @@ const AppRoutes = () => {
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/post/:id" element={<DisplayPostPage />} />
                 <Route path="/post-edit/:id" element={<EditPostPage />} />
+                <Route path="/user/:id" element={<AuthorPage />} />
 
                 <Route 
                     path="/write"

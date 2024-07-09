@@ -25,6 +25,7 @@ const AllPostSection = () => {
             id = {item._id}
             title={item.title}
             author={item.author.username}
+            authorId = {item.author._id}
             tags={item.tags}
           />
         ))}

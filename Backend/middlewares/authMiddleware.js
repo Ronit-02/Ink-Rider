@@ -24,6 +24,7 @@ const validateToken = async (req, res, next) => {
     }
     catch(err){
         // console.log(err)
+        console.log('Token not found!!')
         res.status(403).send({message: 'Login first'});
     }
 }

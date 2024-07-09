@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const {fetchProfile, fetchProfileWithPosts} = require('../controllers/userController');
+const {fetchUserWithPosts, fetchProfileWithPosts} = require('../controllers/userController');
 const validateToken = require('../middlewares/authMiddleware')
 
-router.get('/profile', validateToken, fetchProfile);
-router.get('/posts', validateToken, fetchProfileWithPosts);
+// specific routes
+router.get('/profile', validateToken, fetchProfileWithPosts);
+
+// dynamic routes
+router.get('/:id', fetchUserWithPosts);
 
 module.exports = router;
