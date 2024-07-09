@@ -1,20 +1,22 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import fetchPost from "../api/fetchPost";
 import { useEffect, useState } from "react";
 import updatePost from "../api/updatePost";
+import useNotification from "../components/notification/useNotification";
 
 const EditPostPage = () => {
 
+  const { displayNotification } = useNotification();
+  const queryClient = useQueryClient();
   const {id} = useParams();
   const [image, setImage] = useState('')
   const [file, setFile] = useState('')
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [tags, setTags] = useState([]);
-  const [message, setMessage] = useState('');
 
-  // Fetching Old Data
+  // Fetching Post
   const {data, isLoading: fetchIsLoading, isError: fetchIsError, error: fetchError} = useQuery({
     queryKey: ['post', id],
     queryFn: fetchPost,
@@ -32,16 +34,16 @@ const EditPostPage = () => {
     }
   }, [data]);
 
-  // Updating New Data
+  
+  // Updating Post
   const {mutate, isLoading: mutateIsloading} = useMutation({
     mutationFn: updatePost,
-    onSuccess: (response) => {
-      console.log('Response - ', response);
-      setMessage(response.message);
+    onSuccess: (response, {postId}) => {
+      displayNotification(response.message)
+      queryClient.invalidateQueries(['post', postId]);
     },
     onError: (error) => {
-      console.log('Error - ', error?.response?.data?.message || error.message);
-      setMessage(error?.response?.data?.message || error.message);
+      displayNotification(error?.response?.data?.message || error.message, 'error');
     }
   })
 
@@ -66,12 +68,10 @@ const EditPostPage = () => {
     mutate({id, formData});
   };
   
-  if(fetchIsLoading)
-    return <div>Loading...</div>
-
-  if(fetchIsError)
-      return <div>{fetchError?.response?.data?.message || fetchError.message}</div>
-
+  // Conditional Rendering
+  if(fetchIsLoading) return <div>Loading...</div>
+  if(fetchIsError) return <div>{fetchError?.response?.data?.message || fetchError.message}</div>
+  else
   return (
     <div className="w-full max-w-lg ml-auto mr-auto">
       <h1 className="text-3xl">Update Post</h1>
@@ -111,7 +111,6 @@ const EditPostPage = () => {
         >
           Update Post
         </button>
-        {message && <p className="italic text-gray-400">{message}</p>}
       </form>
     </div>
   )

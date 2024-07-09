@@ -1,29 +1,30 @@
 import { useDispatch } from "react-redux";
 import { loginStart, loginSuccess, loginFailure } from "../redux/slices/authSlice";
-
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-
 import {loginUser} from "../api/login";
 import { NavLink } from "react-router-dom";
+import useNotification from "../components/notification/useNotification";
 
 const LoginPage = () => {
+    const { displayNotification } = useNotification();
     const dispatch = useDispatch();
-    // const navigate = useNavigate();
-
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    const {mutate, isLoading, isError, error} = useMutation({
+    // Getting User
+    const { mutate, isLoading } = useMutation({
         mutationFn: loginUser,
         onSuccess: (data) => {
             dispatch(loginSuccess(data));
+            displayNotification('Login Successful');
             
             // reloading the whole app once to enable local storage 
             window.location.reload();
         },
         onError: (error) => {
             dispatch(loginFailure(error.response?.data?.message || error.message));
+            displayNotification(error.response?.data?.message || error.message, 'error');
         }
     });
 
@@ -64,7 +65,6 @@ const LoginPage = () => {
             >   
                 Submit
             </button>
-            {isError && <p className="italic text-gray-400">{error?.response?.data?.message || error.message}</p>}
         </form>
         <div className="mt-4">
             Continue with <a className="text-red-600 cursor-pointer" onClick={handleGoogleLogin}>Google</a>

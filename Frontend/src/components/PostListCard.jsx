@@ -1,24 +1,26 @@
 import PropTypes from "prop-types";
 import { NavLink } from "react-router-dom";
 import Tag from "./Tag";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import deletePost from "../api/deletePost";
+import useNotification from "../components/notification/useNotification";
 
 const PostListCard = ({ image, id, title, tags, content, owner }) => {
-  const { mutate, isLoading, isError, error } = useMutation({
+
+  const { displayNotification } = useNotification();
+  const queryClient = useQueryClient();
+
+  // Updating Post
+  const { mutate, isLoading } = useMutation({
     mutationFn: deletePost,
-    onSuccess: (data) => {
-      console.log(data);
+    onSuccess: (respone) => {
+      displayNotification(respone.message);
+      queryClient.invalidateQueries(['user']);
     },
     onError: (error) => {
-      console.log(error.message);
+      displayNotification(error?.response?.data?.message || error.message, 'error');
     },
   });
-
-  if (isLoading) return <div>Deleting this post..</div>;
-
-  if (isError)
-    console.log("Error - ", error?.respone?.data?.message || error.message);
 
   const handleDeletePost = () => {
     mutate({ id });
@@ -47,7 +49,7 @@ const PostListCard = ({ image, id, title, tags, content, owner }) => {
       {
       owner && 
       <div className="flex items-center flex-none gap-4 pr-4 w-fit">
-        <button onClick={handleDeletePost}>Delete</button>
+        <button onClick={handleDeletePost} disabled={isLoading} >Delete</button>
         <NavLink to={`/post-edit/${id}`}>Edit</NavLink>
       </div>
       }

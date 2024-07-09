@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query";
 import fetchUserWithPosts from "../api/fetchUser";
@@ -8,23 +7,18 @@ import profileImage from "../assets/images/Profile-Pic.svg";
 const AuthorPage = () => {
 
     const {id} = useParams();
+
+    // Fetching Author Details
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ["user", id],
         queryFn: fetchUserWithPosts,
     });
 
-    useEffect(() => {
-        console.log(data)
-    }, [data]);
 
-
+    // Conditional Rendering
     if (isLoading) return <div>Loading...</div>;
-
-    if (isError) {
-        return <div>{error?.response?.data?.message || error.message}</div>;
-    }
-
-
+    if (isError) return <div>{error?.response?.data?.message || error.message}</div>
+    else
     return (
     <div className="w-full">
       <div className="flex items-center gap-4">

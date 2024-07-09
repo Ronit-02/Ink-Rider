@@ -1,25 +1,29 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import forgotPassword from "../api/forgotPassword";
+import useNotification from "../components/notification/useNotification";
 
 const ForgotPasswordPage = () => {
   
+    const { displayNotification } = useNotification();
     const [email, setEmail] = useState('')
     const [message, setMessage] = useState('')
 
-    const {mutate, isLoading, isError, error} = useMutation({
+    // Updating New Password
+    const { mutate, isLoading } = useMutation({
         mutationFn: forgotPassword,
-        onSuccess: (data) => {
-            console.log('Success - ', data);
+        onSuccess: (response) => {
+            displayNotification(response.message);
         },
         onError: (error) => {
-            console.log('Failure - ', error?.response?.data?.message || error.message);
+            displayNotification(error?.response?.data?.message || error.message, 'error');
         }
     })
 
     const handleSubmit = (e) => {
         e.preventDefault();
         mutate({email});
+        displayNotification('Email sent');
         setMessage('Mail has been sent to reset password')
     }
     
@@ -44,7 +48,6 @@ const ForgotPasswordPage = () => {
             { message &&
                 <p className="italic text-gray-400">{message}</p>
             }
-            {isError && <p className="italic text-gray-400">{error?.response?.data?.message || error.message}</p>}
         </form>
     </div>
   )

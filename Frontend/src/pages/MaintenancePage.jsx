@@ -15,8 +15,8 @@ const MaintenancePage = () => {
         }
         setIsBackendUp(true);
         navigate("/");
-      } catch (error) {
-        // console.log("Error - ", error.message);
+      } 
+      catch (error) {
         setIsBackendUp(false);
       }
     };

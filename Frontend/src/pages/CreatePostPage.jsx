@@ -1,30 +1,31 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import createPost from "../api/createPost";
+import useNotification from "../components/notification/useNotification";
 
 const CreatePostPage = () => {
 
+  const { displayNotification } = useNotification();
   const [image, setImage] = useState('')
   const [file, setFile] = useState('')
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [tags, setTags] = useState([]);
-  const [message, setMessage] = useState('');
 
+
+  // Creating Post
   const { mutate, isLoading } = useMutation({
     mutationFn: createPost,
-    onSuccess: (data) => {
-      console.log("Response Data - ", data);
+    onSuccess: (response) => {
       setImage('');
       setFile('');
       setTitle('');
       setBody('');
       setTags([]);
-      setMessage(data.message);
+      displayNotification(response.message);
     },
     onError: (error) => {
-      console.log("Error - ", error?.response?.data?.message || error.message);
-      setMessage(error?.response?.data?.message || error.message);
+      displayNotification(error?.response?.data?.message || error.message, 'error');
     },
   });
 
@@ -41,7 +42,6 @@ const CreatePostPage = () => {
     formData.append('title', title);
     formData.append('body', body);
     formData.append('tags', tags);
-
     mutate(formData);
   };
 
@@ -84,7 +84,6 @@ const CreatePostPage = () => {
         >
           Submit
         </button>
-        {message && <p className="italic text-gray-400">{message}</p>}
       </form>
     </div>
   );

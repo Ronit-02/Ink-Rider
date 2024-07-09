@@ -3,16 +3,15 @@ import fetchAllPost from "../api/fetchAllPost";
 import PostCard from "./PostCard";
 
 const AllPostSection = () => {
+  
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["post"],
     queryFn: fetchAllPost,
   });
 
+  // Conditional Rendering
   if (isLoading) return <div>Loading...</div>;
-
-  if (isError)
-    return <div>{error?.response?.data?.message || error.message}</div>
-
+  if (isError) return <div>{error?.response?.data?.message || error.message}</div>
   return (
     <div className="w-full">
       <h1 className="text-2xl">Featured Posts</h1>

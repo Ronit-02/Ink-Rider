@@ -1,37 +1,35 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react"
 import resetPassword from '../api/resetPassword'
+import useNotification from "../components/notification/useNotification";
 
 const ResetPasswordPage = () => {
 
+    const { displayNotification } = useNotification();
     const [pass1, setPass1] = useState('');
     const [pass2, setPass2] = useState('');
-    const [message, setMessage] = useState('')
     
-    // Get Token for parameters
+    // Get Token from parameters
     const queryParams = new URLSearchParams(window.location.search)
     const token = queryParams.get("token");
 
+    // Updating Password
     const {mutate, isLoading} = useMutation({
         mutationFn: resetPassword,
-        onSuccess: (data) => {
-            console.log(data.message)
-            setMessage(data.message);
+        onSuccess: (response) => {
+            displayNotification(response.message);
         },
         onError: (error) => {
-            console.log(error?.response?.data?.message || error.message);
-            setMessage(error?.response?.data?.message || error.message);
+            displayNotification(error?.response?.data?.message || error.message, 'error');
         }
     })
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if(pass1 === pass2){
+        if(pass1 === pass2)
             mutate({password: pass1, token});
-        }
-        else{
-            setMessage('Passwords dont match, enter again')
-        }
+        else
+            displayNotification('Passwords dont match', 'error');
     }
 
   return (
@@ -57,9 +55,6 @@ const ResetPasswordPage = () => {
             >
                 Reset
             </button>
-            { message &&
-                <p className="italic text-gray-400">{message}</p>
-            }
         </form>
     </div>
   )

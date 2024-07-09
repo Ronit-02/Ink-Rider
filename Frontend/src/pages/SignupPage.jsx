@@ -2,26 +2,26 @@ import { useState } from "react"
 import { NavLink } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import signup from "../api/signup";
+import useNotification from "../components/notification/useNotification";
 
 const SignupPage = () => {
 
+    const { displayNotification } = useNotification();
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [message, setMessage] = useState('')
 
+    // Creating User
     const {mutate, isLoading} = useMutation({
         mutationFn: signup,
-        onSuccess: (data) => {
-            console.log('Success- ',data.message);
-            setMessage(data.message);
+        onSuccess: (response) => {
+            displayNotification(response.message);
             setUsername('');
             setEmail('');
             setPassword('');
         },
         onError: (error) => {
-            console.log('Failure - ', error?.response?.data?.message || error.message);
-            setMessage(error?.response?.data?.message || error.message);
+            displayNotification(error?.response?.data?.message || error.message, 'error');
         }
     })
 
@@ -64,7 +64,6 @@ const SignupPage = () => {
             >
                 Submit
             </button>
-            {message && <p className="italic text-gray-400">{message}</p>}
         </form>
         <div className="mt-4">
             Continue with <a className="text-red-600 cursor-pointer" onClick={handleGoogleLogin}>Google</a>

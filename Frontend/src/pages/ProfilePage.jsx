@@ -9,12 +9,10 @@ const ProfilePage = () => {
     queryFn: fetchProfileAndPosts,
   });
 
+  
+  // Conditonal Rendering
   if (isLoading) return <div>Loading...</div>;
-
-  if (isError) {
-    return <div>{error?.response?.data?.message || error.message}</div>;
-  }
-
+  if (isError) return <div>{error?.response?.data?.message || error.message}</div>;
   return (
     <div className="w-full">
       <div className="flex items-center gap-4">

@@ -4,11 +4,17 @@ import { NavLink, useParams } from "react-router-dom";
 import { useState } from "react";
 import addComment from "../api/addComment";
 import deleteComment from "../api/deleteComment"
+import { useSelector } from "react-redux";
+import useNotification from "../components/notification/useNotification";
 
 const DisplayPostPage = () => {
+  const { displayNotification } = useNotification();
   const queryClient = useQueryClient();
+
+  const user = useSelector(state => state.auth.user)
   const { id } = useParams();
   const [comment, setComment] = useState("");
+
   
   // Fetching Post
   const { data, isLoading: fetchIsLoading, isError, error} = useQuery({
@@ -20,11 +26,12 @@ const DisplayPostPage = () => {
   const { mutate: addCommentMutate, isLoading: addCommentIsLoading } = useMutation({
     mutationFn: addComment,
     onSuccess: (response, {postId}) => {
-      console.log("Response - ", response);
+      setComment('')
+      displayNotification(response.message);
       queryClient.invalidateQueries(['post', postId]);
     },
     onError: (error) => {
-      console.log("Error - ", error?.response?.data?.message);
+      displayNotification(error?.response?.data?.message || error.message, 'error');
     },
   });
 
@@ -32,11 +39,11 @@ const DisplayPostPage = () => {
   const { mutate: deleteCommentMutate, isLoading: deleteCommentIsLoading } = useMutation({
     mutationFn: deleteComment,
     onSuccess: (response, {postId}) => {
-      console.log("Response - ", response);
+      displayNotification(response.message);
       queryClient.invalidateQueries(['post', postId]);
     },
     onError: (error) => {
-      console.log("Error - ", error?.response?.data?.message);
+      displayNotification(error?.response?.data?.message || error.message, 'error');
     }
   });
 
@@ -92,7 +99,7 @@ const DisplayPostPage = () => {
                   <p>{item.comment}</p>
                 </div>
                 {
-                  item.author._id === data.author._id &&
+                  item.author.username === user &&
                   <button 
                     onClick={() => removeComment(item._id)} 
                     className="text-sm w-[50px] flex-none text-red-500"
