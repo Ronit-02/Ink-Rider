@@ -50,5 +50,6 @@ const userSchema = new mongoose.Schema({
     timeStamps: true
 });
 
+userSchema.index({username: 'text'});
 
 module.exports = mongoose.model('User', userSchema);

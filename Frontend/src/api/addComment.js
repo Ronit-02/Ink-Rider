@@ -1,5 +1,6 @@
 import axios from "axios";
 
+// Post - send data in body
 const addComment = async ({id, comment}) => {
     const token = localStorage.getItem('token');
 

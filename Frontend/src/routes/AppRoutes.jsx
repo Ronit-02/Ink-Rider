@@ -16,6 +16,7 @@ import BackendCheck from "./BackendCheck";
 import MaintenancePage from "../pages/MaintenancePage";
 import EditPostPage from "../pages/EditPostPage"
 import AuthorPage from "../pages/AuthorPage";
+import SearchPage from "../pages/SearchPage";
 
 const AppRoutes = () => {
   return (
@@ -47,6 +48,7 @@ const AppRoutes = () => {
                 <Route path="/post/:id" element={<DisplayPostPage />} />
                 <Route path="/post-edit/:id" element={<EditPostPage />} />
                 <Route path="/user/:id" element={<AuthorPage />} />
+                <Route path="/search/*" element={<SearchPage />} />
 
                 <Route 
                     path="/write"

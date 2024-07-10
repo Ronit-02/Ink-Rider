@@ -1,5 +1,6 @@
 import axios from "axios"
 
+// Post - send data in body
 const resetPassword = async (credentials) => {
 
     const response = await axios.post(

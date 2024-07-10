@@ -61,4 +61,7 @@ const postSchema = new mongoose.Schema({
     versionKey: false
 });
 
+// Text indexes to enable searching
+postSchema.index({title: 'text', body: 'text', tags: 'text'});
+
 module.exports = mongoose.model('Post', postSchema);

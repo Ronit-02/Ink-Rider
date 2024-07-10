@@ -1,5 +1,6 @@
 import axios from "axios"
 
+// Delete - send data in data
 const deleteComment = async ({postId, commentId}) => {
     const token = localStorage.getItem('token');
 

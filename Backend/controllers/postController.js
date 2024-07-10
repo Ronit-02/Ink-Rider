@@ -55,6 +55,55 @@ const getAllPosts = async (req, res) => {
     }
 };
 
+const searchPost = async (req, res) => {
+    try{
+        const {query} = req.query;
+        if(!query)
+            return res.status(400).send({message: 'Enter query to search'});
+
+        const posts = await Post.find({
+            $text: { $search: query }
+        })
+        .populate({
+            path: 'author',
+            select: 'username email'
+        })
+        // .limit(5);
+        
+        return res.status(200).json(posts)
+    }
+    catch(error){
+        console.log(error);
+        return res.status(500).send({message: 'Unable to fetch posts at this time'})
+    }
+}
+
+const searchCategory = async (req, res) => {
+
+    try {
+        const { query } = req.query;
+        const tagsArray = query.split(',').map(tag => tag.trim());
+
+        if(!query)
+            return res.status(400).send({message: 'Enter query to search'});
+
+        const posts = await Post.find({
+            tags: { $in: tagsArray }
+        })
+        .populate({
+            path: 'author',
+            select: 'username email'
+        })
+        // .limit(5);
+
+        return res.status(200).json(posts)
+    }
+    catch(error){
+        console.log(error);
+        return res.status(500).send({message: 'Unable to fetch categories at this time'})
+    }
+}
+
 const getPost = async (req, res) => {
     try{
         const postId = req.params.id;
@@ -195,4 +244,4 @@ const deleteComment = async (req, res) => {
     }
 }
 
-module.exports = {createPost, getAllPosts, getPost, updatePost, deletePost, addComment, deleteComment};
+module.exports = {createPost, getAllPosts, searchPost, searchCategory, getPost, updatePost, deletePost, addComment, deleteComment};

@@ -52,4 +52,22 @@ const fetchProfileWithPosts = async (req, res) => {
     
 }
 
-module.exports = {fetchUserWithPosts, fetchProfileWithPosts};
+const searchUser = async (req, res) => {
+    try{
+        const { query } = req.query;
+
+        if(!query)
+            return res.status(400).send({message: 'Enter query to search'});
+
+        const users = await User.find({
+            $text: { $search: query }
+        });
+
+        return res.status(200).json(users);
+    }
+    catch(error) {
+        return res.status(500).send({message: 'Unable to fetch authors at this time'});
+    }
+}
+
+module.exports = {fetchUserWithPosts, fetchProfileWithPosts, searchUser};
