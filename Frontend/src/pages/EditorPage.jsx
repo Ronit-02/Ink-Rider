@@ -1,4 +1,4 @@
-import BlockEditor from '../components/BlockEditor';
+import BlockEditor from '../components/editor/BlockEditor';
 
 const EditorPage = () => {
   return (

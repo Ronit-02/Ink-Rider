@@ -26,7 +26,7 @@ const Notification = () => {
                 removeNotificationAfterTimeout(notification.id);
             });
 
-    }, [notifications, dispatch, handleRemoveNotification]);
+    }, [notifications, dispatch]);
 
     return (
         <div className="notification-container">

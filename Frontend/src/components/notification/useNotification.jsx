@@ -6,7 +6,6 @@ const useNotification = () => {
 
     const displayNotification = (message, type = 'info') => {
         const newNotification = {
-            // id: Math.random().toString(36).substring(2, 9),
             id: Date.now(),
             message: message,
             type: type,

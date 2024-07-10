@@ -5,6 +5,7 @@ import { logout } from "./redux/slices/authSlice";
 
 import AppRoutes from "./routes/AppRoutes";
 import Notification from "./components/notification/Notification";
+import Modal from "./components/modal/Modal";
 
 function App() {
   
@@ -20,6 +21,7 @@ function App() {
 
   return (
     <div className="min-h-screen px-12 py-12 mb-24 h-fit min-w-screen">
+      <Modal />
       <Notification />
       <AppRoutes />
     </div>

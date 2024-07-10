@@ -4,10 +4,12 @@ import Tag from "./Tag";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import deletePost from "../api/deletePost";
 import useNotification from "../components/notification/useNotification";
+import useModal from "./modal/useModal";
 
 const PostListCard = ({ image, id, title, tags, content, owner }) => {
 
   const { displayNotification } = useNotification();
+  const { openModal } = useModal();
   const queryClient = useQueryClient();
 
   // Updating Post
@@ -23,7 +25,16 @@ const PostListCard = ({ image, id, title, tags, content, owner }) => {
   });
 
   const handleDeletePost = () => {
-    mutate({ id });
+    openModal({
+      title: 'Confirm Delete',
+      message: 'Are you sure you want to delete this post?',
+      onConfirm: () => {
+        return mutate({ id });
+      },
+      onCancel: () => {
+        return null;
+      }
+    })
   };
 
   return (
