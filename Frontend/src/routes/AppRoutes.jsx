@@ -18,48 +18,35 @@ import EditPostPage from "../pages/EditPostPage"
 import AuthorPage from "../pages/AuthorPage";
 import SearchPage from "../pages/SearchPage";
 
+import Layout from "./Layout";
+
 const AppRoutes = () => {
   return (
     <Routes>
         {/* Maintenance Page Route */}
         <Route path="/maintenance" element={<MaintenancePage />} />
             
-        {/* Other Routes */}
+        {/* Check Backend -> Other Routes */}
         <Route path="/*" element={
             <BackendCheck>
-            <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route 
-                    path="/login" 
-                    element={<PublicRoute> <LoginPage /> </PublicRoute>}
-                />
-                <Route 
-                    path="/signup" 
-                    element={<PublicRoute> <SignupPage /> </PublicRoute>} 
-                />
-                <Route 
-                    path="/auth/google/success" 
-                    element={<PublicRoute> <AuthSuccessPage /> </PublicRoute>} 
-                />
-                
-                <Route path="/auth/google/failure" element={<AuthFailurePage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route path="/post/:id" element={<DisplayPostPage />} />
-                <Route path="/post-edit/:id" element={<EditPostPage />} />
-                <Route path="/user/:id" element={<AuthorPage />} />
-                <Route path="/search/*" element={<SearchPage />} />
-
-                <Route 
-                    path="/write"
-                    element={<ProtectedRoute> <CreatePostPage/> </ProtectedRoute>}
-                />
-                <Route path='/editor' element={<EditorPage />} />
-                <Route 
-                    path="/profile"
-                    element={<ProtectedRoute> <ProfilePage/> </ProtectedRoute>}
-                />
-            </Routes>
+                <Routes>
+                    <Route path="/login" element={<PublicRoute> <LoginPage /> </PublicRoute>}/>
+                    <Route path="/signup" element={<PublicRoute> <SignupPage /> </PublicRoute>} />
+                    <Route path="/auth/google/success" element={<PublicRoute> <AuthSuccessPage /> </PublicRoute>} />
+                    <Route path="/auth/google/failure" element={<AuthFailurePage />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+                    <Route path="/" element={<Layout />} >
+                        <Route path="/" element={<HomePage />} />
+                        <Route path="/post/:id" element={<DisplayPostPage />} />
+                        <Route path="/post-edit/:id" element={<EditPostPage />} />
+                        <Route path="/user/:id" element={<AuthorPage />} />
+                        <Route path="/search/*" element={<SearchPage />} />
+                        <Route path='/editor' element={<ProtectedRoute> <EditorPage /> </ProtectedRoute>} />
+                        <Route path="/write" element={<ProtectedRoute> <CreatePostPage/> </ProtectedRoute>}/>
+                        <Route path="/profile" element={<ProtectedRoute> <ProfilePage/> </ProtectedRoute>}/>
+                    </Route>
+                </Routes>
             </BackendCheck>
         }/>
     </Routes>

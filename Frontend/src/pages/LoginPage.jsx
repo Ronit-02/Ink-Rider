@@ -40,41 +40,50 @@ const LoginPage = () => {
     }
 
   return (
-    <div className="w-full max-w-lg ml-auto mr-auto">
-        <h1>Login with your account</h1>
-        <form 
-            className="flex flex-col gap-4 mt-4" 
-            onSubmit={handleSubmit}
-        >
-            <input className="p-2 border" 
-                type="email" 
-                placeholder="email" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-            />
-            <input className="p-2 border" 
-                type="password" 
-                placeholder="password" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-            />
-            <NavLink to={"/forgot-password"} className="ml-auto text-blue-400 cursor-pointer">forgot password ?</NavLink>
-            <button className="rounded-lg w-[100px] p-2 text-white bg-blue-500 border" 
-                type="submit" 
-                disabled={isLoading}
-            >   
-                Submit
-            </button>
-        </form>
-        <div className="mt-4">
-            Continue with <a className="text-red-600 cursor-pointer" onClick={handleGoogleLogin}>Google</a>
+    <div className="flex flex-col w-full max-w-lg ml-auto mr-auto gap-7">
+        <div className="flex justify-center w-full">
+            <NavLink to="/" className="text-2xl text-center">Ink Rider</NavLink>
         </div>
-        <div className="flex gap-2 mt-4">
-            <p>Dont have an account,</p> 
-            <NavLink className="text-blue-600 cursor-pointer" 
-                to="/signup" >
-                    Sign Up
-            </NavLink>
+        <div>
+            <h1>Login with your account</h1>
+            <form 
+                className="flex flex-col gap-4 mt-4" 
+                onSubmit={handleSubmit}
+            >
+                <input className="p-2 border" 
+                    type="email" 
+                    placeholder="email" 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    autoComplete="given-name"
+                />
+                <input className="p-2 border" 
+                    type="password" 
+                    placeholder="password" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    autoComplete="current-password"
+                />
+                <NavLink to={"/forgot-password"} className="ml-auto text-blue-400 cursor-pointer">forgot password ?</NavLink>
+                <button className="rounded-lg w-[100px] p-2 text-white bg-blue-500 border" 
+                    type="submit" 
+                    disabled={isLoading}
+                >   
+                    Submit
+                </button>
+            </form>
+        </div>
+        <div>
+            <div className="mt-4">
+                Continue with <a className="text-red-600 cursor-pointer" onClick={handleGoogleLogin}>Google</a>
+            </div>
+            <div className="flex gap-2 mt-4">
+                <p>Dont have an account,</p> 
+                <NavLink className="text-blue-600 cursor-pointer" 
+                    to="/signup" >
+                        Sign Up
+                </NavLink>
+            </div>
         </div>
     </div>
   )
