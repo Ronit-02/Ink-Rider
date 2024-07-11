@@ -2,7 +2,8 @@ const User = require('../schemas/userSchema');
 const nodemailer = require('nodemailer')
 const passport = require('passport')
 const GoogleStrategy = require('passport-google-oauth20').Strategy
-const {hashPassword, generateToken, verifyToken, verifyPassword} = require('../utils/helper')
+const {hashPassword, generateToken, verifyToken, verifyPassword, generateRandom} = require('../utils/helper')
+const {userPictures} = require('../database/data.js');
 
 const login = async (req, res) => {
 
@@ -37,56 +38,67 @@ const login = async (req, res) => {
 
 const signup = async (req, res) => {
 
-    const { username, email, password } = req.body;
-    const hashedPassowrd = await hashPassword(password);
-
-    // Email Validation
-    if(await User.findOne({email: email})){
-        console.log('Email linked with another account');
-        return res.status(500).send({message: 'Email linked with another account'});
+    try{
+        const { username, email, password } = req.body;
+        
+        // Assigning a random image from assets
+        const random = generateRandom(0, userPictures.length - 1);
+        const picture = userPictures[random];
+    
+        // Hashing password
+        const hashedPassowrd = await hashPassword(password);
+    
+        // Email Validation
+        if(await User.findOne({email: email})){
+            console.log('Email linked with another account');
+            return res.status(500).send({message: 'Email linked with another account'});
+        }
+        // Username Validation
+        if(await User.findOne({username: username})){
+            console.log('Username already in use');
+            return res.status(500).send({message: 'Username already in use'});
+        }
+    
+        const user = new User({
+            picture: picture,
+            username: username, 
+            email: email, 
+            password: hashedPassowrd
+        });
+        await user.save();
+    
+        // Issuing JWT
+        const payload = {email, id: user._id};
+        const token = generateToken(payload);
+    
+        // Sending Mail
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 465,
+            auth: {
+                user: process.env.EMAIL,
+                pass: process.env.EMAIL_PASSWORD
+            },
+            secure: false
+        })
+    
+        const mailOptions = {
+            to: email,
+            subject: "Email Verification",
+            html: `<b>Verify your Email</b><p>Please verify your email by clicking on this <a href="${process.env.BASE_URL}/api/auth/verify-email?token=${token}">Click here to verify</a></p>`
+        }
+    
+        transporter.sendMail(mailOptions, (err, info) => {
+            if(err)
+                return res.status(500).send({message: 'Error occured'})
+            else
+                return res.status(200).send({message: 'Verification Mail sent successfully'});
+        })
     }
-
-    // Username Validation
-    if(await User.findOne({username: username})){
-        console.log('Username already in use');
-        return res.status(500).send({message: 'Username already in use'});
+    catch(err){
+        return res.status(500).send({message: 'Cant Signup now, try again later'})
     }
-
-    const user = new User({
-        username: username, 
-        email: email, 
-        password: hashedPassowrd
-    });
-    await user.save();
-
-    // Issuing JWT
-    const payload = {email, id: user._id};
-    const token = generateToken(payload);
-
-    // Sending Mail
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        host: 'smtp.gmail.com',
-        port: 465,
-        auth: {
-            user: process.env.EMAIL,
-            pass: process.env.EMAIL_PASSWORD
-        },
-        secure: false
-    })
-
-    const mailOptions = {
-        to: email,
-        subject: "Email Verification",
-        html: `<b>Verify your Email</b><p>Please verify your email by clicking on this <a href="${process.env.BASE_URL}/api/auth/verify-email?token=${token}">Click here to verify</a></p>`
-    }
-
-    transporter.sendMail(mailOptions, (err, info) => {
-        if(err)
-            return res.status(500).send({message: 'Error occured'})
-        else
-            return res.status(200).send({message: 'Verification Mail sent successfully'});
-    })
 }
 
 const verifyEmail = async (req, res) => {
@@ -121,9 +133,13 @@ passport.use(new GoogleStrategy({
     async (accessToken, refreshToken, profile, done) => {
         try {
             const email = profile.emails[0].value;
-            let user = await User.findOne({ email: email });
 
+            // Assigning a random image from assets
+            const random = generateRandom(0, userPictures.length - 1);
+            const picture = userPictures[random];
+            
             // check if email logged-in
+            let user = await User.findOne({ email: email });
             if(user && !user.googleId){
                 return done(null, false, {message: "Please sign in using email and password"});
             }
@@ -131,7 +147,8 @@ passport.use(new GoogleStrategy({
             if (!user) {
                 const username = email.split('@')[0];
                 const password = 'default';
-                user = new User({ 
+                user = new User({
+                    picture, 
                     username: username, 
                     email: email, 
                     password: password,

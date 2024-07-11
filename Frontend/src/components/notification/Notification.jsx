@@ -9,10 +9,6 @@ const Notification = () => {
     const notifications = useSelector(state => state.notif.notifications);
     const { handleRemoveNotification } = useNotification();
 
-    useEffect(() => {
-        console.log('Notif - ', notifications)
-    }, [notifications])
-
     // Removing notifications after 5 seconds
     useEffect(() => {
         const removeNotificationAfterTimeout = (id) => {

@@ -25,4 +25,11 @@ const verifyPassword = async (pass1, pass2) => {
     return response;
 }
 
-module.exports = {hashPassword, generateToken, verifyToken, verifyPassword};
+
+// both included
+const generateRandom = (start, end) => {
+    const no = Math.floor(Math.random() * end) + start;
+    return no;
+}
+
+module.exports = {hashPassword, generateToken, verifyToken, verifyPassword, generateRandom};

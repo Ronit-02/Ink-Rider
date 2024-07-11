@@ -20,7 +20,6 @@ const BackendCheck = ({children}) => {
                 setIsBackendUp(true);
             }
             catch(error){
-                // console.log('Error - ', error.message);
                 setIsBackendUp(false);
                 navigate('/maintenance')
             }
@@ -29,10 +28,10 @@ const BackendCheck = ({children}) => {
         checkBackend();
     }, [navigate])
 
-    if(isBackendUp === null)
-        return <div>Loading...</div>
-
-    return isBackendUp ? children : null;
+    if(!isBackendUp)
+        return null;
+    else
+        return children;
 }
 
 BackendCheck.propTypes = ({

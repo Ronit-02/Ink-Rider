@@ -1,6 +1,7 @@
 const Post = require('../schemas/postSchema');
 const { uploadOnCloudinary, removeOnCloudinary } = require('../utils/cloudinary');
 const fs = require('fs');
+const mongoose = require('mongoose');
 
 const createPost = async (req, res) => {
 
@@ -41,12 +42,16 @@ const getAllPosts = async (req, res) => {
         const posts = await Post.find()
             .populate({
                 path: 'author', 
-                select: 'username email'
+                select: 'picture username email'
             })
             .populate({
                 path: 'comments.author',
-                select: 'username email'
+                select: 'picture username email'
             });
+
+        if(!posts){
+            return res.status(403).send({message: 'No posts yet'});
+        }
 
         return res.status(200).json(posts);
     }
@@ -66,7 +71,7 @@ const searchPost = async (req, res) => {
         })
         .populate({
             path: 'author',
-            select: 'username email'
+            select: 'picture username email'
         })
         // .limit(5);
         
@@ -92,7 +97,7 @@ const searchCategory = async (req, res) => {
         })
         .populate({
             path: 'author',
-            select: 'username email'
+            select: 'picture username email'
         })
         // .limit(5);
 
@@ -112,16 +117,21 @@ const getPost = async (req, res) => {
         const post = await Post.findById(postId)
             .populate({
                 path: 'author', 
-                select: 'username email'
+                select: 'picture username email'
             })
             .populate({
                 path: 'comments.author',
-                select: 'username email'
+                select: 'picture username email'
             });
 
-        if(!post)
-            return res.status(404).send({message: 'Post not found'})
-        
+        if(!post){
+            return res.status(404).send({message: 'Post not found'});    
+        }
+
+        // update views
+        post.metadata.views++;
+        await post.save();
+
         return res.status(200).json(post);
     }
     catch(error) {
@@ -193,6 +203,78 @@ const deletePost = async (req, res) => {
     }
 }
 
+const likeUnlikePost = async (req, res) => {
+    try{
+        const postId = req.params.id;
+        const liker = req.user;
+
+        const post = await Post.findById(postId);
+        if(!post)
+            return res.status(404).send({message: "Post not found"});
+
+        // Unlike Post
+        if(liker.liked.includes(postId)){
+            // update post
+            post.likes--;
+            await post.save();
+            
+            // update user
+            const index = liker.liked.indexOf(postId)
+            liker.liked.splice(index, 1);
+            await liker.save();
+
+            return res.status(200).send({message: "Unliked post successfully"})
+        }
+        // Like Post
+        else{
+            // update post
+            post.likes++;
+            await post.save();
+            
+            // update user
+            liker.liked.push(post._id);
+            await liker.save();
+
+            return res.status(200).send({message: "Liked post successfully"});
+        }
+    }
+    catch(error){
+        console.log(error);
+        return res.status(500).send({message: 'Unable to like-unlike post, try again later..'})
+    }
+}
+
+const saveUnsavePost = async (req, res) => {
+    try{
+        const postId = req.params.id;
+        const saver = req.user;
+
+        const post = await Post.findById(postId);
+        if(!post)
+            return res.status(404).send({message: "Post not found"});
+
+        // Unsave Post
+        if(saver.saved.includes(postId)){            
+            const index = saver.saved.indexOf(postId)
+            saver.saved.splice(index, 1);
+            await saver.save();
+
+            return res.status(200).send({message: "Unsaved post successfully"})
+        }
+        // Save Post
+        else{            
+            saver.saved.push(post._id);
+            await saver.save();
+
+            return res.status(200).send({message: "Saved post successfully"});
+        }
+    }
+    catch(error){
+        console.log(error);
+        return res.status(500).send({message: 'Unable to save-unsave post, try again later..'})
+    }
+}
+
 const addComment = async (req, res) => {
     try{
         const postId = req.params.id;
@@ -200,7 +282,6 @@ const addComment = async (req, res) => {
         const { comment } = req.body;
 
         const post = await Post.findById(postId);
-
         if(!post)
             return res.status(400).send({message: "Post doesnt exists"});
 
@@ -244,4 +325,4 @@ const deleteComment = async (req, res) => {
     }
 }
 
-module.exports = {createPost, getAllPosts, searchPost, searchCategory, getPost, updatePost, deletePost, addComment, deleteComment};
+module.exports = {createPost, getAllPosts, searchPost, searchCategory, getPost, updatePost, deletePost, likeUnlikePost, saveUnsavePost, addComment, deleteComment};

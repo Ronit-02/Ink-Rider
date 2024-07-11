@@ -1,7 +1,19 @@
 const mongoose = require('mongoose');
 const User = require('../schemas/userSchema');
 
-// User Details
+
+const fetchUser = async (req, res) => {
+    try{
+        const { username } = req.query;        
+        const user = await User.findOne({username})
+        
+        return res.status(200).json(user);
+    }   
+    catch(error){
+        return res.status(500).send({message: "Cant fetch user details"})
+    }
+}
+
 const fetchUserWithPosts = async (req, res) => {
     try{
         const userId = new mongoose.Types.ObjectId(req.params.id);
@@ -26,7 +38,6 @@ const fetchUserWithPosts = async (req, res) => {
     }
 }
 
-// User Details with Posts
 const fetchProfileWithPosts = async (req, res) => {
     try{
         const userId = req.user._id;
@@ -46,7 +57,6 @@ const fetchProfileWithPosts = async (req, res) => {
         return res.status(200).send(profileWithPosts[0]);
     }
     catch(error){
-        // console.log(error);
         return res.status(400).send({message: 'Cant fetch profile'})
     }   
     
@@ -70,4 +80,4 @@ const searchUser = async (req, res) => {
     }
 }
 
-module.exports = {fetchUserWithPosts, fetchProfileWithPosts, searchUser};
+module.exports = {fetchUser, fetchUserWithPosts, fetchProfileWithPosts, searchUser};

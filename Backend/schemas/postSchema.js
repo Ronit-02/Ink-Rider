@@ -9,7 +9,7 @@ const postSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true,
-        trim: true
+        trim: true,
     },
     body: {
         type: String,
@@ -23,6 +23,8 @@ const postSchema = new mongoose.Schema({
     tags: [
         {
             type: String,
+            lowercase: true,
+            trim: true
         }
     ],
     likes: {
@@ -63,5 +65,8 @@ const postSchema = new mongoose.Schema({
 
 // Text indexes to enable searching
 postSchema.index({title: 'text', body: 'text', tags: 'text'});
+// Number indexes for performance optimizations
+postSchema.index({author: 1});
+postSchema.index({'comments.author': 1});
 
 module.exports = mongoose.model('Post', postSchema);

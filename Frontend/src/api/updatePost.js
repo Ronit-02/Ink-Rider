@@ -3,6 +3,7 @@ import axios from "axios";
 // Put - send data in body
 const updatePost = async ({id, formData}) => {
     const token = localStorage.getItem('token');
+    
     const response = await axios.put(
         `${import.meta.env.VITE_API_URL}/api/post/${id}`,
         formData,

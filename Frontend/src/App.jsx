@@ -19,7 +19,7 @@ function App() {
   }, [dispatch]);
 
   return (
-    <div className="min-h-screen px-12 py-12 mb-24 h-fit min-w-screen">
+    <div className="h-screen px-12 py-12 max-w-screen">
       <Modal />
       <Notification />
       <AppRoutes />

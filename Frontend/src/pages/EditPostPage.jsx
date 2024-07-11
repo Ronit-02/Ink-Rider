@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import fetchPost from "../api/fetchPost";
 import { useEffect, useState } from "react";
 import updatePost from "../api/updatePost";
@@ -8,6 +8,7 @@ import useNotification from "../components/notification/useNotification";
 const EditPostPage = () => {
 
   const { displayNotification } = useNotification();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const {id} = useParams();
   const [image, setImage] = useState('')
@@ -20,7 +21,15 @@ const EditPostPage = () => {
   const {data, isLoading: fetchIsLoading, isError: fetchIsError, error: fetchError} = useQuery({
     queryKey: ['post', id],
     queryFn: fetchPost,
+    retry: 1  // limited retries, faster reload
   })
+
+  // Incorrect Id
+  useEffect(() => {
+    if(fetchError?.response?.status === 500){
+      navigate('/404');
+    }
+  }, [fetchError, navigate])
 
   useEffect(() => {
     if(data){

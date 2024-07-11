@@ -43,7 +43,7 @@ const PostListCard = ({ image, id, title, tags, content, owner }) => {
         <img
           src={image}
           alt="coverImage"
-          className="flex-none w-[250px] h-3/4 my-auto"
+          className="flex-none w-[250px] h-3/4 my-auto object-cover"
         />
         <div className="flex-auto flex flex-col gap-4 w-[300px] justify-center">
           <h1 className="text-2xl font-bold text-gray-600 capitalize">

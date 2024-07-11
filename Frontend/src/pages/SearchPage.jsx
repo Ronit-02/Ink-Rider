@@ -27,6 +27,7 @@ const SearchPage = () => {
         : filter === "category"
         ? searchCategory
         : searchUser,
+    retry: 1   // limited retries, faster reload
   });
 
   useEffect(() => {

@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import PostListCard from "../components/PostListCard";
 import profileImage from "../assets/images/Profile-Pic.svg";
-import fetchProfileAndPosts from "../api/profile";
+import fetchProfileAndPosts from "../api/fetchProfileWithPosts";
+import { useEffect } from "react";
 
 const ProfilePage = () => {
   const { data, isLoading, isError, error } = useQuery({
@@ -9,14 +10,17 @@ const ProfilePage = () => {
     queryFn: fetchProfileAndPosts,
   });
 
+  useEffect(() => {
+    console.log(data);
+  }, [data])
   
   // Conditonal Rendering
   if (isLoading) return <div>Loading...</div>;
   if (isError) return <div>{error?.response?.data?.message || error.message}</div>;
   return (
-    <div className="w-full">
+    <div className="w-full h-full">
       <div className="flex items-center gap-4">
-        <img className="w-16 h-16" src={profileImage} alt="profile-pic" />
+        <img className="w-16 h-16 rounded-full" src={data?.picture || profileImage} alt="profile-pic" />
         <div className="flex flex-col">
           <h1 className="text-2xl capitalize">{data.username}</h1>
           <h3 className="text-sm text-gray-500">{data.role} user</h3>
