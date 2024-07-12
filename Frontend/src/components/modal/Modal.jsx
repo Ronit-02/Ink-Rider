@@ -5,7 +5,7 @@ import './Modal.css';
 const Modal = () => {
 
     const { closeModal } = useModal();
-    const { isOpen, title, message, onConfirm, onCancel } = useSelector(state => state.modal);
+    const { isOpen, title, message, onConfirm, confirmText, onCancel, cancelText } = useSelector(state => state.modal);
 
     const handleConfirm = () => {
         if(onConfirm) onConfirm();
@@ -25,8 +25,8 @@ const Modal = () => {
                 <h2>{title}</h2>
                 <p>{message}</p>
                 <div className="modal-actions">
-                    <button onClick={handleCancel}>Cancel</button>
-                    <button onClick={handleConfirm}>Confirm</button>
+                    <button onClick={handleCancel}>{cancelText}</button>
+                    <button onClick={handleConfirm}>{confirmText}</button>
                 </div>
             </div>
         </div>

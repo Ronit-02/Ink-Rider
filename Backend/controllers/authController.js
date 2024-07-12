@@ -21,7 +21,7 @@ const login = async (req, res) => {
                 // Issuing a JWT
                 const payload = {email: user.email, id: user._id};
                 const token = generateToken(payload);
-                return res.status(200).send({token, username: user.username});
+                return res.status(200).send({token, username: user.username, email});
             }
             else{
                 return res.status(401).send({message: 'Email not verified'});
@@ -74,8 +74,8 @@ const signup = async (req, res) => {
         // Sending Mail
         const transporter = nodemailer.createTransport({
             service: 'gmail',
-            host: 'smtp.gmail.com',
-            port: 465,
+            host: process.env.EMAIL_HOST,
+            port: process.env.EMAIL_PORT,
             auth: {
                 user: process.env.EMAIL,
                 pass: process.env.EMAIL_PASSWORD
@@ -133,10 +133,6 @@ passport.use(new GoogleStrategy({
     async (accessToken, refreshToken, profile, done) => {
         try {
             const email = profile.emails[0].value;
-
-            // Assigning a random image from assets
-            const random = generateRandom(0, userPictures.length - 1);
-            const picture = userPictures[random];
             
             // check if email logged-in
             let user = await User.findOne({ email: email });
@@ -145,16 +141,16 @@ passport.use(new GoogleStrategy({
             }
 
             if (!user) {
-                const username = email.split('@')[0];
-                const password = 'default';
+                const password = process.env.GOOGLE_USER_PASSWORD;
                 user = new User({
-                    picture, 
-                    username: username, 
+                    picture: profile.photos[0].value, 
+                    username: profile.displayName, 
                     email: email, 
                     password: password,
                     verified: true,
                     googleId: profile.id
                 });
+
                 await user.save();
             }   
             return done(null, user);
@@ -193,7 +189,7 @@ const googleAuthCallback = (req, res, next) => {
                 return next(err);
             const payload = {email: req.user.email, id: req.user._id};
             const token = generateToken(payload);
-            res.redirect(`${process.env.FRONTEND_URL}/auth/google/success?token=${token}&username=${req.user.username}`);
+            res.redirect(`${process.env.FRONTEND_URL}/auth/google/success?token=${token}&username=${req.user.username}&email=${req.user.email}`);
         })
     })(req, res, next);
 }

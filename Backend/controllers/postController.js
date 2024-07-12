@@ -1,7 +1,6 @@
 const Post = require('../schemas/postSchema');
 const { uploadOnCloudinary, removeOnCloudinary } = require('../utils/cloudinary');
 const fs = require('fs');
-const mongoose = require('mongoose');
 
 const createPost = async (req, res) => {
 
@@ -38,6 +37,23 @@ const createPost = async (req, res) => {
 
 const getAllPosts = async (req, res) => {
     try {
+
+        // handling views, likes, date
+        const { sort, sortType } = req.query;
+
+        let sortOptions = {};
+        let sortField = '';
+        if(sort && sortType) {
+            if(sort === 'views')
+                sortField = 'metadata.views'
+            else if(sort === 'date')
+                sortField = 'createdAt'
+            else
+                sortField = sort;
+
+            sortOptions[sortField] = sortType === 'descending' ? -1 : 1;
+        }
+
         // populating related post-author-data and comments-author-data
         const posts = await Post.find()
             .populate({
@@ -47,7 +63,8 @@ const getAllPosts = async (req, res) => {
             .populate({
                 path: 'comments.author',
                 select: 'picture username email'
-            });
+            })
+            .sort(sortOptions);
 
         if(!posts){
             return res.status(403).send({message: 'No posts yet'});

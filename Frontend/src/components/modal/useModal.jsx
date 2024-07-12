@@ -4,8 +4,8 @@ import { useDispatch } from "react-redux";
 const useModal = () => {
     const dispatch = useDispatch();
 
-    const openModal = ({title, message, onConfirm, onCancel}) => {
-        dispatch(showModal({title, message, onConfirm, onCancel}));
+    const openModal = ({title, message, onConfirm, confirmText = 'confirm', onCancel, cancelText = 'cancel'}) => {
+        dispatch(showModal({title, message, onConfirm, confirmText, onCancel, cancelText}));
     }
 
     const closeModal = () => {

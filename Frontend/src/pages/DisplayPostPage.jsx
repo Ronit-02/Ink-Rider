@@ -9,13 +9,15 @@ import useNotification from "../components/notification/useNotification";
 import likePost from "../api/post/likePost";
 import fetchUser from "../api/fetchUser";
 import savePost from "../api/post/savePost";
+import useModal from "../components/modal/useModal";
 
 const DisplayPostPage = () => {
+  const { openModal } = useModal();
   const { displayNotification } = useNotification();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const username = useSelector(state => state.auth.user)
+  const email = useSelector(state => state.auth.email);
   const { id: postId } = useParams();
   const [comment, setComment] = useState("");
   const [liked, setLiked] = useState(false)
@@ -31,9 +33,9 @@ const DisplayPostPage = () => {
 
   // Fetching User
   const { data: userData, isLoading: fetchUserIsLoading} = useQuery({
-    queryKey: ["user", username],
+    queryKey: ["user", email],
     queryFn: fetchUser,
-    enabled: !!username,
+    enabled: !!email,
     // retry: 1
   })
 
@@ -101,7 +103,21 @@ const DisplayPostPage = () => {
     deleteCommentMutate({ postId, commentId: commentId });
   }
   const handleLikeUnlikePost = () => {
-    likePostMutate({postId});
+    if(!email){
+      openModal({
+        title: "Login First",
+        message: "You need to login to like this article",
+        onConfirm: () => {
+          return navigate('/login');
+        },
+        confirmText: "login",
+        onCancel: () => {
+          return null;
+        }
+      })
+    }
+    else
+      likePostMutate({postId});
   }
   const handleSaveUnsavePost = () => {  
     savePostMutate({postId});
@@ -151,7 +167,9 @@ const DisplayPostPage = () => {
       <h1 className="items-center text-3xl text-center capitalize">
         {postData.title}
       </h1>
+      <p className="text-sm text-gray-500">{postData?.likes} likes</p>
       <p className="text-sm text-gray-500">{postData?.metadata?.views} views</p>
+      <p className="text-sm text-gray-500">{postData?.metadata?.shares} shares</p>
       <p>{ new Date(postData?.createdAt).toLocaleString('en-GB', {day:'numeric', month: 'long', year:'numeric'})}</p>
       <NavLink to={`/user/${postData.author._id}`} className="flex items-center gap-2 ml-auto">
         <img className="w-8 h-8 rounded-full" src={postData.author.picture} alt="author-pic" />
@@ -192,7 +210,7 @@ const DisplayPostPage = () => {
                   </div>
                 </div>
                 {
-                  item.author.username === username &&
+                  item.author.email === email &&
                   <button 
                     onClick={() => removeComment(item._id)} 
                     className="text-sm w-[50px] flex-none text-red-500"

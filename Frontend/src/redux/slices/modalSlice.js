@@ -5,7 +5,9 @@ const initialState = {
     title: '',
     message: '',
     onConfirm: null,
+    confirmText: '',
     onCancel: null,
+    cancelText: '',
 };
 
 const modalSlice = createSlice({
@@ -17,14 +19,18 @@ const modalSlice = createSlice({
             state.title = action.payload.title;
             state.message = action.payload.message;
             state.onConfirm = action.payload.onConfirm;
+            state.confirmText = action.payload.confirmText;
             state.onCancel = action.payload.onCancel;
+            state.cancelText = action.payload.cancelText;
         },
         hideModal(state){
         state.isOpen = false;
             state.title = '';
             state.message = '';
             state.onConfirm = null;
+            state.confirmText = '';
             state.onCancel = null;
+            state.cancelText = '';
         }
     }
 });

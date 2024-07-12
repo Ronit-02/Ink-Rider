@@ -13,9 +13,10 @@ const AuthSuccessPage = () => {
     const queryParams = new URLSearchParams(location.search)
     const token = queryParams.get('token');
     const username = queryParams.get('username');
+    const email = queryParams.get('email');
 
     if(token){
-      dispatch(loginSuccess({username, token}))
+      dispatch(loginSuccess({username, email, token}))
 
       // reloading the whole app once to enable local storage 
       window.location.reload();

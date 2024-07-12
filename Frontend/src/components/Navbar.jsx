@@ -10,6 +10,7 @@ const Navbar = () => {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const username = useSelector(state => state.auth.user);
   const token = useSelector(state => state.auth.token);
   
   const [query, setQuery] = useState('')
@@ -34,7 +35,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="flex items-center gap-4 mb-7">
+    <nav className="flex items-center gap-4 mb-12">
       <NavLink to="/" className="flex-none text-xl" >Ink Rider</NavLink>
       <form className="flex flex-auto w-full" onSubmit={handleSearch}>
         <input className="flex-auto px-4 py-2 border" placeholder="posts, authors, categories.." value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -48,7 +49,7 @@ const Navbar = () => {
         <NavLink to="/write">Write</NavLink>
         {token ? (
           <>
-            <NavLink to="/profile">Profile</NavLink>
+            <NavLink to="/profile" className="capitalize">{username}</NavLink>
             <button onClick={handleLogout}>Logout</button>
           </>
         ) : (
