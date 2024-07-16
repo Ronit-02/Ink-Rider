@@ -1,7 +1,8 @@
 import { useDispatch, useSelector } from "react-redux"
 import { NavLink, useNavigate, useSearchParams } from "react-router-dom"
-import { logout } from "../redux/slices/authSlice";
 import { useEffect, useState } from "react";
+import { logout } from "../../redux/slices/authSlice";
+import NavbarLink from "../NavbarLink";
 
 const Navbar = () => {
 
@@ -10,7 +11,6 @@ const Navbar = () => {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const username = useSelector(state => state.auth.user);
   const token = useSelector(state => state.auth.token);
   
   const [query, setQuery] = useState('')
@@ -36,7 +36,11 @@ const Navbar = () => {
 
   return (
     <nav className="flex items-center gap-4 mb-12">
-      <NavLink to="/" className="flex-none text-xl" >Ink Rider</NavLink>
+      <NavLink 
+        to="/" 
+        className="flex-none text-xl">
+          Ink Rider
+      </NavLink>
       <form className="flex flex-auto w-full" onSubmit={handleSearch}>
         <input className="flex-auto px-4 py-2 border" placeholder="posts, authors, categories.." value={query} onChange={(e) => setQuery(e.target.value)} />
         <select className="flex-none px-4 py-2 border" value={filter} onChange={(e) => setFilter(e.target.value)}>
@@ -46,18 +50,22 @@ const Navbar = () => {
         </select>
       </form>
       <div className="flex flex-none gap-6 text-blue-700">
-        <NavLink to="/write">Write</NavLink>
+        <NavbarLink linkTo="/write" title="Write" />
         {token ? (
           <>
-            <NavLink to="/profile" className="capitalize">{username}</NavLink>
-            <button onClick={handleLogout}>Logout</button>
+            <NavbarLink linkTo="/profile" title="Settings" />
+            <button
+              className="text-gray-400" 
+              onClick={handleLogout}>
+                Logout
+            </button>
           </>
         ) : (
-          <NavLink to="/login">Login</NavLink>
+          <NavbarLink linkTo="/login" title="Login" />
         )}
       </div>
     </nav>
   )
 }
 
-export default Navbar
+export default Navbar;

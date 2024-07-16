@@ -5,8 +5,9 @@ const fs = require('fs');
 const createPost = async (req, res) => {
 
     try{
-        const {title, body, tags} = req.body;
+        const {title, tags, body} = req.body;
         const decodedTags = tags.split(',').map(tag => tag.trim());
+
         const author = req.user._id;
 
         // Extracting file path and adding to cloudinary
@@ -27,7 +28,7 @@ const createPost = async (req, res) => {
     
         await post.save();
 
-        return res.status(200).send({message: 'Post created successfully'});
+        return res.status(200).send({message: 'Post created successfully', postId: post._id});
     }
     catch(error){
         console.log(error);

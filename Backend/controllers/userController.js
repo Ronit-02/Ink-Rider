@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const User = require('../schemas/userSchema');
 const Post = require('../schemas/postSchema');
+const fs = require('fs')
+const { removeOnCloudinary, uploadOnCloudinary } = require('../utils/cloudinary');
+const { verifyPassword, hashPassword } = require('../utils/helper');
 
 
 const fetchUser = async (req, res) => {
@@ -34,7 +37,7 @@ const fetchUserWithPosts = async (req, res) => {
         res.status(200).send(userWithPosts[0]);
     }
     catch (err){
-        res.status(500).send({message: 'Cant fetch user details'});
+        res.status(500).send({message: 'Cant fetch user and posts details'});
     }
 }
 
@@ -55,6 +58,15 @@ const fetchFollowedUserPosts = async (req, res) => {
     }
     catch(error){
         return res.status(500).send({message: "Unable to fetch posts"})
+    }
+}
+
+const fetchProfile = async (req, res) => {
+    try{
+        return res.status(200).json(req.user);
+    }
+    catch(err){
+        res.status(500).send({message: 'Profile not found'})
     }
 }
 
@@ -156,4 +168,56 @@ const followUnfollowUser = async (req, res) => {
     }
 }
 
-module.exports = {fetchUser, fetchUserWithPosts, fetchFollowedUserPosts, fetchProfileWithPosts, searchUser, followUnfollowUser};
+const updateUser = async (req, res) => {
+    try{
+        const { prevImageURL, username } = req.body;
+        const user = req.user;
+
+        // current image google, leave
+        if(prevImageURL.includes('https://lh3.google'))
+            null;
+        // otherwise remove from cloud
+        else
+            await removeOnCloudinary(user.picture);
+
+        // upload new image
+        if(req.file){
+            const result = await uploadOnCloudinary(req.file.path);
+            if(result)
+                fs.unlinkSync(req.file.path);
+
+            user.picture = result.secure_url;
+        }
+
+        // update other attributes
+        user.username = username;
+        await user.save();
+
+        return res.status(200).send({message: 'Profile Updated Successfully'});
+    }
+    catch(err){
+        return res.status(500).send({message: 'Cant update profile at this moment'});
+    }
+}
+
+const updatePassword = async (req, res) => {
+    try{
+        const { oldPassword, newPassword } = req.body;
+        const user = req.user;
+
+        const result = await verifyPassword(oldPassword, req.user.password);
+        if(!result)
+            return res.status(401).send({message: "Incorrent password, try again"});
+
+        // update other attributes
+        user.password = await hashPassword(newPassword);
+        await user.save();
+
+        return res.status(200).send({message: 'Password Updated Successfully'});
+    }
+    catch(err){
+        return res.status(500).send({message: 'Cant update profile at this moment'});
+    }
+}
+
+module.exports = {fetchUser, fetchUserWithPosts, fetchFollowedUserPosts, fetchProfile, fetchProfileWithPosts, searchUser, followUnfollowUser, updateUser, updatePassword};
