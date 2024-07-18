@@ -51,6 +51,7 @@ const Navbar = () => {
       </form>
       <div className="flex flex-none gap-6 text-blue-700">
         <NavbarLink linkTo="/write" title="Write" />
+        <NavbarLink linkTo="/plans" title="Pro" />
         {token ? (
           <>
             <NavbarLink linkTo="/profile" title="Settings" />

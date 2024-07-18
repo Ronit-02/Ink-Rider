@@ -14,9 +14,10 @@ const AuthSuccessPage = () => {
     const token = queryParams.get('token');
     const username = queryParams.get('username');
     const email = queryParams.get('email');
+    const role = queryParams.get('role');
 
     if(token){
-      dispatch(loginSuccess({username, email, token}))
+      dispatch(loginSuccess({token, username, email, role}))
 
       // reloading the whole app once to enable local storage 
       window.location.reload();

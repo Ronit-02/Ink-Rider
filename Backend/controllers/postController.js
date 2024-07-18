@@ -6,7 +6,14 @@ const createPost = async (req, res) => {
 
     try{
         const {title, tags, body} = req.body;
-        const decodedTags = tags.split(',').map(tag => tag.trim());
+        const decodedTags = tags.split(',');
+
+        if(!req.file)
+            return res.status(400).send({message: 'Cover Image is required'})
+        if(!title)
+            return res.status(400).send({message: 'Title is required'})
+        if(!tags)
+            return res.status(400).send({message: 'Tags are required'})
 
         const author = req.user._id;
 
@@ -28,6 +35,7 @@ const createPost = async (req, res) => {
     
         await post.save();
 
+        console.log("post created");
         return res.status(200).send({message: 'Post created successfully', postId: post._id});
     }
     catch(error){
@@ -162,7 +170,12 @@ const updatePost = async (req, res) => {
         const id = req.params.id;
         const { title, body, tags, prevImageUrl } = req.body;
         const decodedTags = tags.split(',').map(tag => tag.trim());
-        
+
+        if(!title)
+            return res.status(400).send({message: 'Title is required'})
+        if(!tags)
+            return res.status(400).send({message: 'Tags are required'})
+
         // Verifications
         const post = await Post.findById(id);
         if(!post) {
@@ -171,25 +184,24 @@ const updatePost = async (req, res) => {
         if(post.author.toString() !== req.user._id.toString()) {
             return res.status(403).send({message: "Unathorized access"});
         }
-
-        // if prev Image, remove it
-        if(prevImageUrl){
-            await removeOnCloudinary(post.coverImage);
-        }
-
-        // if file changed it is local uploaded, upload on cloud, remove local file and update
+        
+        // if given image, replace old one
         if(req.file){
+            // remove prev image
+            await removeOnCloudinary(post.coverImage);
+            
+            // add new image
             const result = await uploadOnCloudinary(req.file.path)
             if(result)
                 fs.unlinkSync(req.file.path);
-
+            
             post.coverImage = result.secure_url;
         }
-
+                
         post.title  = title;
-        post.body = body;
         post.tags = decodedTags;
-
+        post.body = body;
+        
         await post.save();
 
         return res.status(200).send({message: "Post updated successfully"});

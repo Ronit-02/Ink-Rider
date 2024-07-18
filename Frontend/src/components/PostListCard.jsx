@@ -54,7 +54,7 @@ const PostListCard = ({ image, id, title, tags, content, owner }) => {
               <Tag key={tag} tag={tag} />
             ))}
           </ul>
-          <p className="line-clamp-2">{content}</p>
+          {/* <p className="line-clamp-2">{content}</p> */}
         </div>
       </NavLink>
       {

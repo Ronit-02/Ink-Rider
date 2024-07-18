@@ -26,6 +26,8 @@ import ProfileEditPage from "../pages/settings/ProfileEditPage";
 // Layouts
 import Layout from "./Layout";
 import SettingsLayout from "./SettingsLayout"
+import PricingFeaturesPage from "../pages/membership/PricingFeaturesPage";
+import CheckoutPage from "../pages/membership/CheckoutPage";
 
 const AppRoutes = () => {
   return (
@@ -42,10 +44,12 @@ const AppRoutes = () => {
                 <Route element={<Layout />}>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/post/:id" element={<DisplayPostPage />} />
-                    <Route path="/post-edit/:id" element={<EditPostPage />} />
+                    <Route path="/post-edit/:id" element={<ProtectedRoute> <EditPostPage /> </ProtectedRoute>} />
                     <Route path="/user/:id" element={<AuthorPage />} />
                     <Route path="/search/*" element={<SearchPage />} />
                     <Route path="/write" element={<ProtectedRoute> <CreatePostPage/> </ProtectedRoute>}/>
+                    <Route path="/plans" element={<PricingFeaturesPage />} />
+                    <Route path="/checkout/:type" element={<ProtectedRoute> <CheckoutPage /> </ProtectedRoute>}  />
                     <Route element={<ProtectedRoute> <SettingsLayout /> </ProtectedRoute>}>
                         <Route path="/profile" element={<ProfilePage />} />
                         <Route path="/profile-posts" element={<ProfilePostsPage />} />

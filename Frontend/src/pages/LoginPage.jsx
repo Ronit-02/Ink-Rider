@@ -56,6 +56,7 @@ const LoginPage = () => {
                     value={email} 
                     onChange={(e) => setEmail(e.target.value)} 
                     autoComplete="given-name"
+                    required
                 />
                 <input className="p-2 border" 
                     type="password" 
@@ -63,12 +64,12 @@ const LoginPage = () => {
                     value={password} 
                     onChange={(e) => setPassword(e.target.value)} 
                     autoComplete="current-password"
+                    required
                 />
                 <NavLink to={"/forgot-password"} className="ml-auto text-blue-400 cursor-pointer">forgot password ?</NavLink>
                 <button className="rounded-lg w-[100px] p-2 text-white bg-blue-500 border" 
                     type="submit" 
-                    disabled={isLoading}
-                >   
+                    disabled={isLoading}>   
                     Submit
                 </button>
             </form>

@@ -21,7 +21,7 @@ const login = async (req, res) => {
                 // Issuing a JWT
                 const payload = {email: user.email, id: user._id};
                 const token = generateToken(payload);
-                return res.status(200).send({token, username: user.username, email});
+                return res.status(200).send({token, username: user.username, email, role: user.role});
             }
             else{
                 return res.status(401).send({message: 'Email not verified'});
@@ -189,7 +189,7 @@ const googleAuthCallback = (req, res, next) => {
                 return next(err);
             const payload = {email: req.user.email, id: req.user._id};
             const token = generateToken(payload);
-            res.redirect(`${process.env.FRONTEND_URL}/auth/google/success?token=${token}&username=${req.user.username}&email=${req.user.email}`);
+            res.redirect(`${process.env.FRONTEND_URL}/auth/google/success?token=${token}&username=${req.user.username}&email=${req.user.email}&role=${req.user.role}`);
         })
     })(req, res, next);
 }

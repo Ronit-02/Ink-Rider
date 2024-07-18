@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import useNotification from "../components/notification/useNotification";
 import createPost from "../api/createPost";
+import useNotification from "../components/notification/useNotification";
+import tagsData from "../utils/tagsData";
 
 const CreatePostPage = () => {
 
@@ -13,7 +14,12 @@ const CreatePostPage = () => {
     const [imageFile, setImageFile] = useState('')
     const [imageURL, setImageURL] = useState('')
     const [title, setTitle] = useState('')
-    const [tags, setTags] = useState('')
+
+    // tags
+    const [tags, setTags] = useState([])
+    const [tagText, setTagText] = useState('')
+
+    // body
     const [blocks, setBlocks] = useState([{
         id: Date.now(),
         text: '',
@@ -22,11 +28,6 @@ const CreatePostPage = () => {
     const [prevKey, setPrevKey] = useState("");
     const [optionsIndex, setOptionsIndex] = useState(null)
     const inputRefs = useRef([]);
-
-
-    useEffect(() => {
-        console.log('blocks - ', blocks);
-    }, [blocks])
 
 
     // Creating Post
@@ -54,6 +55,15 @@ const CreatePostPage = () => {
         mutate(formData);
   };
 
+    // Automatically Resizing to ScrollHeight on Change
+    useEffect(() => {
+        const tx = document.getElementsByTagName('textarea');
+        for(let i=0; i<tx.length; i++){
+            tx[i].setAttribute("style", "height:" + "0px");
+            tx[i].setAttribute("style", "height:" + (tx[i].scrollHeight) + "px");
+        }
+    },[title, blocks])
+
 
     // Input Handlers
     const handleImage = (e) => {
@@ -62,19 +72,9 @@ const CreatePostPage = () => {
     }
     const handleTitleChange = (e) => {
         setTitle(e.target.value);
-        
-        // making height change with scroll height
-        const input = e.target;
-        input.style.height = 'auto';
-        input.style.height = input.scrollHeight + 'px';
     }
     const handleTagsChange = (e) => {
-        setTags(e.target.value);
-        
-        // making height change with scroll height
-        const input = e.target;
-        input.style.height = 'auto';
-        input.style.height = input.scrollHeight + 'px'; 
+        setTagText(e.target.value);
     }
     const handleBlockChange = (index, e) => {
         const { name, value } = e.target;
@@ -82,11 +82,8 @@ const CreatePostPage = () => {
             i === index ? {...block, [name]: value} : block
         ));
         setBlocks(newBlocks);
-
-        const input = e.target;
-        input.style.height = 'auto';
-        input.style.height = input.scrollHeight + 'px';
     }
+    
 
     // Keydown Handlers
     const handleTitleKeydown = (e) => {
@@ -114,7 +111,20 @@ const CreatePostPage = () => {
         setPrevKey(e.key);
     }
 
-    // Options Menu
+
+    // Tag Menu
+    const addTag = (tag) => {
+        const updatedTags = [...tags, tag];
+        setTags(updatedTags);
+        setTagText('');
+    }
+    const removeTag = (index) => {
+        const updatedTags = [...tags];
+        updatedTags.splice(index, 1);
+        setTags(updatedTags);
+    }
+
+    // Blocks Options Menu
     const changeBlockType = (index, type) => {
         const newBlocks = blocks.map((block, i) => (
             index === i ? {...block, type: type} : block
@@ -159,7 +169,7 @@ const CreatePostPage = () => {
                     type="submit" 
                     onClick={handleSubmit} 
                     disabled={isLoading}
-                    className="px-4 py-2 text-white bg-black w-fit rounded-3xl">
+                    className="px-4 py-2 text-white bg-black w-fit rounded-3xl disabled:cursor-wait">
                     Publish
                 </button>
             </div>
@@ -181,7 +191,6 @@ const CreatePostPage = () => {
                     accept=".png, .jpg, .jpeg"
                     name="coverImage"
                     onChange={handleImage}
-                    required
                     hidden
                 />
             </div>
@@ -192,18 +201,48 @@ const CreatePostPage = () => {
                     value={title}
                     onChange={handleTitleChange}
                     onKeyDown={handleTitleKeydown}
-                    className = "w-full p-2 overflow-hidden text-3xl font-semibold leading-tight border-l-2 outline-none resize-none placeholder:opacity-60"
+                    className = "w-full h-0 p-2 overflow-hidden text-3xl font-semibold leading-tight border-l-2 outline-none resize-none placeholder:opacity-60"
                 />
-                <textarea
-                    type="text"
-                    placeholder="Tags: business, money, life, ..."
-                    value={tags}
-                    onChange={handleTagsChange}
-                    onKeyDown={handleTagsKeydown}
-                    className = "w-full p-2 overflow-hidden text-base leading-snug border-2 outline-none resize-none placeholder:opacity-60"
-                />
+                <div className="relative flex flex-col w-full gap-2 p-2 border-2">
+                    <div className="h-[50px] w-full">
+                        <input
+                            type="text"
+                            placeholder="Add tags"
+                            value={tagText}
+                            onChange={handleTagsChange}
+                            onKeyDown={handleTagsKeydown}
+                            className = "min-w-[60px] h-full w-full p-2 overflow-hidden outline-none resize-none placeholder:opacity-80"
+                        />
+                    </div>
+                    <div className="flex flex-wrap w-full gap-2 h-fit">
+                    {
+                        tags.map((tag, index) => (
+                            <div key={index} className="flex gap-4 px-4 py-1 bg-gray-100 rounded-lg">
+                                <p className="font-medium">{tag}</p>
+                                <button onClick={() => removeTag(index)}>✕</button>
+                            </div>
+                        ))
+                    }
+                    </div>
+                    {
+                        tagText && tagsData.filter((tag) => tag.startsWith(tagText.toLowerCase()))[0] &&
+                        <div className="absolute z-10 flex flex-col gap-2 p-2 mb-4 bg-white border-2 rounded-lg bottom-full h-fit w-fit">
+                            {tagsData
+                                .filter((tag) => tag.startsWith(tagText.toLowerCase()))
+                                .slice(0, 3) // Limit to the first two results if that's the intention
+                                .map((tag, index) => (
+                                    <div
+                                        key={index}
+                                        className="w-full h-full p-2 capitalize cursor-pointer hover:bg-gray-100"
+                                        onClick={() => addTag(tag)}>
+                                        {tag}
+                                    </div>
+                            ))}
+                        </div>
+                    }
+                </div>
             </div>
-            <div className="flex flex-col w-full">
+            <div className="flex flex-col w-full gap-4">
                 {blocks &&
                 blocks.map((block, index) => {
                     return (
@@ -217,7 +256,7 @@ const CreatePostPage = () => {
                                 block.type === 'heading' 
                                 ?
                                 <textarea 
-                                    className = "w-full h-12 p-2 overflow-hidden text-3xl font-semibold border-l-2 outline-none resize-none"
+                                    className = "w-full h-0 px-2 overflow-hidden text-3xl font-semibold border-l-2 outline-none resize-none"
                                     name = "text"
                                     value = {block.text}
                                     placeholder="heading 1"
@@ -227,7 +266,7 @@ const CreatePostPage = () => {
                                 />
                                 :
                                 <textarea
-                                    className = "w-full h-12 p-2 overflow-hidden text-base border-l-2 outline-none resize-none"
+                                    className = "w-full h-0 px-2 overflow-hidden text-base border-l-2 outline-none resize-none"
                                     name = "text"
                                     value = {block.text}
                                     placeholder="paragraph"
