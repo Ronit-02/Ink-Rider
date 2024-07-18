@@ -1,16 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import fetchPost from "../api/fetchPost";
+import fetchPost from "../../api/post/fetchPost";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import addComment from "../api/addComment";
-import deleteComment from "../api/deleteComment"
+import addComment from "../../api/post/addComment";
+import deleteComment from "../../api/post/deleteComment"
 import { useSelector } from "react-redux";
-import useNotification from "../components/notification/useNotification";
-import likePost from "../api/post/likePost";
-import fetchUser from "../api/fetchUser";
-import savePost from "../api/post/savePost";
-import useModal from "../components/modal/useModal";
-
+import useNotification from "../../components/notification/useNotification";
+import likePost from "../../api/post/likePost";
+import fetchUser from "../../api/user/fetchUser";
+import savePost from "../../api/post/savePost";
+import useModal from "../../components/modal/useModal";
+    
 const DisplayPostPage = () => {
 
     // Retrieve

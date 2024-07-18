@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import coffeeImage from "../assets/images/coffee.jpg"
+import coffeeImage from "../../assets/images/coffee.jpg"
 
 const MaintenancePage = () => {
   const navigate = useNavigate();

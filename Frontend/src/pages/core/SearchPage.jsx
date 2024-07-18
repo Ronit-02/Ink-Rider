@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import searchPost from "../api/search/searchPost";
-import searchCategory from "../api/search/searchCategory";
-import searchUser from "../api/search/searchUser";
-import PostCard from "../components/PostCard";
-import UserCard from "../components/UserCard";
+import searchPost from "../../api/search/searchPost";
+import searchCategory from "../../api/search/searchCategory";
+import searchUser from "../../api/search/searchUser";
+import PostCard from "../../components/PostCard";
+import UserCard from "../../components/UserCard";
 
 const SearchPage = () => {
   // Extracting parameters

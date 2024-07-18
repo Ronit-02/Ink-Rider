@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import createPost from "../api/createPost";
-import useNotification from "../components/notification/useNotification";
-import tagsData from "../utils/tagsData";
+import createPost from "../../api/post/createPost";
+import useNotification from "../../components/notification/useNotification";
+import tagsData from "../../utils/tagsData";
 
 const CreatePostPage = () => {
 

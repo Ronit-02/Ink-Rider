@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import fetchAllPost from "../api/fetchAllPost";
-import PostCard from "./PostCard";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import PostCard from "./PostCard";
+import fetchAllPosts from "../api/post/fetchAllPosts";
 
 const AllPostSection = () => {
 
@@ -10,7 +10,7 @@ const AllPostSection = () => {
   
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["post", sort, sortType],
-    queryFn: fetchAllPost,
+    queryFn: fetchAllPosts,
   });
 
   // Conditional Rendering

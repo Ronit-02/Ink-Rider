@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react"
-import resetPassword from '../api/resetPassword'
-import useNotification from "../components/notification/useNotification";
+import useNotification from "../../components/notification/useNotification";
+import resetPassword from '../../api/auth/resetPassword'
 
 const ResetPasswordPage = () => {
 

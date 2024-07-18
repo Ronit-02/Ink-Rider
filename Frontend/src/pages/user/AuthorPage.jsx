@@ -1,14 +1,18 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import fetchUserWithPosts from "../api/fetchUserWithPosts";
-import PostListCard from "../components/PostListCard";
-import profileImage from "../assets/images/Profile-Pic.svg";
 import { useEffect, useState } from "react";
-import useNotification from "../components/notification/useNotification";
-import followUser from "../api/followUser";
 import { useSelector } from "react-redux";
-import fetchUser from "../api/fetchUser";
-import useModal from "../components/modal/useModal";
+// Components
+import PostListCard from "../../components/PostListCard";
+import useNotification from "../../components/notification/useNotification";
+// APIs
+import fetchUserWithPosts from "../../api/user/fetchUserWithPosts";
+import followUser from "../../api/user/followUser";
+import fetchUser from "../../api/user/fetchUser";
+import useModal from "../../components/modal/useModal";
+// Images
+import profileImage from "../../assets/images/Profile-Pic.svg";
+
 
 const AuthorPage = () => {
   const { displayNotification } = useNotification();

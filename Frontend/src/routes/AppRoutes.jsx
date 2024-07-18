@@ -1,27 +1,33 @@
 import { Routes, Route } from "react-router-dom";
 
 // Pages
-import LoginPage from "../pages/LoginPage";
-import SignupPage from "../pages/SignupPage";
-import ForgotPasswordPage from "../pages/ForgotPasswordPage";
-import ResetPasswordPage from "../pages/ResetPasswordPage";
-import AuthSuccessPage from "../pages/AuthSuccessPage";
-import AuthFailurePage from "../pages/AuthFailurePage"
-import HomePage from "../pages/HomePage";
-import CreatePostPage from "../pages/CreatePostPage";
-import DisplayPostPage from "../pages/DisplayPostPage";
+// Authentication
+import LoginPage from "../pages/authentication/LoginPage";
+import SignupPage from "../pages/authentication/SignupPage";
+import ForgotPasswordPage from "../pages/authentication/ForgotPasswordPage";
+import ResetPasswordPage from "../pages/authentication/ResetPasswordPage";
+import AuthSuccessPage from "../pages/authentication/AuthSuccessPage";
+import AuthFailurePage from "../pages/authentication/AuthFailurePage"
+// Post
+import CreatePostPage from "../pages/post/CreatePostPage";
+import DisplayPostPage from "../pages/post/DisplayPostPage";
+import EditPostPage from "../pages/post/EditPostPage"
+// Routes
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
-import BackendCheck from "./BackendCheck";
-import MaintenancePage from "../pages/MaintenancePage";
-import EditPostPage from "../pages/EditPostPage"
-import AuthorPage from "../pages/AuthorPage";
-import SearchPage from "../pages/SearchPage";
-import NotFoundPage from "../pages/NotFoundPage";
-import ProfilePostsPage from "../pages/settings/ProfilePostsPage";
+// User
+import AuthorPage from "../pages/user/AuthorPage";
 import ProfilePage from "../pages/settings/ProfilePage";
 import ChangePassPage from "../pages/settings/ChangePassPage"
 import ProfileEditPage from "../pages/settings/ProfileEditPage";
+import ProfilePostsPage from "../pages/settings/ProfilePostsPage";
+// Core
+import HomePage from "../pages/core/HomePage";
+import SearchPage from "../pages/core/SearchPage";
+// Additional
+import MaintenancePage from "../pages/status/MaintenancePage";
+import NotFoundPage from "../pages/status/NotFoundPage";
+import BackendCheck from "./BackendCheck";
 
 // Layouts
 import Layout from "./Layout";

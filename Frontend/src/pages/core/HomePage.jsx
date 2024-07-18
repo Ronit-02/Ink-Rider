@@ -1,8 +1,8 @@
 import { useSelector } from "react-redux";
-import AllPostSection from "../components/AllPostSection";
-import FollowedAuthorsPosts from "../components/FollowedAuthorsPosts";
 import { useQuery } from "@tanstack/react-query";
-import fetchUser from "../api/fetchUser";
+import AllPostSection from "../../components/AllPostSection";
+import FollowedAuthorsPosts from "../../components/FollowedAuthorsPosts";
+import fetchUser from "../../api/user/fetchUser";
 
 const HomePage = () => {
 

@@ -1,8 +1,8 @@
-import PropTypes from "prop-types";
 import { NavLink } from "react-router-dom";
-import Tag from "./Tag";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import deletePost from "../api/deletePost";
+import PropTypes from "prop-types";
+import Tag from "./Tag";
+import deletePost from "../api/post/deletePost";
 import useNotification from "../components/notification/useNotification";
 import useModal from "./modal/useModal";
 

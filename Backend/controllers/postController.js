@@ -82,6 +82,7 @@ const getAllPosts = async (req, res) => {
         return res.status(200).json(posts);
     }
     catch (error) {
+        console.log(error)
         return res.status(500).send({message: 'Error Fetching Posts'})
     }
 };

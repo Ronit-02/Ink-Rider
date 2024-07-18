@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom"
-import { loginSuccess } from "../redux/slices/authSlice";
+import { loginSuccess } from "../../redux/slices/authSlice";
 
 const AuthSuccessPage = () => {
 

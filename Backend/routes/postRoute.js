@@ -6,11 +6,11 @@ const validateToken = require('../middlewares/authMiddleware');
 const { upload } = require('../middlewares/multerMiddleware');
 
 // Posts
-router.post('/', validateToken, upload.single('imageURL'), createPost);
 router.get('/', getAllPosts);
 router.get('/search', searchPost);
 router.get('/search-cat', searchCategory);
 router.get('/:id', getPost);
+router.post('/', validateToken, upload.single('imageURL'), createPost);
 router.put('/:id', validateToken, upload.single('imageURL'), updatePost);
 router.delete('/:id', validateToken, deletePost);
 

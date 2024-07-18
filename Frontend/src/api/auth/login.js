@@ -27,4 +27,4 @@ const loginUser = async (credentials) => {
 //     return response.json();
 // }
 
-export {loginUser};
+export default loginUser;

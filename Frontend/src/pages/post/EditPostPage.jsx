@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
-import fetchPost from "../api/fetchPost";
-import updatePost from "../api/updatePost";
-import useNotification from "../components/notification/useNotification";
-import tagsData from "../utils/tagsData";
+import fetchPost from "../../api/post/fetchPost";
+import updatePost from "../../api/post/updatePost";
+import useNotification from "../../components/notification/useNotification";
+import tagsData from "../../utils/tagsData";
 
 const EditPostPage = () => {
 
