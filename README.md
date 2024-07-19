@@ -1,6 +1,6 @@
 <!-- # ![Ink Rider](path-to-cover-image) -->
 
-# Ink Rider
+# About
 
 Welcome to **Ink Rider** – the ultimate writing and publishing platform designed to elevate your creativity and reading experience. Ink Rider offers a variety of features tailored for both writers and readers, ensuring high-quality content and seamless interaction.
 
