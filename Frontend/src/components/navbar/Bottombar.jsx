@@ -9,7 +9,7 @@ import { NavLink } from "react-router-dom";
 
 const Bottombar = () => {
   return (
-    <div className="sm:hidden flex justify-around items-center fixed bottom-0 left-0 right-0 h-[70px] border-[1px] border-gray-200">
+    <div className="sm:hidden flex justify-around items-center fixed bottom-0 left-0 right-0 h-[70px] border-[1px] border-gray-200 bg-white">
         <NavLink to="/">
             <LiaHomeSolid className="text-3xl text-gray-600" />
         </NavLink>

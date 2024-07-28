@@ -27,7 +27,7 @@ import SearchPage from "../pages/core/SearchPage";
 // Additional
 import MaintenancePage from "../pages/status/MaintenancePage";
 import NotFoundPage from "../pages/status/NotFoundPage";
-import BackendCheck from "./BackendCheck";
+// import BackendCheck from "./BackendCheck";
 
 // Layouts
 import Layout from "./Layout";
@@ -40,8 +40,8 @@ const AppRoutes = () => {
   return (
     <Routes>
         <Route path="/maintenance" element={<MaintenancePage />} />
-        <Route path="/*" element={<BackendCheck>
-            <Routes>
+        {/* <Route path="/*" element={<BackendCheck>
+            <Routes> */}
                 <Route path="/login" element={<PublicRoute> <LoginPage /> </PublicRoute>}/>
                 <Route path="/signup" element={<PublicRoute> <SignupPage /> </PublicRoute>} />
                 <Route path="/auth/google/success" element={<PublicRoute> <AuthSuccessPage /> </PublicRoute>} />
@@ -55,7 +55,8 @@ const AppRoutes = () => {
                     <Route path="/user/:id" element={<AuthorPage />} />
                     <Route path="/explore" element={<ExplorePage />} />
                     <Route path="/search/*" element={<SearchPage />} />
-                    <Route path="/write" element={<ProtectedRoute> <CreatePostPage/> </ProtectedRoute>}/>
+                    {/* <Route path="/write" element={<ProtectedRoute> <CreatePostPage/> </ProtectedRoute>}/> */}
+                    <Route path="/write" element={<CreatePostPage/>}/>
                     <Route path="/plans" element={<PricingFeaturesPage />} />
                     <Route path="/checkout/:type" element={<ProtectedRoute> <CheckoutPage /> </ProtectedRoute>}  />
                     <Route element={<ProtectedRoute> <SettingsLayout /> </ProtectedRoute>}>
@@ -66,8 +67,8 @@ const AppRoutes = () => {
                     </Route>
                 </Route>
                 <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-        </BackendCheck>}/>
+            {/* </Routes>
+        </BackendCheck>}/> */}
     </Routes>
   )
 }

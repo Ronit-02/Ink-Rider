@@ -7,7 +7,6 @@ import fetchUser from "../../api/user/fetchUser";
 
 // Icons
 import { LuSettings2 } from "react-icons/lu";
-import PostSkeleton from "../../components/skeletons/PostSkeleton";
 
 const HomePage = () => {
 
@@ -56,8 +55,6 @@ const HomePage = () => {
         scrollRef.current.scrollLeft = scrollLeft.current - walk;
     }
     
-    if(fetchUserIsLoading) return <PostSkeleton count={4} />
-
   return (
     <div className="flex flex-col w-full gap-12 px-4">
         
@@ -71,7 +68,7 @@ const HomePage = () => {
                 ref={scrollRef}
                 >
                 <div className="flex gap-2 w-fit">
-                    <button 
+                    {/* <button 
                         className={`${feed === 'shorts' && 'bg-primary-100 select-none text-primary-500'} px-4 py-2 rounded-3xl text-sm capitalize bg-primary-0 text-white hover:bg-primary-100 hover:text-primary-500`}
                         onClick={() => setFeed('shorts')}>
                         Shorts
@@ -80,7 +77,7 @@ const HomePage = () => {
                         className={`${feed === 'shorts' && 'bg-primary-100 select-none text-primary-500'} px-4 py-2 rounded-3xl text-sm capitalize bg-[#E8EBF9] text-[#7380d1] hover:bg-primary-100 hover:text-primary-500`}
                         onClick={() => setFeed('shorts')}>
                         For You
-                    </button>
+                    </button> */}
                     <button 
                         className={`${feed === 'shorts' && 'bg-primary-100 select-none text-primary-500'} p-2 text-sm capitalize rounded-lg hover:bg-primary-100 hover:text-primary-500`}
                         onClick={() => setFeed('shorts')}>

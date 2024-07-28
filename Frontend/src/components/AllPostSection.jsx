@@ -3,6 +3,9 @@ import PostCard from "./PostCard";
 import fetchAllPosts from "../api/post/fetchAllPosts";
 import PropTypes from "prop-types";
 
+// Skeletons
+import PostSkeleton from "./skeletons/PostSkeleton";
+
 const AllPostSection = ({sort}) => {
     
     const { data, isLoading, isError, error } = useQuery({
@@ -11,7 +14,7 @@ const AllPostSection = ({sort}) => {
     });
 
     // Conditional Rendering
-    if (isLoading) return <div>Loading...</div>
+    if (isLoading) return <PostSkeleton count={4} />
     if (isError) return <div>{error?.response?.data?.message || error.message}</div>
 
     return (

@@ -16,7 +16,9 @@ import { BiMoon, BiBell } from "react-icons/bi"
 import { IoLogOutOutline } from "react-icons/io5";
 import { IoSettingsOutline } from "react-icons/io5";
 import { IoIosSearch } from "react-icons/io";
-import PostSkeleton from "../skeletons/PostSkeleton";
+
+// Skeletons
+import SearchSkeleton from "../skeletons/SearchSkeleton";
 
 
 const Navbar = () => {
@@ -101,7 +103,7 @@ const Navbar = () => {
 
         if(postIsLoading){
             return (
-                <PostSkeleton count={3} />
+                <SearchSkeleton />
             )
         }
 
@@ -194,7 +196,7 @@ const Navbar = () => {
                         onKeyDown={handleSearchKeydown}
                     />
                 </form>
-                <div className="absolute top-[65px] left-[125px] flex flex-col gap-4 p-4 rounded-lg border-[1px] rounded-t-none border-gray-300 bg-white  z-2 w-[400px] h-fit">
+                <div className="absolute top-[65px] left-[125px] flex flex-col gap-4 p-4 rounded-lg border-[1px] rounded-t-none border-gray-300 bg-white z-2 w-[400px] h-fit">
                     <div className="flex justify-around">
                         <button 
                             className={`${filter === 'posts' && 'bg-primary-100 text-primary-500'} p-2 text-sm capitalize rounded-lg hover:bg-primary-100 hover:text-primary-500`}

@@ -6,10 +6,12 @@ import searchCategory from "../../api/search/searchCategory";
 import searchUser from "../../api/search/searchUser";
 import PostCard from "../../components/PostCard";
 import UserCard from "../../components/UserCard";
-import PostSkeleton from "../../components/skeletons/PostSkeleton";
 
 // Icons
 import { IoIosSearch } from "react-icons/io";
+
+// Skeletons
+import SearchSkeleton from "../../components/skeletons/SearchSkeleton";
 
 const SearchPage = () => {
 
@@ -59,7 +61,7 @@ const SearchPage = () => {
 
         if(postIsLoading){
             return (
-                <PostSkeleton count={3} />
+                <SearchSkeleton count={3} />
             )
         }
 

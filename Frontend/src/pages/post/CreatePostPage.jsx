@@ -161,7 +161,7 @@ const CreatePostPage = () => {
 
 
   return (
-    <div className="flex flex-col items-center w-full">
+    <div className="flex flex-col items-center w-full p-4">
         <form className="flex flex-col gap-8 w-full max-w-[700px]">
             <div className="flex justify-between items-center w-full max-w-[700px]">
                 <h1 className="text-3xl">Create Post</h1>
@@ -266,7 +266,7 @@ const CreatePostPage = () => {
                                 />
                                 :
                                 <textarea
-                                    className = "w-full h-0 px-2 overflow-hidden text-base border-l-2 outline-none resize-none"
+                                    className = "w-full h-0 px-2 overflow-hidden text-base outline-none resize-none bg-opacity bg-primary-100"
                                     name = "text"
                                     value = {block.text}
                                     placeholder="paragraph"

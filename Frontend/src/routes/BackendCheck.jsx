@@ -8,7 +8,6 @@ const BackendCheck = ({children}) => {
     const [isBackendUp, setIsBackendUp] = useState(null);
 
     useEffect(() => {
-
         const checkBackend = async () => {
             try{
                 const response = await fetch(
