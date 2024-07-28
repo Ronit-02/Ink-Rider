@@ -2,7 +2,7 @@ const User = require('../schemas/userSchema');
 const nodemailer = require('nodemailer')
 const passport = require('passport')
 const GoogleStrategy = require('passport-google-oauth20').Strategy
-const {hashPassword, generateToken, verifyToken, verifyPassword, generateRandom} = require('../utils/helper')
+const {hashPassword, generateToken, verifyToken, verifyPassword, generateRandom, capitalizeString} = require('../utils/helper')
 const {userPictures} = require('../database/data.js');
 
 const login = async (req, res) => {
@@ -144,7 +144,7 @@ passport.use(new GoogleStrategy({
                 const password = process.env.GOOGLE_USER_PASSWORD;
                 user = new User({
                     picture: profile.photos[0].value, 
-                    username: profile.displayName, 
+                    username: capitalizeString(profile.displayName), 
                     email: email, 
                     password: password,
                     verified: true,

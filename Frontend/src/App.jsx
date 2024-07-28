@@ -19,7 +19,7 @@ function App() {
   }, [dispatch]);
 
   return (
-    <div className="h-screen px-12 py-12 max-w-screen">
+    <div className="relative h-screen max-w-screen font-primaryRegular">
       <Modal />
       <Notification />
       <AppRoutes />

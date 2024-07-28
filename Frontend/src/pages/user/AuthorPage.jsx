@@ -93,7 +93,7 @@ const AuthorPage = () => {
       <div className="w-full">
         <div className="flex justify-between">
           <div className="flex items-center gap-4">
-            <img className="w-16 h-16 rounded-full" src={data.picture || profileImage} alt="profile-pic" />
+            <img className="object-cover w-16 h-16 rounded-full" src={data.picture || profileImage} alt="profile-pic" />
             <div className="flex flex-col">
               <h1 className="text-2xl capitalize">{data.username}</h1>
               <h3 className="text-sm text-gray-500">{data.role} user</h3>

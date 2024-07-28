@@ -47,12 +47,14 @@ const createPost = async (req, res) => {
 const getAllPosts = async (req, res) => {
     try {
 
-        // handling views, likes, date
-        const { sort, sortType } = req.query;
+        // views -> most viewed on top
+        // likes -> most liked on top
+        // date -> latest on top
+        const { sort } = req.query;
 
         let sortOptions = {};
         let sortField = '';
-        if(sort && sortType) {
+        if(sort) {
             if(sort === 'views')
                 sortField = 'metadata.views'
             else if(sort === 'date')
@@ -60,7 +62,7 @@ const getAllPosts = async (req, res) => {
             else
                 sortField = sort;
 
-            sortOptions[sortField] = sortType === 'descending' ? -1 : 1;
+            sortOptions[sortField] = -1;
         }
 
         // populating related post-author-data and comments-author-data
@@ -89,6 +91,13 @@ const getAllPosts = async (req, res) => {
 
 const searchPost = async (req, res) => {
     try{
+
+        // Simulate delay
+        // await new Promise(resolve => setTimeout(() => {
+        //     console.log('first');
+        //     resolve();
+        // }, 2000));
+
         const {query} = req.query;
         if(!query)
             return res.status(400).send({message: 'Enter query to search'});
@@ -102,6 +111,7 @@ const searchPost = async (req, res) => {
         })
         // .limit(5);
         
+        console.log('posts')
         return res.status(200).json(posts)
     }
     catch(error){

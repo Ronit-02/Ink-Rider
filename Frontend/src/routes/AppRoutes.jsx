@@ -34,6 +34,7 @@ import Layout from "./Layout";
 import SettingsLayout from "./SettingsLayout"
 import PricingFeaturesPage from "../pages/membership/PricingFeaturesPage";
 import CheckoutPage from "../pages/membership/CheckoutPage";
+import ExplorePage from "../pages/explore/ExplorePage";
 
 const AppRoutes = () => {
   return (
@@ -52,6 +53,7 @@ const AppRoutes = () => {
                     <Route path="/post/:id" element={<DisplayPostPage />} />
                     <Route path="/post-edit/:id" element={<ProtectedRoute> <EditPostPage /> </ProtectedRoute>} />
                     <Route path="/user/:id" element={<AuthorPage />} />
+                    <Route path="/explore" element={<ExplorePage />} />
                     <Route path="/search/*" element={<SearchPage />} />
                     <Route path="/write" element={<ProtectedRoute> <CreatePostPage/> </ProtectedRoute>}/>
                     <Route path="/plans" element={<PricingFeaturesPage />} />
