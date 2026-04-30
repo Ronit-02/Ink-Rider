@@ -1,18 +1,10 @@
-import { configureStore } from "@reduxjs/toolkit";
-import { thunk } from "redux-thunk";
-import authReducer from './slices/authSlice';
-import notificationReducer from './slices/notificationSlice';
-import modalReducer from './slices/modalSlice';
+import { configureStore } from '@reduxjs/toolkit'
+import authReducer from './slices/authSlice'
 
 const store = configureStore({
     reducer: {
-        auth: authReducer,
-        notif: notificationReducer,
-        modal: modalReducer,
+        auth: authReducer
     },
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware({
-        serializableCheck: false,
-    }).concat(thunk),
-});
+})
 
 export default store;

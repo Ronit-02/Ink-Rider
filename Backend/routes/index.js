@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const authRoutes = require('./authRoute');
-const userRoutes = require('./userRoute');
-const postRoutes = require('./postRoute');
-const paymentRoutes = require('./paymentRoute');
+const authRoute = require('./authRoute');
+const postRoute = require('./postRoute');
+const userRoute = require('./userRoute');
 
-router.use('/auth', authRoutes);
-router.use('/user', userRoutes);
-router.use('/post', postRoutes);
-router.use('/payment', paymentRoutes);
+router.get('/', (req, res) => {
+    res.send('API is running 🚀');
+});
+router.use('/auth', authRoute);
+router.use('/post', postRoute);
+router.use('/user', userRoute);
 
 module.exports = router;

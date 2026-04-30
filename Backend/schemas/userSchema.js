@@ -1,15 +1,15 @@
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
 
 // Primary key -> email
 const userSchema = new mongoose.Schema({
     picture: {
         type: String,
-        required: true,
+        required: false,
     },
     username: {
         type: String,
         required: true,
-        minlength: 3,
+        minlength: 1,
         maxlength: 30,
     },
     email: {
@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
     password: {
         type: String,
         required: true,
-        minlength: 3
+        minlength: 1
         // required: function(){
         //     return !this.googleId
         // }
@@ -41,7 +41,7 @@ const userSchema = new mongoose.Schema({
     },
     followers: {
         type: Number,
-        required: true,
+        required: false,
         default: 0
     },
     following: [
@@ -82,7 +82,5 @@ const userSchema = new mongoose.Schema({
 
 // Text Indexes for searching
 userSchema.index({username: 'text'});
-// Number Indexes for performance optimizations
-userSchema.index({email: 1});
 
 module.exports = mongoose.model('User', userSchema);

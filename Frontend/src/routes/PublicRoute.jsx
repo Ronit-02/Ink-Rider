@@ -1,20 +1,12 @@
-import { Navigate } from "react-router-dom";
-import { useSelector } from "react-redux";
-import PropTypes from 'prop-types'
+import { useSelector } from "react-redux"
+import { Navigate } from "react-router-dom"
 
-const PublicRoute = ({children}) => {
+export default function PublicRoute({children}) {
+    const user = useSelector((state) => state.auth.user)
 
-    const token = useSelector(state => state.auth.token)
+    if (user) {
+        return <Navigate to="/" replace />
+    }
 
-    if(token)
-        return <Navigate to="/" />
-
-    else 
-        return children;
+    return children
 }
-
-PublicRoute.propTypes = ({
-    children: PropTypes.any
-})
-
-export default PublicRoute;

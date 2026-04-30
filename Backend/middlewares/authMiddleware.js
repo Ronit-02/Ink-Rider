@@ -14,6 +14,7 @@ const validateToken = async (req, res, next) => {
         // }
         
         const decoded = verifyToken(token);
+        console.log('Decoded - ', decoded)
         const user = await User.findOne({email: decoded.email});
         // if(!user)
         //     return res.sendStatus(401).send({message: 'Invalid Token'});

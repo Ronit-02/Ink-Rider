@@ -1,47 +1,34 @@
-const express = require('express')
+const express = require('express');
 const dotenv = require('dotenv')
 const cors = require('cors')
-const session = require('express-session');
-const passport = require('passport')
 
+dotenv.config();
 
-// Connecting Database
-// try {
-    require('./database/mongoConnect')
-// }
-// catch (err) {
-//     console.log('Error connecting with database..')
-// }
-
-
-// Building app
-dotenv.config()
-const port = process.env.PORT || 8000;
 const app = express();
+const PORT = process.env.PORT || 8000;
 
 
 // Middlewares
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }));
-app.use(session({ secret: process.env.JWT_SECRET, resave: false, saveUninitialized: false }));
-app.use(passport.initialize())
-app.use(passport.session())
 app.use(cors({
-    origin: [`${process.env.FRONTEND_URL}`],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    credentials: true
+  origin: process.env.FRONTEND_URL,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  credentials: true
 }))
 
+app.use(express.json());
 
-// Routing
+// Routes
 const routes = require('./routes');
-const { checkMongoConnection } = require('./database/mongoConnect');
 app.use('/api', routes);
 
 
-app.get('/', (req, res) => {
-    res.send('Welcome to the app')
-})
+// Connecting Database
+try {
+  require('./utils/mongoConnect')
+}
+catch (err) {
+  console.log('Error connecting with database..')
+}
 
 // Check status if backend and database is working
 app.get('/status', async (req, res) => {
@@ -52,6 +39,7 @@ app.get('/status', async (req, res) => {
         res.status(503).send({status: 'error', message: 'Mongodb connection failed'});
 })
 
-app.listen(port, () => {
-    console.log(`Listening on port ${port}`)
-})
+// Start server
+app.listen(PORT, () => {
+  console.log(`Listening on port ${PORT}`);
+});

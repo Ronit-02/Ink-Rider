@@ -1,12 +1,12 @@
-import axios from "axios"
+import axios from 'axios'
 
 // Post - send data in body
-const signup = async (credentials) => {
+const signupUser = async (credentials) => {
     const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/auth/signup`,
-        credentials
+        credentials,
     )
     return response.data;
 }
 
-export default signup;
+export { signupUser };

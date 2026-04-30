@@ -1,39 +1,58 @@
-# Ink Rider Frontend
+# Ink Rider
 
-Welcome to the frontend of **Ink Rider**, built using React, Redux, Tailwind CSS, and React Query. This project provides a sleek and responsive user interface for our writing and publishing platform.
+Editorial platform UI built with React + Vite.
 
-## Technologies Used
+## Quick Start
 
-- **React:** A JavaScript library for building user interfaces.
-- **Redux:** A predictable state container for JavaScript apps.
-- **Tailwind CSS:** A utility-first CSS framework for rapid UI development.
-- **React Query:** Data-fetching and caching for React.
+```bash
+npm install
+npm run dev
+```
 
-<!-- ## Getting Started
+Open [http://localhost:5173](http://localhost:5173).
 
-### Prerequisites
+## Pages
 
-Ensure you have the following installed on your machine:
-- Node.js (v14.x or higher)
-- npm (v6.x or higher)
+| Route | Page |
+|---|---|
+| `/` | Home — Article of Day, Top Recommendations, Browse Categories, Browse Collections |
+| `/explore` | Explore — Trending, Questions, Competitions |
+| `/search` | Search — Posts, Authors, Shorts |
+| `/post/:id` | Post Detail — with AI Summary & Read Aloud |
+| `/artist` | Artist Profile — public / subscriber view |
+| `/onboarding` | 3-step onboarding flow |
+| `/write` | Write editor |
 
-### Installation
+## Project Structure
 
-1. Clone the repository:
-    ```sh
-    git clone https://github.com/your-username/ink-rider-frontend.git
-    ```
-2. Navigate to the project directory:
-    ```sh
-    cd ink-rider-frontend
-    ```
-3. Install dependencies:
-    ```sh
-    npm install
-    ```
+```
+src/
+├── components/
+│   ├── article/          # FeaturedCard, CompactCard, ArticleCard, HorizontalCard
+│   ├── layout/           # Navbar, AppLayout
+│   └── ui/               # Avatar, Button, Pill, Tag, Divider, ImageBox, AuthorMeta, SectionHeading
+├── data/                 # articles, authors, categories, collections
+├── hooks/
+│   └── useAuth.jsx       # Auth context + signIn / signUp / completeOnboarding
+├── pages/
+│   ├── Artist/
+│   ├── Explore/          # TrendingTab, QuestionsTab, CompetitionsTab
+│   ├── Home/             # HeroSection, CategoriesSection, CollectionsSection
+│   ├── Onboarding/       # StepInterests, StepFollow, StepFeatures
+│   ├── Post/             # PostBody, AuthorBio, AIPanel
+│   ├── Search/           # AuthorsTab, ShortsTab
+│   └── Write/
+├── styles/
+│   ├── global.css        # Reset, scrollbar, utility classes
+│   └── tokens.js         # Colors, fonts, spacing, radius, transitions
+├── App.jsx               # React Router setup
+└── main.jsx              # Entry point
+```
 
-### Running the Development Server
+## Tech Stack
 
-Start the development server:
-```sh
-npm start -->
+- **React 18** with hooks
+- **React Router v6** for client-side routing
+- **Vite** for bundling
+- **Inline styles** with a centralized token system (no CSS-in-JS library needed)
+- Google Fonts: Libre Baskerville + DM Sans

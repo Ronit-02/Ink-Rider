@@ -31,4 +31,7 @@ const removeOnCloudinary = async (imageURL) => {
     await cloudinary.uploader.destroy(publicId)
 }
 
-module.exports = {uploadOnCloudinary, removeOnCloudinary};
+module.exports = {
+    uploadOnCloudinary, 
+    removeOnCloudinary
+};
