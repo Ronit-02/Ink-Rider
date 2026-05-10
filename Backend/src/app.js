@@ -18,6 +18,7 @@ app.use(cors({            // defining cors
 app.use(express.json());  // for express framework
 app.use(morgan('dev'));   // for automatic logging
 app.use(express.urlencoded({ extended: true }));  // for parsing form-data
+// app.use(express.static('public')); // for serving frontend static files from public folder
 
 
 // Routes
