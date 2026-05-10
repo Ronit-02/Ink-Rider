@@ -1,30 +1,96 @@
-import { fonts, fontSizes } from '@/styles/tokens'
+const renderBlock = (item) => {
+  const commonProps = { key: item.id };
 
-const BODY_PARAGRAPHS = [
-  'There is a particular kind of dislocation that happens when you return to a place you thought you knew. The streets look the same, the buildings haven\'t moved, and yet everything feels slightly off — like a photograph developed with the wrong chemicals.',
-  'I grew up in a small coastal town that I left at eighteen, convinced I had extracted everything it had to offer. Mountains hemming the sea, a harbour that smelled of diesel and salt, a single bookshop run by a man who read every title he stocked.',
-  'When I returned last spring — for reasons I won\'t go into here — I found myself looking at it through a completely different aperture. The mountains were still there, obviously. But now I noticed how they create a specific quality of afternoon light that I have never encountered anywhere else in the world.',
-  'Familiarity, I am coming to believe, is not a destination. It is a habit of not looking. The antidote is not novelty. It is attention.',
-  'The philosopher Simone Weil wrote that attention is the rarest and purest form of generosity. She was writing about human relationships, but I think she was also describing something essential about the relationship between a person and a place.',
-  'To truly look at something familiar — really look — is to discover that you never fully saw it in the first place. The town I grew up in is not the town I thought I grew up in. It is stranger, more specific, more itself.',
-]
-
-export default function PostBody() {
-  return (
-    <div>
-      {BODY_PARAGRAPHS.map((para, i) => (
+  switch (item.type) {
+    case 'text':
+      return (
         <p
-          key={i}
-          style={{
-            fontFamily: fonts.sans,
-            fontSize: 15,
-            lineHeight: 1.82,
-            marginBottom: 20,
-          }}
+          {...commonProps}
+          className="text-[15px] leading-[1.82] mb-5 text-(--color-text)"
+          style={{ fontFamily: 'var(--font-sans)' }}
         >
-          {para}
+          {item.content}
         </p>
-      ))}
-    </div>
-  )
+      );
+
+    case 'h1':
+      return (
+        <h1
+          {...commonProps}
+          className="text-[28px] font-bold leading-[1.3] mb-6 text-(--color-text)"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          {item.content}
+        </h1>
+      );
+
+    case 'h2':
+      return (
+        <h2
+          {...commonProps}
+          className="text-[24px] font-semibold leading-[1.35] mb-5 text-(--color-text)"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          {item.content}
+        </h2>
+      );
+
+    case 'h3':
+      return (
+        <h3
+          {...commonProps}
+          className="text-[20px] font-semibold leading-[1.4] mb-4 text-(--color-text)"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          {item.content}
+        </h3>
+      );
+
+    case 'quote':
+      return (
+        <blockquote
+          {...commonProps}
+          className="border-l-4 pl-4 italic mb-5 text-(--color-text) opacity-80"
+          style={{ fontFamily: 'var(--font-sans)' }}
+        >
+          {item.content}
+        </blockquote>
+      );
+
+    case 'code':
+      return (
+        <pre
+          {...commonProps}
+          className="bg-[#111] text-white p-4 rounded-lg mb-5 overflow-x-auto text-[13px]"
+        >
+          <code>{item.content}</code>
+        </pre>
+      );
+
+    case 'image':
+      return (
+        <div {...commonProps} className="mb-6">
+          <img
+            src={item.content}
+            alt=""
+            className="w-full rounded-lg"
+          />
+        </div>
+      );
+
+    case 'divider':
+      return (
+        <hr
+          {...commonProps}
+          className="my-8 border-t border-gray-300"
+        />
+      );
+
+    default:
+      return null;
+  }
+};
+
+export default function PostBody({ body }) {
+  return <div>{body.map(renderBlock)}</div>;
 }

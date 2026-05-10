@@ -4,40 +4,43 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
     picture: {
         type: String,
-        required: false,
+        default: null,
+        trim: true,
     },
     username: {
         type: String,
         required: true,
         minlength: 1,
         maxlength: 30,
+        trim: true,
+        index: true,
     },
     email: {
         type: String,
         required: true,
-        unique: true,
+        lowercase: true,
+        trim: true,
         match: [/.+\@.+\..+/, 'Please enter a valid email address'],
     },
     password: {
         type: String,
-        required: true,
-        minlength: 1
-        // required: function(){
-        //     return !this.googleId
-        // }
-    },
-    verified: {
-        type: Boolean,
-        default: false
+        minlength: 3,
+        required: function(){
+            return !this.googleId
+        },
     },
     googleId: {
         type: String,
         default: null,
     },
+    verified: {
+        type: Boolean,
+        default: false
+    },
     role: {
         type: String,
+        enum: ['regular', 'premium', 'exclusive-writer'],
         default: 'regular',
-        enum: ['regular', 'premium', 'exclusive-writer']
     },
     followers: {
         type: Number,
@@ -50,6 +53,18 @@ const userSchema = new mongoose.Schema({
             ref: 'User'
         }
     ],
+
+    // Derived Values (cache)
+    followersCount: {
+        type: Number,
+        default: 0,
+    },
+    followingCount: {
+        type: Number,
+        default: 0,
+    },
+
+    // Nested Values
     subscription: {
         subscribed: {
             type: Boolean,
@@ -64,23 +79,13 @@ const userSchema = new mongoose.Schema({
             default: null,
         },
     },
-    liked: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Post',
-        }
-    ],
-    saved: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Post',
-        }
-    ]
 }, {
     timestamps: true
 });
 
 // Text Indexes for searching
-userSchema.index({username: 'text'});
+userSchema.index({ username: 'text' });  // text indexing
+userSchema.index({ email: 1 }, { unique: true });  // ascending order indexing
+userSchema.index({ googleId: 1 }, { unique: true });  // ascending order indexing
 
 module.exports = mongoose.model('User', userSchema);

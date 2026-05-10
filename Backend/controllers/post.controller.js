@@ -1,11 +1,12 @@
 const fs = require("fs")
-const Post = require('../schemas/postSchema')
+const Post = require('../schemas/post.schema')
 const { uploadOnCloudinary } = require('../utils/cloudinary');
 
 const createPost = async (req, res) => {
 
     try{
-        const {title, tags, body} = req.body;
+        // post data is sent in request body
+        const { title, tags, body } = req.body;
         const decodedTags = tags.split(',');
 
         // Check for required files
@@ -13,10 +14,13 @@ const createPost = async (req, res) => {
             return res.status(400).send({message: 'Cover Image is required'})
         if(!title)
             return res.status(400).send({message: 'Title is required'})
+        if(!body)
+            return res.status(400).send({message: 'Content is required'})
         if(!tags)
             return res.status(400).send({message: 'Tags are required'})
 
-        const author = req.user._id;
+        // Picking user id from token
+        const author = req.user.id;
 
         // Extracting file path and adding to cloudinary
         const localImagePath = req.file.path;
@@ -45,9 +49,37 @@ const createPost = async (req, res) => {
     }
 };
 
-const getAllPosts = async (req, res) => {
-    try {
+const getPost = async (req, res) => {
 
+    try{
+        // post id is sent in request parameter
+        const postId = req.params.id;
+
+        // populating related post-author-data and comments-author-data
+        const post = await Post.findById(postId)
+            .populate({
+                path: 'author', 
+                select: 'picture username email'
+            })
+
+        if(!post){
+            return res.status(404).send({message: 'Post not found'});
+        }
+
+        // update views
+        post.metadata.views++;
+        await post.save();
+
+        return res.status(200).json(post);
+    }
+    catch(error) {
+        return res.status(500).send({message: 'Error Fetching Post'})
+    }
+}
+
+const getAllPosts = async (req, res) => {
+
+    try {
         // views -> most viewed on top
         // likes -> most liked on top
         // date -> latest on top
@@ -91,8 +123,8 @@ const getAllPosts = async (req, res) => {
 };
 
 const searchPost = async (req, res) => {
-    try{
 
+    try{
         // Simulate delay
         // await new Promise(resolve => setTimeout(() => {
         //     console.log('first');
@@ -149,6 +181,7 @@ const searchCategory = async (req, res) => {
 module.exports = {
     createPost,
     getAllPosts,
+    getPost,
     searchPost,
     searchCategory
 }

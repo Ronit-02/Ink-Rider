@@ -1,13 +1,22 @@
-import HeroSection from './HeroSection'
-import CategoriesSection from './CategoriesSection'
-import CollectionsSection from './CollectionsSection'
+/* HomePage — main feed with multiple sections */
+import HeroSection           from './HeroSection'
+import TrendingSection       from './TrendingSection'
+import CategoriesSection     from './CategoriesSection'
+import CollectionsSection    from './CollectionsSection'
+import WritersPickSection    from './WritersPickSection'
+import CompetitionWinnerSection from './CompetitionWinnerSection'
+import TopQuestionsSection   from './TopQuestionsSection'
 
 export default function HomePage() {
   return (
-    <div style={{ maxWidth: 1200, margin: '0', padding: '48px 32px' }}>
+    <div className="max-w-300 px-8 pt-12 pb-20">
       <HeroSection />
+      <TrendingSection />
       <CategoriesSection />
+      <CompetitionWinnerSection />
       <CollectionsSection />
+      <TopQuestionsSection />
+      <WritersPickSection />
     </div>
   )
 }

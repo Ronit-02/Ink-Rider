@@ -1,6 +1,12 @@
 export { default as LogoIcon } from './AppLogo';
-export { default as PenIcon } from './Pen';
-export { default as SearchIcon } from './Search';
-export { default as ChevronDown } from './ChevronDown';
-export { default as ExploreArrow } from './ExploreArrow';
-export { default as HomeIcon } from './Home';
+export { default as PenIcon } from './PenIcon';
+export { default as SearchIcon } from './SearchIcon';
+export { default as ChevronDown } from './ChevronDownIcon';
+export { default as ExploreArrow } from './ExploreArrowIcon';
+export { default as HomeIcon } from './HomeIcon';
+export { default as CollectionIcon } from './CollectionsIcon';
+export { default as BackIcon } from './BackIcon';
+export { default as BookmarkIcon } from './BookmarkIcon';
+export { default as ShareIcon } from './ShareIcon';
+export { default as LinkIcon } from './LinkIcon';
+export { default as XIcon } from './XIcon';

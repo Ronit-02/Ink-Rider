@@ -1,34 +1,29 @@
+/* AppLayout — shell with sticky sidebar + independently scrolling main content */
 import { Outlet } from 'react-router-dom'
 import Navbar from './Navbar'
-import { colors } from '@/styles/tokens'
 import Sidebar from './Sidebar'
+import BottomBar from './BottomBar'
 
 export default function AppLayout() {
   return (
-    <div
-      style={{
-        // height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        background: colors.surface,
-        // overflow: 'hidden',
-        gap: 50,
-      }}
-    >
+    <div className="flex flex-col h-screen overflow-hidden bg-[var(--color-bg)]">
+      {/* Fixed-height navbar */}
       <Navbar />
-      <div 
-        style={{
-          flex: 1,
-          display: 'flex',
-          gap: 32,
-          padding: '0 32px',
-        }}
-      >
+
+      {/* Content area fills remaining height, both sidebar and main inside */}
+      <div className="flex flex-1 overflow-hidden mt-14">
+
+        {/* Sidebar — stays fixed height, doesn't scroll with page */}
         <Sidebar />
-        <main style={{ flex: 1, marginLeft: 150, marginTop: 56, overflowY: 'auto', overflowX: 'hidden' }}>
+
+        {/* Main — scrolls independently */}
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden max-md:pb-[72px]">
           <Outlet />
         </main>
       </div>
+
+      {/* Mobile bottom bar */}
+      <BottomBar />
     </div>
   )
 }

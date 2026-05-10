@@ -1,22 +1,27 @@
 const mongoose = require('mongoose')
-const dotenv = require('dotenv')
-dotenv.config()
+const config = require('../config/config.js')
 
-const username = encodeURIComponent(process.env.MONGO_USERNAME)
-const password = encodeURIComponent(process.env.MONGO_PASSWORD)
-const db_name = process.env.DB_NAME
+const username = encodeURIComponent(config.MONGO_USERNAME)
+const password = encodeURIComponent(config.MONGO_PASSWORD)
+const db_name = config.DB_NAME
 const mongo_uri = `mongodb+srv://${username}:${password}@cluster0.z9vf1hq.mongodb.net/${db_name}?appName=Cluster0`
 
-mongoose.connect(mongo_uri)
-.then(() => {
-})
-.catch((err) => {
-    console.log('Error connecting mongodb', err)
-})
+const connectToMongoDB = async () => {
+    try {
+        await mongoose.connect(mongo_uri);
+        console.log("Successfully connected to MongoDB")
+    } catch (err) {
+        console.log('Error connecting to mongodb - ', err);
+        process.exit(1); // Exit the process with an error code
+    }
+}
 
 const checkMongoConnection = () => {
     const state = mongoose.connection.readyState;
     return state === 1
 }
 
-module.exports = {checkMongoConnection};
+module.exports = {
+    connectToMongoDB, 
+    checkMongoConnection
+};

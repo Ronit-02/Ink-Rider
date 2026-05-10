@@ -1,14 +1,15 @@
-const User = require('../schemas/userSchema');
+const User = require('../schemas/user.schema');
 const { verifyPassword, hashPassword, generateToken, generateRandom } = require('../utils/helper');
-const { userPictures } = require('../assets/data');
+const { Avatars } = require('../assets/data');
 
 const login = async (req, res) => {
-
-    const { email, password } = req.body;
-
+    
     try{
+        // login data is sent in request body
+        const { email, password } = req.body;
+
         const user = await User.findOne({email});
-        console.log('User found:', user);
+        console.log('User found !');
 
         // check if google logged-in
         if(user && user.googleId)
@@ -18,9 +19,9 @@ const login = async (req, res) => {
             // if(user.verified){
                 
                 // Issuing a JWT
-                const payload = {email: user.email, id: user._id};
+                const payload = { email: user.email, id: user._id };
                 const token = generateToken(payload);
-                console.log('Login successful, token generated:', token);
+                // console.log('Login successful, token generated:', token);
                 return res.status(200).send({token, username: user.username, email, role: user.role});
             // }
             // else{
@@ -39,11 +40,12 @@ const login = async (req, res) => {
 const signup = async (req, res) => {
 
     try{
+        // signup data is sent in request body
         const { username, email, password } = req.body;
         
         // Assigning a random image from assets
-        const random = generateRandom(0, userPictures.length - 1);
-        const picture = userPictures[random];
+        const random = generateRandom(0, Avatars.length - 1);
+        const picture = Avatars[random];
     
         // Hashing password
         const hashedPassowrd = await hashPassword(password);

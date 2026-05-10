@@ -1,47 +1,22 @@
-import { colors, radius } from '@/styles/tokens'
-
+/* Avatar — circular user image with initials fallback */
 export default function Avatar({ src, name = '', size = 32 }) {
+  const px = `${size}px`
+  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+
   if (src) {
     return (
       <img
-        src={src}
-        alt={name}
-        loading="lazy"
-        style={{
-          width: size,
-          height: size,
-          borderRadius: '50%',
-          objectFit: 'cover',
-          flexShrink: 0,
-          border: `1.5px solid ${colors.borderLight}`,
-          display: 'block',
-        }}
+        src={src} alt={name} loading="lazy"
+        className="rounded-full object-cover shrink-0 border border-[var(--color-border-light)] block"
+        style={{ width: px, height: px }}
       />
     )
   }
 
-  const initials = name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-
   return (
     <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        background: colors.bgAlt,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: size * 0.35,
-        fontWeight: 600,
-        color: colors.textSecondary,
-        flexShrink: 0,
-      }}
+      className="rounded-full bg-[var(--color-bg-alt)] flex items-center justify-center font-semibold text-[var(--color-text-secondary)] shrink-0"
+      style={{ width: px, height: px, fontSize: size * 0.35 }}
     >
       {initials}
     </div>

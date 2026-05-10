@@ -1,278 +1,202 @@
+/* PostPage — article view: left-aligned layout, progress bar, share menu, comments */
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { articles } from '@/data'
-import { colors, radius, fonts, fontSizes, transitions } from '@/styles/tokens'
 import AuthorMeta from '@/components/ui/AuthorMeta'
 import Tag from '@/components/ui/Tag'
 import Divider from '@/components/ui/Divider'
 import PostBody from './PostBody'
 import AuthorBio from './AuthorBio'
+import CommentsSection from './CommentsSection'
 import { AIStickyButtons, SummaryPanel, ReadAloudPanel } from './AIPanel'
-
-function BackIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  )
-}
-
-function BookmarkIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-    </svg>
-  )
-}
-
-function ShareIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="18" cy="5" r="3" />
-      <circle cx="6" cy="12" r="3" />
-      <circle cx="18" cy="19" r="3" />
-      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-    </svg>
-  )
-}
+import { BackIcon, BookmarkIcon, ShareIcon, LinkIcon, XIcon } from '@/components/icons'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { selectToken } from '@/redux/selectors/authSelector'
+import { useSelector } from 'react-redux'
+import fetchPost from '@/api/post/fetchPost'
 
 export default function PostPage() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const article = articles.find((a) => a.id === Number(id)) ?? articles[0]
-
-  const [bookmarked, setBookmarked] = useState(false)
+  const navigate  = useNavigate()
+  const queryClient = useQueryClient();
+  const [bookmarked,  setBookmarked]  = useState(false)
   const [showSummary, setShowSummary] = useState(false)
-  const [readAloud, setReadAloud] = useState(false)
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const [readAloud,   setReadAloud]   = useState(false)
+  const [progress,    setProgress]    = useState(0)
+  const [showShare,   setShowShare]   = useState(false)
+  
+  const token = useSelector(selectToken);
+  const { id: postId } = useParams();
 
-  const handleScroll = () => {
-    const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-    const progress = (window.pageYOffset / totalHeight) * 100;
-    setScrollProgress(progress);
-  }
+  // Fetching Post
+  const { data: postData, isLoading: fetchPostIsLoading, isError, error } = useQuery({
+    queryKey: ["post", postId],
+    queryFn: fetchPost,
+    retry: 1   // limited retries (faster reload)
+  })
+  // Fetching User
+  const { data: userData, isLoading: fetchUserIsLoading } = useQuery({
+    queryKey: ["user", token],
+    queryFn: fetchUser,
+    enabled: !!token
+  })
 
+
+  // Retrieve Post Data
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    console.log("Post Data - ", postData)
+  }, [postData])
+
+  // Reading progress bar
+  useEffect(() => {
+    const onScroll = () => {
+      const total = document.documentElement.scrollHeight - window.innerHeight
+      setProgress(total > 0 ? (window.pageYOffset / total) * 100 : 0)
+    }
+    window.addEventListener('scroll', onScroll)
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const handleSummary = () => {
-    setShowSummary((v) => !v)
-    setReadAloud(false)
-  }
+  // Close share menu on outside click
+  useEffect(() => {
+    if (!showShare) return
+    const close = () => setShowShare(false)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [showShare])
 
-  const handleAudio = () => {
-    setReadAloud((v) => !v)
-    setShowSummary(false)
-  }
+  const hasSidePanel = showSummary || readAloud
 
-  const hasSidePanel = showSummary || readAloud;
+  // Conditional Rendering
+  if (fetchPostIsLoading) return <div>Loading...</div>;
+  if (isError) return <div>{error?.response?.data?.message || error.message}</div>;
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        background: colors.bg,
-        color: colors.text,
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      {/* Reading progress bar */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 0 + 56,
-          left: 0 + 180,
-          width: '100%',
-          height: 3,
-          background: colors.bgAlt,
-          borderRadius: 999,
-          marginBottom: 40,
-          zIndex: 10,
-        }}
-      >
-        <div
-          style={{
-            width: `${scrollProgress}%`,
-            height: '100%',
-            background: colors.accent,
-            borderRadius: 999,
-          }}
-        />
+    <div className="relative bg-(--color-bg) text-(--color-text) min-h-screen">
+
+      {/* ── Reading progress bar (full width, below navbar) ── */}
+      <div className="fixed top-14 left-0 right-0 h-0.75 bg-(--color-bg-alt) z-10">
+        <div className="h-full bg-(--color-accent) transition-[width] duration-100"
+          style={{ width: `${progress}%` }} />
       </div>
 
-      {/* Main content */}
-      <div style={{ 
-        maxWidth: showSummary || readAloud ? 1300 : 900,
-        margin: '0 auto', 
-        padding: '40px 32px 80px',
-        display: 'flex',
-        gap: 32,
-        position: 'relative',
-        alignItems: 'flex-start',
-      }}>
+      {/* ── Page body — LEFT aligned (matches sidebar layout) ── */}
+      <div className={`px-6 pt-8 pb-20 flex gap-8 ${hasSidePanel ? 'max-w-300' : 'max-w-200'}`}>
 
-        {/* Back button */}
-        <button
-          onClick={() => navigate(-1)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            width: 'fit-content',
-            gap: 6,
-            background: 'none',
-            border: 'none',
-            color: colors.textSecondary,
-            fontSize: fontSizes.base,
-            cursor: 'pointer',
-            marginBottom: 32,
-            padding: 0,
-            transition: transitions.default,
-          }}
-        >
-          <BackIcon />
-          Back
-        </button>
+        {/* ── Article column ── */}
+        <div className="flex-1 min-w-0">
 
+          {/* Back button */}
+          <button onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1.5 bg-(--color-bg-alt) border border-(--color-border) text-(--color-text-secondary) text-[13px] cursor-pointer mb-7 px-3.5 py-1.5 rounded-full transition-all hover:bg-(--color-border)">
+            <BackIcon /> 
+            Back
+          </button>
 
-        {/* Main layout: article + sticky AI buttons */}
-        <div style={{ display: 'flex', gap: 32, flex: 1 }}>
-          {/* Article content */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Tags */}
-            {article.tags?.length > 0 && (
-              <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-                {article.tags.map((t) => (
-                  <Tag key={t} label={t} />
-                ))}
-              </div>
-            )}
+          {/* Tags */}
+          {postData.tags?.length > 0 && (
+            <div className="flex gap-1.5 mb-3.5 flex-wrap">
+              {postData.tags.map(t => <Tag key={t} label={t} clickable />)}
+            </div>
+          )}
 
-            {/* Title */}
-            <h1
-              style={{
-                fontFamily: fonts.display,
-                fontSize: fontSizes['3xl'],
-                fontWeight: 700,
-                color: colors.text,
-                lineHeight: 1.3,
-                letterSpacing: '-0.5px',
-                marginBottom: 20,
-              }}
-            >
-              {article.title}
-            </h1>
+          {/* Title */}
+          <h1 className="font-bold text-(--color-text) leading-[1.3] tracking-[-0.5px] mb-5 text-[clamp(22px,4vw,32px)]"
+            style={{ fontFamily: 'var(--font-display)' }}>
+            {postData.title}
+          </h1>
 
-            {/* Author row + actions */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 24,
-                gap: 16,
-              }}
-            >
-              <AuthorMeta
-                author={article.author}
-                readTime={article.readTime}
-                date={article.date}
-                size="md"
-              />
-              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                <button
-                  onClick={() => setBookmarked((v) => !v)}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    border: `1px solid ${colors.border}`,
-                    background: bookmarked ? colors.accent : colors.surface,
-                    color: bookmarked ? 'white' : colors.textSecondary,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: transitions.default,
-                  }}
-                >
-                  <BookmarkIcon />
-                </button>
-                <button
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    border: `1px solid ${colors.border}`,
-                    background: colors.surface,
-                    color: colors.textSecondary,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                  }}
-                >
+          {/* Author row + actions */}
+          <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+            <AuthorMeta author={postData.author} readTime={postData?.readTime || '5 mins'} date={postData.createdAt} size="md" />
+
+            <div className="flex gap-2 shrink-0">
+              
+              {/* Bookmark */}
+              <button onClick={() => setBookmarked(v => !v)}
+                className={`w-9 h-9 rounded-full border border-(--color-border) flex items-center justify-center cursor-pointer transition-all duration-150
+                  ${bookmarked ? 'bg-(--color-accent) text-white' : 'bg-(--color-surface) text-(--color-text-secondary)'}`}>
+                <BookmarkIcon filled={bookmarked} />
+              </button>
+              
+              {/* Share */}
+              <div className="relative">
+                <button onClick={e => { e.stopPropagation(); setShowShare(v => !v) }}
+                  className="w-9 h-9 rounded-full border border-(--color-border) bg-(--color-surface) text-(--color-text-secondary) flex items-center justify-center cursor-pointer transition-all">
                   <ShareIcon />
                 </button>
+                {showShare && <ShareDropdown onClose={() => setShowShare(false)} />}
               </div>
             </div>
-
-            <Divider style={{ marginBottom: 24 }} />
-
-            {/* Hero image */}
-            <img
-              src={article.image}
-              alt={article.title}
-              style={{
-                width: '100%',
-                height: 320,
-                objectFit: 'cover',
-                borderRadius: radius.xl,
-                marginBottom: 32,
-                display: 'block',
-              }}
-            />
-
-            {/* Body */}
-            <PostBody />
-
-            {/* Author bio */}
-            <AuthorBio author={article.author} />
+            
           </div>
 
-          {/* Sticky AI buttons */}
-          <div style={{ width: 52, flexShrink: 0 }}>
-            <AIStickyButtons
-              showSummary={showSummary}
-              readAloud={readAloud}
-              onSummary={handleSummary}
-              onAudio={handleAudio}
-            />
-          </div>
+          <Divider className="mb-6" />
+
+          {/* Hero image */}
+          <img src={postData.coverImage} alt={postData.title}
+            className="w-full object-cover rounded-[20px] mb-8 block"
+            style={{ height: 'clamp(180px, 30vw, 320px)' }} 
+          />
+
+          {/* Body */}
+          <PostBody body={JSON.parse(postData.body)} />
+
+          <Divider className="my-10" />
+
+          {/* Author bio */}
+          <AuthorBio author={postData.author._id} />
+
+          <Divider className="my-10" />
+
+          {/* Comments (renamed from Responses) */}
+          <CommentsSection articleId={postData.comments} />
         </div>
 
-        {/* Side AI panels */}
+        {/* ── AI sticky buttons ── */}
+        <div className="w-13 shrink-0">
+          <AIStickyButtons
+            showSummary={showSummary} readAloud={readAloud}
+            onSummary={() => { setShowSummary(v => !v); setReadAloud(false) }}
+            onAudio={() => { setReadAloud(v => !v); setShowSummary(false) }}
+          />
+        </div>
+
+        {/* ── Side AI panels ── */}
         {hasSidePanel && (
-        <div
-          style={{
-            position: "sticky",
-            top: 80,
-            width: 400,
-            height: "fit-content",
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-          }}
-        >
-          {showSummary && <SummaryPanel />}
-          {readAloud && <ReadAloudPanel />}
-        </div>
-      )}
+          <div className="sticky top-20 w-90 h-fit flex flex-col gap-3 shrink-0">
+            {showSummary && <SummaryPanel />}
+            {readAloud   && <ReadAloudPanel />}
+          </div>
+        )}
       </div>
+    </div>
+  )
+}
+
+function ShareDropdown({ onClose }) {
+  const url = window.location.href
+  const copyLink = () => { 
+    navigator.clipboard.writeText(url); 
+    onClose()
+  }
+  const shareX = () => { 
+    window.open(`https://x.com/intent/tweet?url=${encodeURIComponent(url)}`); 
+    onClose() 
+  }
+
+  const SHARE_MENU = [
+    { label: 'Copy Link', icon: <LinkIcon />, fn: copyLink }, 
+    { label: 'Share on X', icon: <XIcon />, fn: shareX }
+  ]
+
+  return (
+    <div className="absolute top-full right-0 mt-1.5 bg-(--color-surface) border border-(--color-border) rounded-[14px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden z-50 min-w-45">
+      {SHARE_MENU.map(item => (
+        <button key={item.label} onClick={item.fn}
+          className="flex items-center gap-2.5 w-full px-3.5 py-2.5 border-none bg-transparent text-(--color-text) text-[13px] cursor-pointer text-left hover:bg-(--color-bg-alt) transition-colors">
+          {item.icon} {item.label}
+        </button>
+      ))}
     </div>
   )
 }

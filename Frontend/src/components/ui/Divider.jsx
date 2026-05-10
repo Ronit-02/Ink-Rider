@@ -1,15 +1,4 @@
-import { colors } from '@/styles/tokens'
-
-export default function Divider({ style = {} }) {
-  return (
-    <div
-      style={{
-        height: 1,
-        width: '100%',
-        background: colors.border,
-        flexShrink: 0,
-        ...style,
-      }}
-    />
-  )
+/* Divider — horizontal rule using design token color */
+export default function Divider({ className = '' }) {
+  return <div className={`h-px w-full bg-[var(--color-border)] shrink-0 ${className}`} />
 }

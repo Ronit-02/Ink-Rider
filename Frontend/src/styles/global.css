@@ -1,50 +1,91 @@
 @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
+@import "tailwindcss";
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Override Tailwind v4's default --font-sans with our custom font */
+@layer theme {
+  :root {
+    --font-sans: 'DM Sans', 'Helvetica Neue', sans-serif;
+  }
+}
+
+/* ─── Design tokens — CSS custom properties ─────────────────────────────────── */
+:root {
+  --color-bg:             #ffffff;
+  --color-bg-alt:         #F4F2EE;
+  --color-surface:        #FFFFFF;
+  --color-surface-hover:  #F9F8F6;
+  --color-border:         #E8E4DC;
+  --color-border-light:   #F0EDE6;
+  --color-text:           #191919;
+  --color-text-secondary: #6B6560;
+  --color-text-muted:     #A09890;
+  --color-text-inverted:  #FFFFFF;
+  --color-accent:         #191919;
+  --color-accent-hover:   #333333;
+  --font-display: 'Libre Baskerville', Georgia, serif;
+  --font-sans:    'DM Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* ─── Dark theme token overrides ─────────────────────────────────────────────── */
+.dark {
+  --color-bg:             #111110;
+  --color-bg-alt:         #1A1A18;
+  --color-surface:        #161614;
+  --color-surface-hover:  #1F1F1D;
+  --color-border:         #2A2925;
+  --color-border-light:   #222220;
+  --color-text:           #EEECE8;
+  --color-text-secondary: #9B9590;
+  --color-text-muted:     #6B6560;
+  --color-text-inverted:  #111110;
+  --color-accent:         #EEECE8;
+  --color-accent-hover:   #D0CEC9;
 }
 
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-
 body {
-  font-family: 'DM Sans', 'Helvetica Neue', sans-serif;
-  background: #fafaf8;
-  color: #191919;
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
-/* Scrollbar */
+/* Custom scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d8d4cc; border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: #b8b4ac; }
+.dark ::-webkit-scrollbar-thumb { background: #3a3a36; }
 
+/* Element defaults */
 button { cursor: pointer; font-family: inherit; }
-input, textarea { font-family: inherit; outline: none; }
+input, textarea { font-family: inherit; }
 img { display: block; max-width: 100%; }
 a { text-decoration: none; color: inherit; }
 
-/* Utility classes */
-.hover-lift {
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-.hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-}
+/* ─── Animation utilities ─────────────────────────────────────────────────── */
+.hover-lift { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+.hover-lift:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 .fade-in   { animation: fadeIn 0.35s ease both; }
 .fade-in-1 { animation-delay: 0.06s; }
 .fade-in-2 { animation-delay: 0.12s; }
 .fade-in-3 { animation-delay: 0.18s; }
+
+@keyframes streamLine {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stream-line { animation: streamLine 0.45s ease both; }
+
+/* ─── Sidebar hide on mobile ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar-desktop { display: none !important; }
+}

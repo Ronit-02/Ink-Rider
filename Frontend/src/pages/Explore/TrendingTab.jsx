@@ -1,33 +1,14 @@
-import { useState } from 'react'
+/* TrendingTab — trending articles inside Explore */
+import { useNavigate } from 'react-router-dom'
 import { articles } from '@/data'
-import Pill from '@/components/ui/Pill'
-import ArticleCard from '@/components/article/ArticleCard'
-
-const SUB_TABS = [
-  { id: 'today', label: 'Trending Today' },
-  { id: 'hot100', label: 'Hot 100' },
-]
+import HorizontalCard from '@/components/article/HorizontalCard'
+import SectionHeading from '@/components/ui/SectionHeading'
 
 export default function TrendingTab() {
-  const [subTab, setSubTab] = useState('today')
-
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
-        {SUB_TABS.map((t) => (
-          <Pill
-            key={t.id}
-            label={t.label}
-            active={subTab === t.id}
-            onClick={() => setSubTab(t.id)}
-          />
-        ))}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
-        {articles.slice(0, 6).map((article) => (
-          <ArticleCard key={article.id} article={article} />
-        ))}
-      </div>
+      <SectionHeading className="mb-6">Trending Now</SectionHeading>
+      {articles.map(a => <HorizontalCard key={a.id} article={a} />)}
     </div>
   )
 }

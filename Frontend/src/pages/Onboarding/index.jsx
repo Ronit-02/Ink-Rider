@@ -1,144 +1,74 @@
+/* OnboardingPage — multi-step interest/follow/features wizard */
 import { useState } from 'react'
-import { colors, fonts, fontSizes, transitions } from '@/styles/tokens'
 import Button from '@/components/ui/Button'
 import useAuth from '@/hooks/useAuth'
 import StepInterests from './StepInterests'
-import StepFollow from './StepFollow'
-import StepFeatures from './StepFeatures'
+import StepFollow    from './StepFollow'
+import StepFeatures  from './StepFeatures'
 
 const STEPS = [
-  {
-    id: 1,
-    title: 'Pick your interests',
-    subtitle: "We'll use this to tailor your reading experience.",
-  },
-  {
-    id: 2,
-    title: 'Follow writers',
-    subtitle: 'Follow at least 3 writers to personalise your feed.',
-  },
-  {
-    id: 3,
-    title: 'Discover features',
-    subtitle: 'Ink Rider has a few tricks up its sleeve.',
-  },
+  { id: 1, title: 'Pick your interests',  subtitle: "We'll use this to tailor your reading experience." },
+  { id: 2, title: 'Follow authors',       subtitle: 'Follow at least 3 authors to personalise your feed.' },
+  { id: 3, title: 'Discover features',    subtitle: 'Ink Rider has a few tricks up its sleeve.' },
 ]
 
+/* Progress bar — step segments */
 function ProgressBar({ current, total }) {
   return (
-    <div style={{ display: 'flex', gap: 6, marginBottom: 32 }}>
+    <div className="flex gap-[6px] mb-8">
       {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          style={{
-            height: 3,
-            flex: 1,
-            borderRadius: 999,
-            background: i < current ? colors.accent : colors.border,
-            transition: transitions.default,
-          }}
-        />
+        <div key={i} className={`h-[3px] flex-1 rounded-full transition-all duration-300
+          ${i < current ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border)]'}`} />
       ))}
     </div>
   )
 }
 
 export default function OnboardingPage() {
-  const [step, setStep] = useState(1)
+  const [step,      setStep]      = useState(1)
   const [interests, setInterests] = useState([])
-  const [followed, setFollowed] = useState([])
+  const [followed,  setFollowed]  = useState([])
   const { completeOnboarding } = useAuth()
 
-  const toggleInterest = (item) =>
-    setInterests((prev) =>
-      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item],
-    )
+  const toggleInterest = item =>
+    setInterests(p => p.includes(item) ? p.filter(x => x !== item) : [...p, item])
+  const toggleFollow = id =>
+    setFollowed(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
 
-  const toggleFollow = (id) =>
-    setFollowed((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    )
-
-  const currentStep = STEPS[step - 1]
+  const current = STEPS[step - 1]
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: colors.bg,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-      }}
-    >
-      <div style={{ maxWidth: 520, width: '100%' }}>
-        {/* Wordmark */}
-        <p
-          style={{
-            fontFamily: fonts.display,
-            fontSize: fontSizes['2xl'],
-            fontWeight: 700,
-            textAlign: 'center',
-            marginBottom: 48,
-            letterSpacing: '-0.5px',
-          }}
-        >
-          Ink Rider
-        </p>
+    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col items-center justify-center px-6">
+      <div className="w-full max-w-[520px]">
 
-        {/* Progress */}
+        {/* Wordmark */}
+        <p className="font-bold text-[22px] text-center mb-12 tracking-[-0.5px] text-[var(--color-text)]"
+          style={{ fontFamily: 'var(--font-display)' }}>Ink Rider</p>
+
         <ProgressBar current={step} total={STEPS.length} />
 
-        <p style={{ fontSize: fontSizes.sm, color: colors.textMuted, marginBottom: 4 }}>
-          Step {step} of {STEPS.length}
-        </p>
-
-        <h2
-          style={{
-            fontFamily: fonts.display,
-            fontSize: fontSizes['2xl'],
-            fontWeight: 700,
-            marginBottom: 8,
-            letterSpacing: '-0.4px',
-          }}
-        >
-          {currentStep.title}
-        </h2>
-        <p style={{ fontSize: fontSizes.base, color: colors.textSecondary, marginBottom: 28 }}>
-          {currentStep.subtitle}
-        </p>
+        <p className="text-[12px] text-[var(--color-text-muted)] mb-1">Step {step} of {STEPS.length}</p>
+        <h2 className="font-bold text-[22px] tracking-[-0.4px] mb-2 text-[var(--color-text)]"
+          style={{ fontFamily: 'var(--font-display)' }}>{current.title}</h2>
+        <p className="text-[13px] text-[var(--color-text-secondary)] mb-7">{current.subtitle}</p>
 
         {/* Step content */}
-        <div style={{ marginBottom: 40 }}>
+        <div className="mb-10">
           {step === 1 && <StepInterests selected={interests} onToggle={toggleInterest} />}
-          {step === 2 && <StepFollow selected={followed} onToggle={toggleFollow} />}
+          {step === 2 && <StepFollow    selected={followed}  onToggle={toggleFollow} />}
           {step === 3 && <StepFeatures />}
         </div>
 
-        {/* Navigation */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {step > 1 ? (
-            <Button variant="secondary" onClick={() => setStep((s) => s - 1)}>
-              Back
-            </Button>
-          ) : (
-            <div />
-          )}
-
-          <Button
-            variant="ghost"
-            onClick={completeOnboarding}
-            style={{ color: colors.textMuted }}
-          >
-            Skip
-          </Button>
-
-          <Button
-            variant="primary"
-            onClick={() => (step < STEPS.length ? setStep((s) => s + 1) : completeOnboarding())}
-          >
+        {/* Navigation row */}
+        <div className="flex justify-between items-center">
+          {step > 1
+            ? <Button variant="secondary" onClick={() => setStep(s => s - 1)}>Back</Button>
+            : <div />
+          }
+          <Button variant="ghost" onClick={completeOnboarding}
+            className="text-[var(--color-text-muted)]">Skip</Button>
+          <Button variant="primary"
+            onClick={() => step < STEPS.length ? setStep(s => s + 1) : completeOnboarding()}>
             {step === STEPS.length ? 'Get Started' : 'Next →'}
           </Button>
         </div>

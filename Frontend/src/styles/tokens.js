@@ -1,25 +1,25 @@
-// ─── Color Palette ────────────────────────────────────────────────────────────
+// ─── Color Palette ─────────────────────────────────────────────────────────────
+// These reference CSS custom properties defined in global.css
+// so dark mode works automatically via the .dark class
 export const colors = {
-  bg:           '#ffffff',
-  bgAlt:        '#F4F2EE',
-  surface:      '#FFFFFF',
-  surfaceHover: '#F9F8F6',
-  border:       '#E8E4DC',
-  borderLight:  '#F0EDE6',
+  bg:           'var(--color-bg)',
+  bgAlt:        'var(--color-bg-alt)',
+  surface:      'var(--color-surface)',
+  surfaceHover: 'var(--color-surface-hover)',
+  border:       'var(--color-border)',
+  borderLight:  'var(--color-border-light)',
+  text:         'var(--color-text)',
+  textSecondary:'var(--color-text-secondary)',
+  textMuted:    'var(--color-text-muted)',
+  textInverted: 'var(--color-text-inverted)',
+  accent:       'var(--color-accent)',
+  accentHover:  'var(--color-accent-hover)',
+}
 
-  text:         '#191919',
-  textSecondary:'#6B6560',
-  textMuted:    '#A09890',
-  textInverted: '#FFFFFF',
-
-  accent:       '#191919',
-  accentHover:  '#333333',
-} 
-
-// ─── Typography ───────────────────────────────────────────────────────────────
+// ─── Typography ────────────────────────────────────────────────────────────────
 export const fonts = {
-  display: "'Libre Baskerville', Georgia, serif",
-  sans:    "'DM Sans', 'Helvetica Neue', sans-serif",
+  display: "var(--font-display, 'Libre Baskerville', Georgia, serif)",
+  sans:    "var(--font-sans, 'DM Sans', 'Helvetica Neue', sans-serif)",
 }
 
 export const fontSizes = {
@@ -35,21 +35,14 @@ export const fontSizes = {
   '4xl':'36px',
 }
 
-// ─── Spacing ──────────────────────────────────────────────────────────────────
+// ─── Spacing ───────────────────────────────────────────────────────────────────
 export const spacing = {
-  1:  '4px',
-  2:  '8px',
-  3:  '12px',
-  4:  '16px',
-  5:  '20px',
-  6:  '24px',
-  8:  '32px',
-  10: '40px',
-  12: '48px',
-  16: '64px',
+  1:  '4px',  2:  '8px',  3:  '12px', 4:  '16px',
+  5:  '20px', 6:  '24px', 8:  '32px', 10: '40px',
+  12: '48px', 16: '64px',
 }
 
-// ─── Border Radius ────────────────────────────────────────────────────────────
+// ─── Border Radius ─────────────────────────────────────────────────────────────
 export const radius = {
   sm:   '6px',
   md:   '10px',
@@ -58,7 +51,7 @@ export const radius = {
   full: '999px',
 }
 
-// ─── Transitions ──────────────────────────────────────────────────────────────
+// ─── Transitions ───────────────────────────────────────────────────────────────
 export const transitions = {
   default: 'all 0.15s ease',
   slow:    'all 0.25s ease',

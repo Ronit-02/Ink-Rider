@@ -1,92 +1,68 @@
-import { collections } from '@/data'
-import { colors, radius, fontSizes, fonts } from '@/styles/tokens'
-import SectionHeading from '@/components/ui/SectionHeading'
-import Divider from '@/components/ui/Divider'
+/* CollectionsSection — preview of collections on home page */
+import { useNavigate } from "react-router-dom";
+import { collections } from "@/data";
+import SectionHeading from "@/components/ui/SectionHeading";
 
 function CollectionCard({ collection }) {
+  const navigate = useNavigate();
   return (
-    <div
-      className="hover-lift"
-      style={{
-        // background: colors.surface,
-        borderRadius: radius.sm,
-        border: `1px solid ${colors.border}`,
-        overflow: 'hidden',
-        display: 'flex',
-        cursor: 'pointer',
-        minHeight: 140,
-      }}
-    >
-      {/* Text side */}
-      <div style={{ flex: 1, padding: 20 }}>
+    <div className="hover-lift rounded-md border border-(--color-border) overflow-hidden flex cursor-pointer min-h-35"
+      onClick={() => navigate(`/collections/${collection.id}`)}>
+      
+      {/* Text */}
+      <div className="flex-1 p-5">
         {collection.curator ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <div className="flex items-center gap-2 mb-2.5">
             <img
               src={collection.curator.avatar}
               alt={collection.curator.name}
-              style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }}
+              className="w-7 h-7 rounded-full object-cover"
             />
-            <span style={{ fontSize: fontSizes.base, fontWeight: 600, color: colors.text }}>
+            <span className="text-[13px] font-semibold text-(--color-text)">
               {collection.curator.name}
             </span>
           </div>
         ) : (
           <h3
-            style={{
-              fontFamily: fonts.display,
-              fontSize: fontSizes.lg,
-              fontWeight: 700,
-              color: colors.text,
-              marginBottom: 8,
-              lineHeight: 1.3,
-            }}
+            className="font-bold text-[16px] text-(--color-text) mb-2 leading-[1.3]"
+            style={{ fontFamily: "var(--font-display)" }}
           >
             {collection.title}
           </h3>
         )}
-
-        <p
-          style={{
-            fontSize: fontSizes.sm,
-            color: colors.textSecondary,
-            lineHeight: 1.55,
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            marginBottom: 12,
-          }}
-        >
+        <p className="text-[12px] text-(--color-text-secondary) leading-[1.55] line-clamp-3 mb-3">
           {collection.description}
         </p>
-        <span style={{ fontSize: fontSizes.sm, color: colors.textMuted, fontWeight: 500 }}>
+        <span className="text-[12px] text-(--color-text-muted) font-medium">
           {collection.stories} Stories
         </span>
       </div>
-
-      {/* Image side */}
-      <div style={{ width: 140, flexShrink: 0 }}>
+      
+      {/* Image */}
+      <div className="w-35 shrink-0">
         <img
           src={collection.image}
           alt={collection.title}
           loading="lazy"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          className="w-full h-full object-cover block"
         />
       </div>
     </div>
-  )
+  );
 }
 
 export default function CollectionsSection() {
   return (
-    <div className="fade-in fade-in-2" style={{ marginBottom: 52 }}>
-      <SectionHeading style={{ marginBottom: 36 }}>Browse Collections</SectionHeading>
-      {/* <Divider style={{ marginBottom: 24 }} /> */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+    <div className="fade-in fade-in-2 mb-13">
+      <SectionHeading className="mb-9">Browse Collections</SectionHeading>
+      <div
+        className="grid gap-5"
+        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px,1fr))" }}
+      >
         {collections.map((col) => (
           <CollectionCard key={col.id} collection={col} />
         ))}
       </div>
     </div>
-  )
+  );
 }

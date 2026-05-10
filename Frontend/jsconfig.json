@@ -1,0 +1,8 @@
+// Explicitly configuring aliases 
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}

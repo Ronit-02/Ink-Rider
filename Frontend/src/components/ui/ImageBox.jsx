@@ -1,25 +1,13 @@
-import { colors, radius as r } from '@/styles/tokens'
-
-export default function ImageBox({ src, alt = '', height = 180, radius = r.xxs, style = {} }) {
+/* ImageBox — lazy-loaded image container with configurable radius */
+export default function ImageBox({ src, alt = '', height = 180, radius = '0px', style = {} }) {
   return (
     <div
-      style={{
-        width: '100%',
-        height,
-        borderRadius: radius,
-        overflow: 'hidden',
-        background: colors.bgAlt,
-        flexShrink: 0,
-        ...style,
-      }}
+      className="w-full overflow-hidden bg-[var(--color-bg-alt)] shrink-0"
+      style={{ height, borderRadius: radius, ...style }}
     >
       {src && (
-        <img
-          src={src}
-          alt={alt}
-          loading="lazy"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
+        <img src={src} alt={alt} loading="lazy"
+          className="w-full h-full object-cover block" />
       )}
     </div>
   )

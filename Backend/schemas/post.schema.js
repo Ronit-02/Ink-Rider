@@ -27,27 +27,18 @@ const postSchema = new mongoose.Schema({
             trim: true
         }
     ],
-    likes: {
+
+    // Derived Values (cache)
+    likesCount: {
         type: Number,
         default: 0
     },
-    comments: [
-        {
-            comment: {
-                type: String,
-                required: true
-            },
-            author: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'User',
-                required: true
-            },
-            date: {
-                type: Date,
-                default: Date.now,
-            },
-        }
-    ],
+    commentsCount: {
+        type: Number,
+        default: 0
+    },
+
+    // Nested Values
     metadata: {
         views: {
             type: Number,
@@ -65,6 +56,7 @@ const postSchema = new mongoose.Schema({
 
 // Text indexes to enable searching
 postSchema.index({title: 'text', body: 'text', tags: 'text'});
+
 // Number indexes for performance optimizations
 postSchema.index({author: 1});
 postSchema.index({'comments.author': 1});

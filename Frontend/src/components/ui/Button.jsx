@@ -1,44 +1,19 @@
-import { colors, radius, transitions, fontSizes } from '@/styles/tokens'
+/* Button — primary / secondary / ghost variants */
+export default function Button({ children, variant = 'primary', onClick, className = '', disabled = false, style = {} }) {
+  const base = 'inline-flex items-center justify-center px-[18px] py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
 
-const variants = {
-  primary: {
-    background: colors.accent,
-    color: colors.textInverted,
-    border: colors.accent,
-  },
-  secondary: {
-    background: colors.surface,
-    color: colors.text,
-    border: colors.border,
-  },
-  ghost: {
-    background: 'transparent',
-    color: colors.textSecondary,
-    border: 'transparent',
-  },
-}
-
-export default function Button({ children, variant = 'primary', onClick, style = {}, disabled = false }) {
-  const v = variants[variant]
+  const variants = {
+    primary:   'bg-[var(--color-accent)] text-[var(--color-text-inverted)] border border-[var(--color-accent)]',
+    secondary: 'bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)]',
+    ghost:     'bg-transparent text-[var(--color-text-secondary)] border border-transparent',
+  }
 
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      style={{
-        padding: '8px 18px',
-        borderRadius: radius.full,
-        border: `1px solid ${v.border}`,
-        background: v.background,
-        color: v.color,
-        fontSize: fontSizes.base,
-        fontWeight: 500,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        transition: transitions.default,
-        whiteSpace: 'nowrap',
-        opacity: disabled ? 0.5 : 1,
-        ...style,
-      }}
+      className={`${base} ${variants[variant]} ${className}`}
+      style={style}
     >
       {children}
     </button>

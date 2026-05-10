@@ -1,5 +1,5 @@
+/* CompactCard — small compact list row with avatar + title */
 import { useNavigate } from 'react-router-dom'
-import { colors, radius, transitions, fontSizes } from '@/styles/tokens'
 
 export default function CompactCard({ article }) {
   const navigate = useNavigate()
@@ -7,57 +7,35 @@ export default function CompactCard({ article }) {
   return (
     <div
       onClick={() => navigate(`/post/${article.id}`)}
-      onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.72')}
-      onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-      style={{
-        display: 'flex',
-        gap: 12,
-        padding: '12px 0',
-        cursor: 'pointer',
-        borderBottom: `1px solid ${colors.borderLight}`,
-        transition: transitions.default,
-      }}
+      className="flex gap-3 py-3 cursor-pointer border-b border-[var(--color-border-light)]
+        transition-opacity duration-150 hover:opacity-70"
     >
-      <img
-        src={article.author.avatar}
-        alt={article.author.name}
-        loading="lazy"
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: radius.md,
-          objectFit: 'cover',
-          flexShrink: 0,
-        }}
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 8,
-            marginBottom: 4,
-          }}
-        >
-          <span style={{ fontSize: fontSizes.sm, color: colors.textSecondary, fontWeight: 500 }}>
+      {/* Author avatar — click goes to author page */}
+      <button
+        onClick={e => { e.stopPropagation(); navigate('/author') }}
+        className="p-0 border-none bg-transparent cursor-pointer flex-shrink-0"
+      >
+        <img
+          src={article.author.avatar}
+          alt={article.author.name}
+          loading="lazy"
+          className="w-11 h-11 rounded-[10px] object-cover"
+        />
+      </button>
+
+      {/* Text */}
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between gap-2 mb-1">
+          <button
+            onClick={e => { e.stopPropagation(); navigate('/author') }}
+            className="text-[12px] text-[var(--color-text-secondary)] font-medium bg-transparent border-none cursor-pointer p-0
+              hover:text-[var(--color-text)] transition-colors"
+          >
             {article.author.name}
-          </span>
-          <span style={{ fontSize: fontSizes.sm, color: colors.textMuted, whiteSpace: 'nowrap' }}>
-            {article.readTime}
-          </span>
+          </button>
+          <span className="text-[12px] text-[var(--color-text-muted)] whitespace-nowrap">{article.readTime}</span>
         </div>
-        <p
-          style={{
-            fontSize: fontSizes.md,
-            fontWeight: 600,
-            color: colors.text,
-            lineHeight: 1.35,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
-        >
+        <p className="text-[14px] font-semibold text-[var(--color-text)] leading-[1.35] line-clamp-2">
           {article.title}
         </p>
       </div>

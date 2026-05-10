@@ -1,326 +1,285 @@
-import { useState } from 'react'
+/* WritePage — Notion-like block editor for composing articles */
+import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { colors, fonts, fontSizes } from '@/styles/tokens'
-import Divider from '@/components/ui/Divider'
 import Button from '@/components/ui/Button'
-import tagsData from '../../data/tags'
-import createPost from "../../api/post/createPost";
+import createPost from '@/api/post/createPost'
+import Tag from '@/components/ui/Tag'
 
+// Block Input Types
+const BLOCK_TYPES = [
+  { type: 'text',    label: 'Text',       icon: '¶' },
+  { type: 'h1',      label: 'Heading 1',  icon: 'H1' },
+  { type: 'h2',      label: 'Heading 2',  icon: 'H2' },
+  { type: 'h3',      label: 'Heading 3',  icon: 'H3' },
+  { type: 'quote',   label: 'Quote',      icon: '❝' },
+  { type: 'code',    label: 'Code',       icon: '</>' },
+  { type: 'image',   label: 'Image URL',  icon: '🖼' },
+  { type: 'divider', label: 'Divider',    icon: '—' },
+]
+
+// Adding a new block
+function newBlock(type = 'text') {
+  return { id: Date.now() + Math.random(), type, content: '' }
+}
+
+// Write Page
 export default function WritePage() {
-  const navigate = useNavigate();
-
-  // Form States
-  const [imageFile, setImageFile] = useState('')
-  const [imageURL, setImageURL] = useState('')
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-
-  // tags
-  const [tags, setTags] = useState([])
-  const [tagText, setTagText] = useState('')
+  const navigate  = useNavigate()
+  const [title,   setTitle]   = useState('')
+  const [blocks,  setBlocks]  = useState([newBlock()])
+  const [tags,    setTags]    = useState([])
+  const [tagInput,setTagInput]= useState('')
+  const [cover,   setCover]   = useState(null)
+  const [coverURL, setCoverURL] = useState('')
+  const [saved,   setSaved]   = useState(false)
+  const fileRef   = useRef()
 
   // Creating Post
   const { mutate, isLoading } = useMutation({
     mutationFn: createPost,
     onSuccess: (response) => {
-        navigate(`/post/${response.postId}`);
-        // displayNotification(response.message);
+      navigate(`/post/${response.postId}`);
+      // displayNotification(response.message);
     },
     onError: (error) => {
-        // displayNotification(error?.response?.data?.message || error.message, 'error');
+      // displayNotification(error?.response?.data?.message || error.message, 'error');
     },
   });
-
+  
   // Submitting Form
   const handleSubmit = (e) => {
     e.preventDefault();
-
     const formData = new FormData();
-    formData.append('imageURL', imageURL);
+    formData.append('coverURL', coverURL);
     formData.append('title', title);
+    formData.append('body', JSON.stringify(blocks));
     formData.append('tags', tags);
-    // formData.append('body', JSON.stringify(blocks));
-    formData.append('body', body)
     mutate(formData);
   };
-
+  
+  // Saving as Draft
+  const handleSave = () => { 
+    setSaved(true); 
+    setTimeout(() => setSaved(false), 2000) 
+  }
+  
   // Input Handlers
-  const handleImage = (e) => {
-    setImageURL(e.target.files[0]);
-    setImageFile(URL.createObjectURL(e.target.files[0]));
+  const handleCoverImage = (e) => {
+    const f = e.target.files[0];
+    if (f){
+      setCoverURL(f)
+      setCover(URL.createObjectURL(f));
+      
+    } 
   }
-  const addTag = (tag) => {
-    const updatedTags = [...tags, tag];
-    setTags(updatedTags);
-    setTagText('');
-  }
-  const removeTag = (index) => {
-    const updatedTags = [...tags];
-    updatedTags.splice(index, 1);
-    setTags(updatedTags);
-  }
+  const updateBlock  = (id, val) => setBlocks(b => b.map(bl => bl.id === id ? { ...bl, content: val } : bl))
+  const deleteBlock  = id => setBlocks(b => b.length > 1 ? b.filter(bl => bl.id !== id) : b)
+  const addAfter     = id => setBlocks(b => { const i = b.findIndex(bl => bl.id === id); const nb = [...b]; nb.splice(i + 1, 0, newBlock()); return nb })
+  const changeType   = (id, type) => setBlocks(b => b.map(bl => bl.id === id ? { ...bl, type } : bl))
+  const addDivider   = () => setBlocks(b => [...b, newBlock('divider'), newBlock()])
 
-  // Key Down Handlers
-  const handleTagsKeydown = (e) => {
-    if(e.key === 'Enter')
-      e.preventDefault();
+  const addTag = () => {
+    const t = tagInput.trim().toLowerCase()
+    if (t && !tags.includes(t)) { setTags(v => [...v, t]); setTagInput('') }
   }
-
-  const wordCount = body.trim() ? body.trim().split(/\s+/).length : 0
-
+  
   return (
-    <div style={{ maxWidth: 1200, margin: '0', padding: '60px 32px 80px', display: "flex", flexDirection: 'column', gap: 20 }}>
-      {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontFamily: fonts.display,
-              fontSize: fontSizes['3xl'],
-              fontWeight: 700,
-              marginBottom: 6,
-              letterSpacing: '-0.5px',
-            }}
-          >
-            Tell your story.
-          </h1>
-          <p style={{ fontSize: fontSizes.md, color: colors.textSecondary }}>
-            Share your ideas with a community of curious readers.
-          </p>
+    <div className="max-w-185 px-8 pt-10 pb-20">
+      
+      {/* ── Top bar ── */}
+      <div className="flex items-center justify-between mb-8 gap-4">
+        <button 
+          className="inline-flex items-center gap-1.5 bg-(--color-bg-alt) border border-(--color-border) text-(--color-text-secondary) text-[13px] cursor-pointer px-3.5 py-1.5 rounded-full transition-all hover:bg-(--color-border)"
+          onClick={() => navigate(-1)}>
+          ← Back
+        </button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={handleSave}>
+            {saved ? "✓ Saved" : "Save Draft"}
+          </Button>
+          <Button 
+            variant="primary"
+            disabled={!title.trim() || isLoading}
+            onClick={handleSubmit}>
+            Publish
+          </Button>
         </div>
-        <Button 
-          variant="primary" 
-          disabled={!title.trim() || isLoading}
-          onClick={handleSubmit} 
-        >
-          Publish
-        </Button>
       </div>
 
-      {/* Upload Cover Image */}
-      <div
-        style={{
-          position: "relative",
-          height: 250,
-          width: "100%",
-          border: `2px solid ${colors.bgAlt}`,
-          borderRadius: "8px",
-        }}
-      >
-        <label
-          htmlFor="coverImage"
-          style={{
-            position: "absolute",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "100%",
-            height: "100%",
-            fontSize: "1.875rem", // ~text-3xl
-            cursor: "pointer",
-            zIndex: 5,
-          }}
-        >
-          {imageFile ? null : <p>Upload Cover</p>}
-        </label>
-
-        {imageFile && (
-          <img
-            src={imageFile}
-            alt="cover-image"
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-            }}
-          />
+      {/* ── Cover image ── */}
+      <div className="mb-7">
+        {cover ? (
+          <div className="relative">
+            <img src={cover} alt="cover" className="w-full h-60 object-cover rounded-[14px] block"/>
+            <button
+              onClick={() => setCover(null)}
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white border-none cursor-pointer flex items-center justify-center text-[18px]">
+              ×
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => fileRef.current?.click()}
+            className="w-full h-40 rounded-[14px] border-2 border-dashed border-(--color-border) flex items-center justify-center text-(--color-text-muted) text-[13px] font-medium cursor-pointer bg-transparent hover:bg-(--color-bg-alt) transition-colors">
+            + Add Cover Image
+          </button>
         )}
-
         <input
+          ref={fileRef}
           type="file"
-          id="coverImage"
-          accept=".png, .jpg, .jpeg"
-          name="coverImage"
-          onChange={handleImage}
-          style={{ display: "none" }}
+          accept="image/*"
+          className="hidden"
+          onChange={handleCoverImage}
         />
       </div>
 
-      {/* Tags */}
-      <div
-        style={{
-          position: "relative",
-          display: "flex",
-          flexDirection: "column",
-          width: "100%",
-          gap: "8px",
-          padding: "8px",
-          border: `2px solid ${colors.bgAlt}`,
+      {/* ── Title input ── */}
+      <textarea
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Title…"
+        className="w-full bg-transparent border-none outline-none resize-none font-bold text-[clamp(24px,4vw,36px)] leading-[1.3] tracking-[-0.5px] mb-8 text-(--color-text) placeholder:text-(--color-text-muted)"
+        style={{ fontFamily: "var(--font-display)", minHeight: "1.3em" }}
+        rows={1}
+        onInput={(e) => {
+          e.target.style.height = "auto";
+          e.target.style.height = e.target.scrollHeight + "px";
         }}
-      >
-        <div
-          style={{
-            height: "50px",
-            width: "100%",
-          }}
-        >
-          <input
-            type="text"
-            placeholder="Add tags"
-            value={tagText}
-            onChange={(e) => setTagText(e.target.value)}
-            onKeyDown={handleTagsKeydown}
-            style={{
-              minWidth: "60px",
-              height: "100%",
-              width: "100%",
-              padding: "8px",
-              overflow: "hidden",
-              outline: "none",
-              resize: "none",
-              border: "none"
-            }}
-          />
-        </div>
+      />
 
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            width: "100%",
-            gap: "8px",
-            height: "fit-content",
-          }}
-        >
-          {tags.map((tag, index) => (
-            <div
-              key={index}
-              style={{
-                display: "flex",
-                gap: "16px",
-                padding: "4px 16px",
-                backgroundColor: "#f3f4f6",
-                borderRadius: "8px",
-              }}
+      {/* ── Block editor ── */}
+      <div className="flex flex-col gap-2 mb-8">
+        {blocks.map((bl) => (
+          <Block
+            key={bl.id}
+            block={bl}
+            onChange={(v) => updateBlock(bl.id, v)}
+            onDelete={() => deleteBlock(bl.id)}
+            onAdd={() => addAfter(bl.id)}
+            onTypeChange={(t) => changeType(bl.id, t)}
+          />
+        ))}
+      </div>
+
+      {/* ── Toolbar ── */}
+      <div className="flex gap-2 mb-8 flex-wrap">
+        {BLOCK_TYPES.map((bt) => (
+          <button
+            key={bt.type}
+            onClick={() =>
+              bt.type === "divider"
+                ? addDivider()
+                : setBlocks((b) => [...b, newBlock(bt.type)])
+            }
+            className="px-3 py-1.5 rounded-full border border-(--color-border) bg-(--color-bg-alt) text-[12px] text-(--color-text-secondary) cursor-pointer hover:bg-(--color-surface) transition-colors font-medium"
+          >
+            {bt.icon} {bt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Tags ── */}
+      <div className="p-4 bg-(--color-bg-alt) rounded-[14px] border border-(--color-border)">
+        <p className="text-[11px] font-bold text-(--color-text-muted) uppercase tracking-[0.06em] mb-3">
+          Tags
+        </p>
+        <div className="flex gap-2 flex-wrap mb-3">
+          {tags.map((t) => (
+            <span
+              key={t}
+              className="inline-flex items-center gap-1 px-2.5 py-1.25 rounded-full
+              bg-(--color-surface) border border-(--color-border) text-[12px] text-(--color-text-secondary)"
             >
-              <p style={{ fontWeight: 500 }}>{tag}</p>
-              <button style={{border: "none"}} onClick={() => removeTag(index)}>✕</button>
-            </div>
+              {t}
+              <button
+                onClick={() => setTags((v) => v.filter((x) => x !== t))}
+                className="ml-1 text-(--color-text-muted) bg-transparent border-none cursor-pointer text-[14px]">
+                ×
+              </button>
+            </span>
           ))}
         </div>
-
-        {tagText &&
-          tagsData.filter((tag) =>
-            tag.startsWith(tagText.toLowerCase())
-          )[0] && (
-            <div
-              style={{
-                position: "absolute",
-                zIndex: 10,
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-                padding: "8px",
-                marginBottom: "16px",
-                backgroundColor: "#ffffff",
-                border: "2px solid",
-                borderRadius: "8px",
-                bottom: "100%",
-                height: "fit-content",
-                width: "fit-content",
-              }}
-            >
-              {tagsData
-                .filter((tag) =>
-                  tag.startsWith(tagText.toLowerCase())
-                )
-                .slice(0, 3)
-                .map((tag, index) => (
-                  <div
-                    key={index}
-                    onClick={() => addTag(tag)}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      padding: "8px",
-                      textTransform: "capitalize",
-                      cursor: "pointer",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#f3f4f6")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = "transparent")
-                    }
-                  >
-                    {tag}
-                  </div>
-                ))}
-            </div>
-          )}
+        <div className="flex gap-2">
+          <input
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addTag();
+              }
+            }}
+            placeholder="Add a tag…"
+            className="flex-1 px-3 py-2 border border-(--color-border) rounded-full bg-(--color-surface) text-[13px] text-(--color-text) outline-none"
+          />
+          <Button variant="secondary" onClick={addTag}>
+            Add
+          </Button>
+        </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Title input */}
-      <div>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Title"
-          style={{
-            width: '100%',
-            border: 'none',
-            background: 'transparent',
-            fontFamily: fonts.display,
-            fontSize: fontSizes['2xl'],
-            fontWeight: 700,
-            color: colors.text,
-            marginBottom: 20,
-            padding: 0,
-          }}
-        />
+// Single editable block
+function Block({ block, onChange, onDelete, onAdd, onTypeChange }) {
+  const ref = useRef()
 
-        <Divider style={{ marginBottom: 24 }} />
+  const handleKey = e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onAdd() }
+    if (e.key === 'Backspace' && !block.content) { e.preventDefault(); onDelete() }
+  }
 
-        {/* Body textarea */}
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Start writing…"
-          style={{
-            width: '100%',
-            minHeight: 400,
-            border: 'none',
-            outline: 'none',
-            background: 'transparent',
-            fontFamily: fonts.sans,
-            fontSize: 15,
-            color: colors.text,
-            lineHeight: 1.82,
-            resize: 'none',
-          }}
+  const cls = {
+    text:  'text-[15px] leading-[1.8] text-[var(--color-text)]',
+    h1:    'text-[32px] font-bold leading-[1.3] text-[var(--color-text)]',
+    h2:    'text-[24px] font-bold leading-[1.35] text-[var(--color-text)]',
+    h3:    'text-[18px] font-semibold leading-[1.4] text-[var(--color-text)]',
+    quote: 'text-[17px] italic leading-[1.7] text-[var(--color-text-secondary)] border-l-4 border-[var(--color-accent)] pl-4',
+    code:  'font-mono text-[13px] leading-[1.7] bg-[var(--color-bg-alt)] px-4 py-2 rounded-[10px] text-[var(--color-text)]',
+    image: 'text-[13px] text-[var(--color-text-secondary)]',
+  }
+
+  if (block.type === 'divider')
+    return <div className="h-px bg-(--color-border) my-4 w-full" />
+
+  return (
+    <div className="relative group flex items-start gap-2">
+      
+      {/* Block type selector */}
+      <select value={block.type} onChange={e => onTypeChange(e.target.value)}
+        className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] border border-(--color-border) rounded bg-(--color-bg-alt) text-(--color-text-muted) cursor-pointer outline-none mt-0.75 shrink-0">
+        {BLOCK_TYPES.filter(b => b.type !== 'divider').map(b => (
+          <option key={b.type} value={b.type}>{b.icon}</option>
+        ))}
+      </select>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        {block.type === 'image' && block.content && (
+          <img src={block.content} alt="block" className="w-full rounded-[10px] mb-2 object-cover max-h-100 block" />
+        )}
+        <textarea ref={ref}
+          value={block.content}
+          onChange={e => onChange(e.target.value)}
+          onKeyDown={handleKey}
+          placeholder={{
+            text: 'Write something…', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3',
+            quote: 'A thought worth quoting…', code: '// code here', image: 'Paste image URL…',
+          }[block.type]}
+          rows={1}
+          className={`w-full bg-transparent border-none outline-none resize-none overflow-hidden placeholder:text-(--color-text-muted) ${cls[block.type] || cls.text}`}
+          style={{ minHeight: '1.6em' }}
+          onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
         />
       </div>
 
-      {/* Word count */}
-      {wordCount > 0 && (
-        <p
-          style={{
-            fontSize: fontSizes.sm,
-            color: colors.textMuted,
-            marginTop: 16,
-            textAlign: 'right',
-          }}
-        >
-          {wordCount} {wordCount === 1 ? 'word' : 'words'}
-        </p>
-      )}
+      {/* Delete button */}
+      <button onClick={onDelete}
+        className="opacity-0 group-hover:opacity-100 transition-opacity mt-1 w-6 h-6 flex items-center justify-center rounded text-(--color-text-muted) hover:text-red-500 bg-transparent border-none cursor-pointer text-[16px] shrink-0">
+        ×
+      </button>
     </div>
   )
 }
+
