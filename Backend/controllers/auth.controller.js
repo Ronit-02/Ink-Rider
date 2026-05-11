@@ -1,6 +1,8 @@
 const User = require('../schemas/user.schema');
-const { verifyPassword, hashPassword, generateToken, generateRandom } = require('../utils/helper');
+const { verifyPassword, hashPassword, generateToken, generateRandom, generateOTP, getOTPHTML } = require('../utils/helper');
 const { Avatars } = require('../assets/data');
+const { sendEmail } = require('../services/email.service.js');
+const OTP = require('../schemas/otp.schema');
 
 const login = async (req, res) => {
     
@@ -15,18 +17,18 @@ const login = async (req, res) => {
         if(user && user.googleId)
             return res.status(400).send({message: 'Account is Google logged-in'})
 
+        // check if email is verified
+        if(user && !user.verified)
+            return res.status(400).send({message: 'Please verify your email before logging in'});
+
+        // verifying password
         if(user && await verifyPassword(password, user.password)){
-            // if(user.verified){
                 
                 // Issuing a JWT
                 const payload = { email: user.email, id: user._id };
                 const token = generateToken(payload);
                 // console.log('Login successful, token generated:', token);
                 return res.status(200).send({token, username: user.username, email, role: user.role});
-            // }
-            // else{
-            //     return res.status(401).send({message: 'Email not verified'});
-            // }
         }
         else{
             return res.status(500).send({message: 'Invalid credentials'});
@@ -74,33 +76,28 @@ const signup = async (req, res) => {
         const payload = {email, id: user._id};
         const token = generateToken(payload);
 
+        // return res.status(200).send({token, username, email});
 
-        return res.status(200).send({token, username, email});
-    
-        // Sending Mail
-        // const transporter = nodemailer.createTransport({
-        //     service: 'gmail',
-        //     host: process.env.EMAIL_HOST,
-        //     port: process.env.EMAIL_PORT,
-        //     auth: {
-        //         user: process.env.EMAIL,
-        //         pass: process.env.EMAIL_PASSWORD
-        //     },
-        //     secure: false
-        // })
-    
-        // const mailOptions = {
-        //     to: email,
-        //     subject: "Email Verification",
-        //     html: `<b>Verify your Email</b><p>Please verify your email by clicking on this <a href="${process.env.BASE_URL}/api/auth/verify-email?token=${token}">Click here to verify</a></p>`
-        // }
-    
-        // transporter.sendMail(mailOptions, (err, info) => {
-        //     if(err)
-        //         return res.status(500).send({message: 'Error occured'})
-        //     else
-        //         return res.status(200).send({message: 'Verification Mail sent successfully'});
-        // })
+        // Generating OTP and saving in database
+        const otp = generateOTP();
+        const otpHash = await hashPassword(otp);
+        const otpHtml = getOTPHTML(otp);
+        await OTP.create({
+            email,
+            user: user._id,
+            otpHash,
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000) // OTP expires in 10 minutes
+        })
+
+        // Sending OTP to user's email
+        await sendEmail(
+            email,
+            'Ink Rider - Email Verification',
+            `Your OTP for email verification is ${otp}`,
+            otpHtml
+        )
+
+        return res.status(200).send({message: 'Signup successful, please verify your email'});
     }
     catch(err){
         console.log('Error in signup:', err);
@@ -108,7 +105,38 @@ const signup = async (req, res) => {
     }
 }
 
+const verifyEmail = async (req, res) =>{
+    try{
+        const { email, otp } = req.body;
+
+        const otpRecord = await OTP.findOne({email});
+        if(!otpRecord)
+            return res.status(400).send({message: 'OTP not found, request for new one'});
+
+        if(otpRecord.expiresAt < new Date())
+            return res.status(400).send({message: 'OTP expired, request for new one'});
+        
+        if(await verifyPassword(otp, otpRecord.otpHash)){
+
+            await User.findOneAndUpdate(
+                {email}, 
+                {verified: true}
+            );
+            await OTP.deleteMany({email}); // Deleting all OTPs of the user after successful verification
+            return res.status(200).send({message: 'Email verified successfully'});
+        }
+        else{
+            return res.status(400).send({message: 'Invalid OTP'});
+        }
+    } 
+    catch(err){
+        console.log('Error in email verification:', err);
+        return res.status(500).send({message: 'Cant verify email now, try again later'})
+    }        
+}
+
 module.exports = {
     login,
-    signup
+    signup,
+    verifyEmail
 }

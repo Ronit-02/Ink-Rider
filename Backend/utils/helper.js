@@ -28,10 +28,28 @@ const generateRandom = (start, end) => {
     return no;
 }
 
+const generateOTP = () => {
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    return otp.toString();
+}
+
+const getOTPHTML = (otp) => {
+    return `
+        <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;"></div>
+            <h2 style="color: #333;">Your Ink Rider OTP</h2>
+            <p style="font-size: 18px; color: #555;">Use the following One-Time Password (OTP) to verify your email address:</p>
+            <h3 style="color: #007bff;">${otp}</h3>
+            <p style="font-size: 14px; color: #777;">This will expire in 10 minutes.</p>
+        </div>
+    `;
+}
+
 module.exports = {
     verifyPassword,
     hashPassword,
     generateToken,
     verifyToken,
-    generateRandom
+    generateRandom,
+    generateOTP,
+    getOTPHTML
 }
