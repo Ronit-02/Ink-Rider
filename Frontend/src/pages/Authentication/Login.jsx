@@ -1,10 +1,11 @@
 /* Login / Signup page — full Tailwind, split layout */
-import { useState } from 'react'
+import { useRef, useState, forwardRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import { useMutation } from '@tanstack/react-query'
 import { loginUser }  from '@/api/auth/login'
 import { signupUser } from '@/api/auth/signup'
+import { resendOtp } from '@/api/auth/resendOtp'
 import { verifyEmail } from '@/api/auth/verifyEmail'
 import { loginStart, loginSuccess } from '@/redux/slices/authSlice'
 import { LogoIcon } from '@/components/icons'
@@ -16,21 +17,34 @@ export default function Login({ signUp = false }) {
   const [ isEmailVerified, setIsEmailVerified ] = useState(true)
   const [ creds, setCreds ] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [ otp, setOtp ] = useState(['', '', '', '', '', ''])
+  const boxInputRefs = useRef([])
   
   const AUTH_TABS = ['login', 'signup']
   const loginMutation  = useMutation({ 
     mutationFn: loginUser,  
     onSuccess: (data) => { 
+      console.log('On success data - ', data)
       dispatch(loginSuccess(data));
       // displayNotification('Login successful', 'success') 
       navigate('/') 
-    } 
+    },
+    onError: (error) => {
+      const message = error?.response?.data?.message;
+
+      if (message === 'Please verify your email before logging in') {
+        setIsEmailVerified(false);
+      }
+    }
   })
   const signupMutation = useMutation({ 
     mutationFn: signupUser, 
     onSuccess: () => { 
       // displayNotification('Signup successful', 'success')
       setIsEmailVerified(false)
+    },
+    onError: (error) => {
+      const message = error?.response?.data?.message;
+      // displayNotification(message || 'Signup failed', 'error')
     } 
   })
   const verifyEmailMutation = useMutation({
@@ -40,6 +54,12 @@ export default function Login({ signUp = false }) {
       dispatch(loginSuccess(data));
       // displayNotification('Email verified successfully', 'success')
       navigate('/onboarding') 
+    }
+  })
+  const resendOtpMutation = useMutation({
+    mutationFn: resendOtp,
+    onSuccess: () => {
+      // displayNotification('OTP resent successfully', 'success')
     }
   })
 
@@ -55,6 +75,11 @@ export default function Login({ signUp = false }) {
     verifyEmailMutation.mutate({ email: creds.email, otp: otp.join('') })
   }
 
+  const handleResendOtp = e => {
+    e.preventDefault()
+    resendOtpMutation.mutate({ email: creds.email })
+  }
+
   return (
     <div className="flex h-screen">
 
@@ -67,7 +92,13 @@ export default function Login({ signUp = false }) {
       {/* Right form */}
       {!isEmailVerified 
         ?
-        <VerifyEmail otp={otp} setOtp={setOtp} handleVerifyEmail={handleVerifyEmail} />
+        <VerifyEmail 
+          otp={otp} 
+          setOtp={setOtp} 
+          handleVerifyEmail={handleVerifyEmail} 
+          handleResendOtp={handleResendOtp}
+          boxInputRefs={boxInputRefs}
+        />
         :
         <div className="flex-1 flex items-center justify-center px-6 bg-white">
           <div className="w-full max-w-95 flex flex-col py-10 px-8 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
@@ -150,7 +181,26 @@ export default function Login({ signUp = false }) {
   )
 }
 
-function VerifyEmail({otp, setOtp, handleVerifyEmail}){
+function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResendOtp}) {
+
+  const handleChange = (value, index) => {
+    const newOtp = [...otp]
+    newOtp[index] = value.slice(-1) // Ensure only one digit
+    setOtp(newOtp)
+
+    // Move to next box if a digit is entered
+    if (value && index < otp.length - 1) {
+      boxInputRefs.current[index + 1]?.focus()
+    }
+  }
+
+  const handleKeyDown = (e, index) => {
+    // Move back to previous box on Backspace if current box is empty
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      boxInputRefs.current[index - 1]?.focus()
+    }
+  }
+
   return (
     <div className="flex-1 flex items-center justify-center px-6 bg-white">
       <div className="w-full max-w-95 flex flex-col gap-4 items-center py-10 px-8 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
@@ -171,37 +221,23 @@ function VerifyEmail({otp, setOtp, handleVerifyEmail}){
 
         {/* Boxes */}
         <div className="flex gap-3 mb-6">
-          <BoxField 
-            placeholder={otp[0]} 
-            value={otp[0]} 
-            onChange={e => setOtp([e.target.value, otp[1], otp[2], otp[3]])} 
-          />
-          <BoxField 
-            placeholder={otp[1]} 
-            value={otp[1]} 
-            onChange={e => setOtp([otp[0], e.target.value, otp[2], otp[3], otp[4], otp[5]])} 
-          />
-          <BoxField 
-            placeholder={otp[2]} 
-            value={otp[2]} 
-            onChange={e => setOtp([otp[0], otp[1], e.target.value, otp[3], otp[4], otp[5]])} 
-          />
-          <BoxField 
-            placeholder={otp[3]} 
-            value={otp[3]} 
-            onChange={e => setOtp([otp[0], otp[1], otp[2], e.target.value, otp[4], otp[5]])} 
-          />
-          <BoxField 
-            placeholder={otp[4]} 
-            value={otp[4]}
-            onChange={e => setOtp([otp[0], otp[1], otp[2], otp[3], e.target.value, otp[5]])} 
-          />
-          <BoxField 
-            placeholder={otp[5]} 
-            value={otp[5]} 
-            onChange={e => setOtp([otp[0], otp[1], otp[2], otp[3], otp[4], e.target.value])} 
-          />
+          {otp.map((digit, index) => (
+            <BoxField
+              key={index}
+              placeholder=" "
+              ref={(el) => boxInputRefs.current[index] = el}
+              value={digit}
+              onChange={el => handleChange(el.target.value, index)}
+              onKeyDown={el => handleKeyDown(el, index)}
+            />
+          ))}
         </div>
+
+        <button onClick={handleResendOtp}
+          className='text-[12px] text-(--color-text-muted) hover:text-(--color-accent) transition-colors mr-auto'
+        >
+          Resend OTP
+        </button>
 
           {/* Submit */}
         <button onClick={handleVerifyEmail}
@@ -224,14 +260,21 @@ function FormField({type, placeholder, value, onChange}){
   )
 }
 
-function BoxField({ placeholder, value, onChange }){
+const BoxField = forwardRef(function BoxField(
+  { placeholder, value, onChange, onKeyDown },
+  ref
+) {
   return (
     <input 
       type="text" 
+      maxLength="1"
+      inputMode="numeric"
       placeholder={placeholder}
       className="w-12 h-12 text-center border border-[#ddd] rounded-lg focus:border-(--color-accent) transition-colors"
       value={value}
       onChange={onChange}
+      ref={ref}
+      onKeyDown={onKeyDown}
     />
   )
-}
+});

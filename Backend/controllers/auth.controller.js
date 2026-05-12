@@ -17,9 +17,29 @@ const login = async (req, res) => {
         if(user && user.googleId)
             return res.status(400).send({message: 'Account is Google logged-in'})
 
-        // check if email is verified
-        if(user && !user.verified)
+        // check if email is verified, if not generate OTP and send to email for verification
+        if(user && !user.verified){
+            
+            // Generating OTP and saving in database
+            const otp = generateOTP();
+            const otpHash = await hashPassword(otp);
+            const otpHtml = getOTPHTML(otp);
+            await OTP.create({
+                email,
+                user: user._id,
+                otpHash,
+                expiresAt: new Date(Date.now() + 10 * 60 * 1000) // OTP expires in 10 minutes
+            })
+
+            // Sending OTP to user's email
+            await sendEmail(
+                email,
+                'Ink Rider - Email Verification',
+                `Your OTP for email verification is ${otp}`,
+                otpHtml
+            )
             return res.status(400).send({message: 'Please verify your email before logging in'});
+        }
 
         // verifying password
         if(user && await verifyPassword(password, user.password)){
@@ -75,8 +95,6 @@ const signup = async (req, res) => {
         // Issuing JWT
         const payload = {email, id: user._id};
         const token = generateToken(payload);
-
-        // return res.status(200).send({token, username, email});
 
         // Generating OTP and saving in database
         const otp = generateOTP();
@@ -135,8 +153,50 @@ const verifyEmail = async (req, res) =>{
     }        
 }
 
+const resendOtp = async (req, res) => {
+    try{
+        const { email } = req.body;
+
+        // Check if user exists and not verified
+        const user = await User.findOne({email});
+        if(!user)
+            return res.status(404).send({message: 'User not found'});
+        if(user.verified)
+            return res.status(400).send({message: 'Email already verified'});
+
+        // delete old OTPs
+        await OTP.deleteMany({email});
+
+        // Generating OTP and saving in database
+        const otp = generateOTP();
+        const otpHash = await hashPassword(otp);
+        const otpHtml = getOTPHTML(otp);
+        await OTP.create({
+            email,
+            user: user._id,
+            otpHash,
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000) // OTP expires in 10 minutes
+        })
+
+        // Sending OTP to user's email
+        await sendEmail(
+            email,
+            'Ink Rider - Email Verification',
+            `Your OTP for email verification is ${otp}`,
+            otpHtml
+        )
+
+        return res.status(200).send({message: 'OTP resent successfully'});
+    }
+    catch(err){
+        console.log('Error in resending OTP:', err);
+        return res.status(500).send({message: 'Cant resend OTP now, try again later'})
+    }
+}
+
 module.exports = {
     login,
     signup,
-    verifyEmail
+    verifyEmail,
+    resendOtp
 }
