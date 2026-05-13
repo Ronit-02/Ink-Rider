@@ -4,11 +4,14 @@ const multer = require('multer');
 
 const uploadPath = path.join(__dirname, "../public/temp");
 
+// creating temp directory if not exists
 if (!fs.existsSync(uploadPath)) {
   fs.mkdirSync(uploadPath, { recursive: true });
 }
 
+// multer configuration
 const storage = multer.diskStorage({
+    // defining destination and filename for uploaded files
     destination: function(req, file, cb){
         cb(null, uploadPath);
     },

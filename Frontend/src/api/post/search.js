@@ -1,11 +1,11 @@
-import axios from "axios"
+import api from "../api.js";
 
 // Get - send data in params
 const searchPost = async ({queryKey}) => {
     const [_, query, filter] = queryKey;
 
-    const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/post/search`,
+    const response = await api.get(
+        "/api/post/search",
         {
             params: query
         }

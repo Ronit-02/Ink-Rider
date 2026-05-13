@@ -1,9 +1,9 @@
-import axios from 'axios'
+import api from '../api.js';
 
 // Post - send data in body
 const signupUser = async (credentials) => {
-    const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/signup`,
+    const response = await api.post(
+        "/api/auth/signup",
         credentials,
     )
     return response.data;

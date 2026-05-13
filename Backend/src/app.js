@@ -1,6 +1,7 @@
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors')
+const cookieParser = require('cookie-parser');
 const config = require('../config/config.js')
 const routes = require("../routes/index.js");
 const { connectToMongoDB, checkMongoConnection } = require('../utils/mongoConnect.js')
@@ -17,6 +18,7 @@ app.use(cors({            // defining cors
 }))
 app.use(express.json());  // for express framework
 app.use(morgan('dev'));   // for automatic logging
+app.use(cookieParser());   // for parsing cookies
 app.use(express.urlencoded({ extended: true }));  // for parsing form-data
 // app.use(express.static('public')); // for serving frontend static files from public folder
 

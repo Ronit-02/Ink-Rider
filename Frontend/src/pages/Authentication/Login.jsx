@@ -13,40 +13,48 @@ import { LogoIcon } from '@/components/icons'
 export default function Login({ signUp = false }) {
   const navigate = useNavigate()
   const dispatch = useDispatch()
+  const AUTH_TABS = ['login', 'signup']
   const [ mode, setMode ] = useState(signUp ? 'signup' : 'login')
   const [ isEmailVerified, setIsEmailVerified ] = useState(true)
   const [ creds, setCreds ] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [ otp, setOtp ] = useState(['', '', '', '', '', ''])
   const boxInputRefs = useRef([])
   
-  const AUTH_TABS = ['login', 'signup']
+  
   const loginMutation  = useMutation({ 
     mutationFn: loginUser,  
+    
     onSuccess: (data) => { 
       console.log('On success data - ', data)
       dispatch(loginSuccess(data));
       // displayNotification('Login successful', 'success') 
       navigate('/') 
     },
+    
     onError: (error) => {
-      const message = error?.response?.data?.message;
+      const code = error?.response?.data?.code;
 
-      if (message === 'Please verify your email before logging in') {
+      if (code === 'EMAIL_NOT_VERIFIED') {
         setIsEmailVerified(false);
       }
     }
   })
+
   const signupMutation = useMutation({ 
     mutationFn: signupUser, 
+    
     onSuccess: () => { 
       // displayNotification('Signup successful', 'success')
       setIsEmailVerified(false)
     },
+    
     onError: (error) => {
+      const code = error?.response?.data?.code;
       const message = error?.response?.data?.message;
       // displayNotification(message || 'Signup failed', 'error')
     } 
   })
+
   const verifyEmailMutation = useMutation({
     mutationFn: verifyEmail,
     onSuccess: (data) => {
@@ -56,8 +64,10 @@ export default function Login({ signUp = false }) {
       navigate('/onboarding') 
     }
   })
+
   const resendOtpMutation = useMutation({
     mutationFn: resendOtp,
+    
     onSuccess: () => {
       // displayNotification('OTP resent successfully', 'success')
     }

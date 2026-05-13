@@ -1,17 +1,10 @@
-import axios from "axios"
-
-const token = localStorage.getItem('token');
+import api from "../api.js";
 
 // Post - send data in body
 const createPost = async (formData) => {
-    const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/post/`,
-        formData,
-        {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        },
+    const response = await api.post(
+        "/api/post/",
+        formData
     )
 
     return response.data;

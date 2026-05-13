@@ -12,8 +12,8 @@ const hashPassword = async (pass, salt=10) => {
     return hashedPass;
 }
 
-const generateToken = (payload) => {
-    const token = jwt.sign(payload, config.JWT_SECRET, {expiresIn: '1h'});
+const generateToken = (payload, time) => {
+    const token = jwt.sign(payload, config.JWT_SECRET, {expiresIn: time || '10m'});
     return token;
 }
 
