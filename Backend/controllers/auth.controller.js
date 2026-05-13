@@ -1,7 +1,10 @@
-const User = require('../schemas/user.schema');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { verifyPassword, hashPassword, generateToken, generateRandom, generateOTP, getOTPHTML } = require('../utils/helper');
 const { Avatars } = require('../assets/data');
 const { sendEmail } = require('../services/email.service.js');
+const User = require('../schemas/user.schema');
+const Session = require('../schemas/session.schema');
 const OTP = require('../schemas/otp.schema');
 
 const login = async (req, res) => {
@@ -49,10 +52,26 @@ const login = async (req, res) => {
         if(user && await verifyPassword(password, user.password)){
                 
                 // Issuing a JWT
-                const payload = { email, id: user._id };
-                const accessToken = generateToken(payload, '10m');
-                const refreshToken = generateToken(payload, '7d');
+                const sessionId = crypto.randomUUID();
+                const accessToken = generateToken(
+                    { email, id: user._id }, 
+                    '10m'
+                );
+                const refreshToken = generateToken(
+                    { email, id: user._id, sessionId }, 
+                    '7d'
+                );
 
+                // Saving session in database
+                const session = new Session({
+                    user: user._id,
+                    sessionId,
+                    ip: req.ip,
+                    userAgent: req.get('User-Agent')
+                })
+                await session.save();
+
+                // Setting refresh token in cookie
                 res.cookie('refreshToken', refreshToken, {
                     httpOnly: true,
                     secure: true,
@@ -71,11 +90,17 @@ const login = async (req, res) => {
                 });
         }
         else{
-            return res.status(500).json({message: 'Invalid credentials'});
+            return res.status(500).json({
+                success: false,
+                message: 'Invalid credentials'
+            });
         }
     }
     catch(err){
-        return res.status(500).json({message: err.toString()});
+        return res.status(500).json({
+            success: false, 
+            message: err.toString()
+        });
     }
 }
 
@@ -95,11 +120,17 @@ const signup = async (req, res) => {
         // Email and Username Validation
         if(await User.findOne({email: email})){
             console.log('Email linked with another account');
-            return res.status(500).json({message: 'Email linked with another account'});
+            return res.status(500).json({
+                success: false,
+                message: 'Email linked with another account'
+            });
         } 
         if(await User.findOne({username: username})){
             console.log('Username already in use');
-            return res.status(500).json({message: 'Username already in use'});
+            return res.status(500).json({
+                success: false,
+                message: 'Username already in use'
+            });
         }
 
         // Creating User
@@ -130,11 +161,17 @@ const signup = async (req, res) => {
             otpHtml
         )
 
-        return res.status(200).json({message: 'Signup successful, please verify your email'});
+        return res.status(200).json({
+            success: true,
+            message: 'Signup successful, please verify your email'
+        });
     }
     catch(err){
         console.log('Error in signup:', err);
-        return res.status(500).json({message: 'Cant Signup now, try again later'})
+        return res.status(500).json({
+            success: false,
+            message: 'Cant Signup now, try again later'
+        })
     }
 }
 
@@ -144,17 +181,25 @@ const verifyEmail = async (req, res) =>{
 
         const otpRecord = await OTP.findOne({email});
         if(!otpRecord)
-            return res.status(400).json({message: 'OTP not found, request for new one'});
+            return res.status(400).json({
+                success: false,
+                code: "OTP_NOT_FOUND",
+                message: 'OTP not found, request for new one'
+            });
 
         if(otpRecord.expiresAt < new Date())
-            return res.status(400).json({message: 'OTP expired, request for new one'});
+            return res.status(400).json({
+                success: false,
+                code: "OTP_EXPIRED",
+                message: 'OTP expired, request for new one'
+            });
         
         if(await verifyPassword(otp, otpRecord.otpHash)){
 
             // Marking user as verified
             await User.findOneAndUpdate(
-                {email}, 
-                {verified: true}
+                { email }, 
+                { verified: true }
             );
             
             // Deleting all OTPs of the user after successful verification
@@ -162,9 +207,24 @@ const verifyEmail = async (req, res) =>{
 
             // Issuing JWT
             const user = await User.findOne({email});
-            const payload = { email, id: user._id };
-            const accessToken = generateToken(payload, '10m');
-            const refreshToken = generateToken(payload, '7d');
+            const sessionId = crypto.randomUUID();
+            const accessToken = generateToken(
+                { email, id: user._id }, 
+                '10m'
+            );
+            const refreshToken = generateToken(
+                { email, id: user._id, sessionId },
+                '7d'
+            );
+            
+            // Saving session in database
+            const session = new Session({
+                user: user._id,
+                sessionId,
+                ip: req.ip,
+                userAgent: req.get('User-Agent')
+            })
+            await session.save();
 
             // Setting refresh token in httpOnly cookie
             res.cookie('refreshToken', refreshToken, {
@@ -192,8 +252,79 @@ const verifyEmail = async (req, res) =>{
     } 
     catch(err){
         console.log('Error in email verification:', err);
-        return res.status(500).json({message: 'Cant verify email now, try again later'})
+        return res.status(500).json({
+            success: false,
+            message: 'Cant verify email now, try again later'
+        })
     }        
+}
+
+const logout = async (req, res) => {
+    try{
+        const refreshToken = req.cookies.refreshToken;
+        if(!refreshToken){
+            return res.status(401).json({
+                message: 'Refresh token not found, login again'
+            });
+        }
+
+        // Find and Update session to revoke refresh token
+        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+        await Session.findOneAndUpdate(
+            { sessionId: decoded.sessionId, revoked: false },
+            { revoked: true }
+        );
+
+        // Clearing refresh token cookie
+        res.clearCookie('refreshToken');
+
+        return res.status(200).json({
+            success: true,
+            message: 'Logout successful'
+        });
+    }
+    catch(err){
+        console.log('Error in logout:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Cant logout now, try again later'
+        })
+    }
+}
+
+const logoutAll = async (req, res) => {
+    try{
+        const refreshToken = req.cookies.refreshToken;
+        if(!refreshToken){
+            return res.status(401).json({
+                message: 'Refresh token not found, login again'
+            });
+        }
+
+        // verifying refresh token to get user id
+        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+
+        // revoking all refresh tokens of the user
+        await Session.updateMany(
+            { user: decoded.id, revoked: false },
+            { revoked: true }
+        );
+
+        // clearing refresh token cookie
+        res.clearCookie('refreshToken');
+
+        return res.status(200).json({
+            success: true,
+            message: 'All sessions logged out successfully'
+        });
+    }
+    catch(err){
+        console.log('Error in logout all sessions:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Cant logout all sessions now, try again later'
+        })
+    }
 }
 
 const resendOtp = async (req, res) => {
@@ -229,30 +360,66 @@ const resendOtp = async (req, res) => {
             otpHtml
         )
 
-        return res.status(200).json({message: 'OTP resent successfully'});
+        return res.status(200).json({
+            success: true,
+            message: 'OTP resent successfully'
+        });
     }
     catch(err){
         console.log('Error in resending OTP:', err);
-        return res.status(500).json({message: 'Cant resend OTP now, try again later'})
+        return res.status(500).json({
+            success: false,
+            message: 'Cant resend OTP now, try again later'
+        })
     }
 }
 
 const refreshToken = async (req, res) => {
     try{
         const refreshToken = req.cookies.refreshToken;
-        if(!refreshToken)
-            return res.status(401).json({message: 'Refresh token not found, login again'});
-
-        // verifying refresh token
+        if(!refreshToken){
+            return res.status(401).json({
+                success: false,
+                message: 'Refresh token not found, login again'
+            });
+        }
+        
+        // verifying refresh token and finding if its revoked or not
         const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
-
+        const session = await Session.findOne({
+            sessionId: decoded.sessionId,
+            revoked: false
+        })
+        if(!session){
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid refresh token, login again'
+            });
+        }
+        
         // finding user
         const user = await User.findById(decoded.id);
+        if(!user){
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        // revoking old session id and saving new one in database
+        const newSessionId = crypto.randomUUID();
+        session.sessionId = newSessionId;
+        await session.save();
         
         // generating new tokens
-        const payload = { email: user.email, id: user._id };
-        const newAccessToken = generateToken(payload, '10m');
-        const newRefreshToken = generateToken(payload, '7d');
+        const newAccessToken = generateToken(
+            { email: user.email, id: user._id }, 
+            '10m'
+        );
+        const newRefreshToken = generateToken(
+            { email: user.email, id: user._id, sessionId: newSessionId }, 
+            '7d'
+        );
 
         // Setting new refresh token in httpOnly cookie
         res.cookie('refreshToken', newRefreshToken, {
@@ -273,7 +440,10 @@ const refreshToken = async (req, res) => {
     }
     catch(err){
         console.log('Error in refreshing token:', err);
-        return res.status(500).json({message: 'Cant refresh token now, try again later'})
+        return res.status(500).json({
+            success: false,
+            message: 'Cant refresh token now, try again later'
+        })
     }
 }
 
@@ -281,6 +451,8 @@ module.exports = {
     login,
     signup,
     verifyEmail,
+    logout,
+    logoutAll,
     resendOtp,
     refreshToken
 }

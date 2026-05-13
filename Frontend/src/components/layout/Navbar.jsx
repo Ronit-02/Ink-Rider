@@ -76,7 +76,7 @@ function SearchSuggestions({ query, filter, onSelect }) {
 
 // ─── Navbar component ──────────────────────────────────────────────────────────
 export default function Navbar() {
-  const { signIn, signUp, signOut, loggedIn } = useAuth()
+  const { signIn, signUp, signOut, signOutAllDevices, loggedIn } = useAuth()
   const { dark, toggle: toggleTheme }         = useTheme()
   const navigate   = useNavigate()
   const location   = useLocation()
@@ -206,6 +206,11 @@ export default function Navbar() {
                   className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] bg-transparent border-none
                     cursor-pointer text-left rounded-[6px] transition-colors hover:bg-[var(--color-bg-alt)]">
                   Sign Out
+                </button>
+                <button onClick={signOutAllDevices}
+                  className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] bg-transparent border-none
+                    cursor-pointer text-left rounded-[6px] transition-colors hover:bg-[var(--color-bg-alt)]">
+                  Sign Out all Devices
                 </button>
               </div>
             )}

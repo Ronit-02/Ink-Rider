@@ -20,7 +20,6 @@ export default function Login({ signUp = false }) {
   const [ otp, setOtp ] = useState(['', '', '', '', '', ''])
   const boxInputRefs = useRef([])
   
-  
   const loginMutation  = useMutation({ 
     mutationFn: loginUser,  
     
@@ -41,9 +40,9 @@ export default function Login({ signUp = false }) {
   })
 
   const signupMutation = useMutation({ 
-    mutationFn: signupUser, 
+    mutationFn: signupUser,
     
-    onSuccess: () => { 
+    onSuccess: () => {
       // displayNotification('Signup successful', 'success')
       setIsEmailVerified(false)
     },
@@ -57,11 +56,18 @@ export default function Login({ signUp = false }) {
 
   const verifyEmailMutation = useMutation({
     mutationFn: verifyEmail,
+    
     onSuccess: (data) => {
       setIsEmailVerified(true)
       dispatch(loginSuccess(data));
       // displayNotification('Email verified successfully', 'success')
       navigate('/onboarding') 
+    },
+
+    onError: (error) => {
+      const code = error?.response?.data?.code;
+      const message = error?.response?.data?.message;
+      // displayNotification(message || 'Verification failed', 'error')
     }
   })
 
