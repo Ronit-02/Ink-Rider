@@ -73,6 +73,8 @@ export default function WritePage() {
       
     } 
   }
+
+  // Block update and edit operations
   const updateBlock  = (id, val) => setBlocks(b => b.map(bl => bl.id === id ? { ...bl, content: val } : bl))
   const deleteBlock  = id => setBlocks(b => b.length > 1 ? b.filter(bl => bl.id !== id) : b)
   const addAfter     = id => setBlocks(b => { const i = b.findIndex(bl => bl.id === id); const nb = [...b]; nb.splice(i + 1, 0, newBlock()); return nb })

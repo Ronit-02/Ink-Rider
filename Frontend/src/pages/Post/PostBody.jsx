@@ -1,11 +1,11 @@
 const renderBlock = (item) => {
-  const commonProps = { key: item.id };
+  // const commonProps = { key: item.id };
 
   switch (item.type) {
     case 'text':
       return (
         <p
-          {...commonProps}
+          key={item.id}
           className="text-[15px] leading-[1.82] mb-5 text-(--color-text)"
           style={{ fontFamily: 'var(--font-sans)' }}
         >
@@ -16,7 +16,7 @@ const renderBlock = (item) => {
     case 'h1':
       return (
         <h1
-          {...commonProps}
+          key={item.id}
           className="text-[28px] font-bold leading-[1.3] mb-6 text-(--color-text)"
           style={{ fontFamily: 'var(--font-display)' }}
         >
@@ -27,7 +27,7 @@ const renderBlock = (item) => {
     case 'h2':
       return (
         <h2
-          {...commonProps}
+          key={item.id}
           className="text-[24px] font-semibold leading-[1.35] mb-5 text-(--color-text)"
           style={{ fontFamily: 'var(--font-display)' }}
         >
@@ -38,7 +38,7 @@ const renderBlock = (item) => {
     case 'h3':
       return (
         <h3
-          {...commonProps}
+          key={item.id}
           className="text-[20px] font-semibold leading-[1.4] mb-4 text-(--color-text)"
           style={{ fontFamily: 'var(--font-display)' }}
         >
@@ -49,7 +49,7 @@ const renderBlock = (item) => {
     case 'quote':
       return (
         <blockquote
-          {...commonProps}
+          key={item.id}
           className="border-l-4 pl-4 italic mb-5 text-(--color-text) opacity-80"
           style={{ fontFamily: 'var(--font-sans)' }}
         >
@@ -60,7 +60,7 @@ const renderBlock = (item) => {
     case 'code':
       return (
         <pre
-          {...commonProps}
+          key={item.id}
           className="bg-[#111] text-white p-4 rounded-lg mb-5 overflow-x-auto text-[13px]"
         >
           <code>{item.content}</code>
@@ -69,7 +69,7 @@ const renderBlock = (item) => {
 
     case 'image':
       return (
-        <div {...commonProps} className="mb-6">
+        <div key={item.id} className="mb-6">
           <img
             src={item.content}
             alt=""
@@ -81,7 +81,7 @@ const renderBlock = (item) => {
     case 'divider':
       return (
         <hr
-          {...commonProps}
+          key={item.id}
           className="my-8 border-t border-gray-300"
         />
       );

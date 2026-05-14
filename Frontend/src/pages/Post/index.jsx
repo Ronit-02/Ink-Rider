@@ -14,6 +14,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { selectToken } from '@/redux/selectors/authSelector'
 import { useSelector } from 'react-redux'
 import fetchPost from '@/api/post/fetchPost'
+import { LightLoader } from '@/components/layout/Loader'
 
 export default function PostPage() {
   const navigate  = useNavigate()
@@ -34,11 +35,11 @@ export default function PostPage() {
     retry: 1   // limited retries (faster reload)
   })
   // Fetching User
-  const { data: userData, isLoading: fetchUserIsLoading } = useQuery({
-    queryKey: ["user", token],
-    queryFn: fetchUser,
-    enabled: !!token
-  })
+  // const { data: userData, isLoading: fetchUserIsLoading } = useQuery({
+  //   queryKey: ["user", token],
+  //   queryFn: fetchUser,
+  //   enabled: !!token
+  // })
 
 
   // Retrieve Post Data
@@ -67,7 +68,7 @@ export default function PostPage() {
   const hasSidePanel = showSummary || readAloud
 
   // Conditional Rendering
-  if (fetchPostIsLoading) return <div>Loading...</div>;
+  if (fetchPostIsLoading) return <LightLoader />;
   if (isError) return <div>{error?.response?.data?.message || error.message}</div>;
 
   return (

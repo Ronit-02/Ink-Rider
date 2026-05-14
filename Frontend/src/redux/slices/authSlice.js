@@ -28,19 +28,12 @@ const authSlice = createSlice({
             state.email = action.payload.email;
             state.role = action.payload.role;
             state.isLoading = false;
-            // localStorage.setItem('user', action.payload.username);
-            // localStorage.setItem('email', action.payload.email);
-            // localStorage.setItem('role', action.payload.role);
         },
         logout(state){
             state.token = null;
             state.user = null;
             state.email = null;
             state.role = null;
-            // localStorage.removeItem('token');
-            // localStorage.removeItem('user');
-            // localStorage.removeItem('email');
-            // localStorage.removeItem('role');
         },
         setNewAccessToken(state, action){
             state.token = action.payload.token;

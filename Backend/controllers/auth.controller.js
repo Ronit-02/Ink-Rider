@@ -405,29 +405,40 @@ const refreshToken = async (req, res) => {
                 message: 'User not found'
             });
         }
-        
-        // revoking old session id and saving new one in database
-        const newSessionId = crypto.randomUUID();
-        session.sessionId = newSessionId;
-        await session.save();
-        
-        // generating new tokens
+
+        // generating new access token
         const newAccessToken = generateToken(
             { email: user.email, id: user._id }, 
             '10m'
         );
-        const newRefreshToken = generateToken(
-            { email: user.email, id: user._id, sessionId: newSessionId }, 
-            '7d'
-        );
 
-        // Setting new refresh token in httpOnly cookie
-        res.cookie('refreshToken', newRefreshToken, {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-        });
+        // checking if we should rotate refresh token or not
+        const currentTime = Math.floor(Date.now() / 1000);
+        const timeLeft = decoded.exp - currentTime;
+        const shouldRotate = timeLeft < (24 * 60 * 60); // Rotate if less than 1 day left
+
+        // rotating refresh token if needed
+        if(shouldRotate){
+
+            // revoking old session id and saving new one in database
+            const newSessionId = crypto.randomUUID();
+            session.sessionId = newSessionId;
+            await session.save();
+            
+            // generating new tokens
+            const newRefreshToken = generateToken(
+                { email: user.email, id: user._id, sessionId: newSessionId }, 
+                '7d'
+            );
+            
+            // Setting new refresh token in httpOnly cookie
+            res.cookie('refreshToken', newRefreshToken, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            });
+        }
 
         return res.status(200).json({
             success: true,
