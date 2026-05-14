@@ -11,13 +11,13 @@ const createPost = async (req, res) => {
 
         // Check for required files
         if(!req.file)
-            return res.status(400).send({message: 'Cover Image is required'})
+            return res.status(400).json({success: false, message: 'Cover Image is required'})
         if(!title)
-            return res.status(400).send({message: 'Title is required'})
+            return res.status(400).json({success: false, message: 'Title is required'})
         if(!body)
-            return res.status(400).send({message: 'Content is required'})
+            return res.status(400).json({success: false, message: 'Content is required'})
         if(!tags)
-            return res.status(400).send({message: 'Tags are required'})
+            return res.status(400).json({success: false, message: 'Tags are required'})
 
         // Picking user id from token
         const author = req.user.id;
@@ -41,11 +41,18 @@ const createPost = async (req, res) => {
         await post.save();
 
         console.log("post created");
-        return res.status(200).send({message: 'Post created successfully', postId: post._id});
+        return res.status(200).json({
+            success: true,
+            message: 'Post created successfully', 
+            postId: post._id
+        });
     }
     catch(error){
         console.log(error);
-        return res.status(500).send({message: 'Unable to create post'});
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Unable to create post'
+        });
     }
 };
 
@@ -63,17 +70,27 @@ const getPost = async (req, res) => {
             })
 
         if(!post){
-            return res.status(404).send({message: 'Post not found'});
+            return res.status(404).json({
+                success: false,
+                message: 'Post not found'
+            });
         }
 
         // update views
         post.metadata.views++;
         await post.save();
 
-        return res.status(200).json(post);
+        return res.status(200).json({
+            success: true,
+            message: "Post fetched successfully",
+            post,
+        });
     }
     catch(error) {
-        return res.status(500).send({message: 'Error Fetching Post'})
+        return res.status(500).json({
+            success: false,
+            message: 'Error Fetching Post'
+        })
     }
 }
 
@@ -111,14 +128,23 @@ const getAllPosts = async (req, res) => {
             .sort(sortOptions);
 
         if(!posts){
-            return res.status(403).send({message: 'No posts yet'});
+            return res.status(403).json({
+                success: false,
+                message: 'No posts yet'
+            });
         }
 
-        return res.status(200).json(posts);
+        return res.status(200).json({
+            success: true,
+            posts
+        });
     }
     catch (error) {
         console.log(error)
-        return res.status(500).send({message: 'Error Fetching Posts'})
+        return res.status(500).json({
+            success: false,
+            message: 'Error Fetching Posts'
+        })
     }
 };
 
@@ -132,7 +158,7 @@ const searchPost = async (req, res) => {
         // }, 2000));
         const {query} = req.query;
         if(!query)
-            return res.status(400).send({message: 'Enter query to search'});
+            return res.status(400).json({success: false, message: 'Enter query to search'});
 
         const posts = await Post.find({
             $text: { $search: query }
@@ -144,11 +170,18 @@ const searchPost = async (req, res) => {
         // .limit(5);
         
         console.log('posts')
-        return res.status(200).json(posts)
+        return res.status(200).json({
+            success: true,
+            message: "Posts fetched successfully",
+            posts
+        })
     }
     catch(error){
         console.log(error);
-        return res.status(500).send({message: 'Unable to fetch posts at this time'})
+        return res.status(500).json({
+            success: false,
+            message: 'Unable to fetch posts at this time'
+        })
     }
 }
 
@@ -159,7 +192,7 @@ const searchCategory = async (req, res) => {
         const tagsArray = query.split(',').map(tag => tag.trim());
 
         if(!query)
-            return res.status(400).send({message: 'Enter query to search'});
+            return res.status(400).json({success: false, message: 'Enter query to search'});
 
         const posts = await Post.find({
             tags: { $in: tagsArray }
@@ -170,11 +203,18 @@ const searchCategory = async (req, res) => {
         })
         // .limit(5);
 
-        return res.status(200).json(posts)
+        return res.status(200).json({
+            success: true,
+            message: "Posts fetched successfully",
+            posts
+        })
     }
     catch(error){
         console.log(error);
-        return res.status(500).send({message: 'Unable to fetch categories at this time'})
+        return res.status(500).json({
+            success: false,
+            message: 'Unable to fetch categories at this time'
+        })
     }
 }
 

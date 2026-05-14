@@ -276,21 +276,23 @@ function FormField({type, placeholder, value, onChange}){
   )
 }
 
-const BoxField = forwardRef(function BoxField(
-  { placeholder, value, onChange, onKeyDown },
-  ref
-) {
-  return (
-    <input 
-      type="text" 
-      maxLength="1"
-      inputMode="numeric"
-      placeholder={placeholder}
-      className="w-12 h-12 text-center border border-[#ddd] rounded-lg focus:border-(--color-accent) transition-colors"
-      value={value}
-      onChange={onChange}
-      ref={ref}
-      onKeyDown={onKeyDown}
-    />
-  )
-});
+const BoxField = forwardRef(
+  function BoxField(
+    { placeholder, value, onChange, onKeyDown },
+    ref
+  ) {
+    return (
+      <input 
+        type="text" 
+        maxLength="1"
+        inputMode="numeric"
+        placeholder={placeholder}
+        className="w-12 h-12 text-center border border-[#ddd] rounded-lg focus:border-(--color-accent) transition-colors"
+        value={value}
+        onChange={onChange}
+        ref={ref}
+        onKeyDown={onKeyDown}
+      />
+    )
+  }
+);

@@ -1,10 +1,11 @@
-/* WritePage — Notion-like block editor for composing articles */
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, forwardRef } from 'react'
+import SlashMenu from '@/components/ui/SlashMenu'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
+import { v4 as uuid } from 'uuid'
 import Button from '@/components/ui/Button'
 import createPost from '@/api/post/createPost'
-import Tag from '@/components/ui/Tag'
+// import Tag from '@/components/ui/Tag'
 
 // Block Input Types
 const BLOCK_TYPES = [
@@ -20,20 +21,33 @@ const BLOCK_TYPES = [
 
 // Adding a new block
 function newBlock(type = 'text') {
-  return { id: Date.now() + Math.random(), type, content: '' }
+  return { 
+    id: uuid(), 
+    type, 
+    content: '' 
+  }
 }
 
 // Write Page
 export default function WritePage() {
+
+  // State and refs
   const navigate  = useNavigate()
   const [title,   setTitle]   = useState('')
   const [blocks,  setBlocks]  = useState([newBlock()])
+  const [slashMenu, setSlashMenu] = useState({ 
+    open: false, 
+    blockId: null, 
+    position: { x: 0, y: 0 }, 
+    filter: '' 
+  })
   const [tags,    setTags]    = useState([])
   const [tagInput,setTagInput]= useState('')
   const [cover,   setCover]   = useState(null)
   const [coverURL, setCoverURL] = useState('')
   const [saved,   setSaved]   = useState(false)
   const fileRef   = useRef()
+  const blockRefs  = useRef({})
 
   // Creating Post
   const { mutate, isLoading } = useMutation({
@@ -43,7 +57,8 @@ export default function WritePage() {
       // displayNotification(response.message);
     },
     onError: (error) => {
-      // displayNotification(error?.response?.data?.message || error.message, 'error');
+      const message = error?.response?.data?.message || 'An error occurred while creating the post.';
+      // displayNotification(message, 'error');
     },
   });
   
@@ -74,18 +89,79 @@ export default function WritePage() {
     } 
   }
 
-  // Block update and edit operations
-  const updateBlock  = (id, val) => setBlocks(b => b.map(bl => bl.id === id ? { ...bl, content: val } : bl))
-  const deleteBlock  = id => setBlocks(b => b.length > 1 ? b.filter(bl => bl.id !== id) : b)
-  const addAfter     = id => setBlocks(b => { const i = b.findIndex(bl => bl.id === id); const nb = [...b]; nb.splice(i + 1, 0, newBlock()); return nb })
-  const changeType   = (id, type) => setBlocks(b => b.map(bl => bl.id === id ? { ...bl, type } : bl))
-  const addDivider   = () => setBlocks(b => [...b, newBlock('divider'), newBlock()])
-
+  // Tag operations
   const addTag = () => {
     const t = tagInput.trim().toLowerCase()
-    if (t && !tags.includes(t)) { setTags(v => [...v, t]); setTagInput('') }
+    if (t && !tags.includes(t)) { 
+      setTags(v => [...v, t]);
+      setTagInput('') 
+    }
   }
-  
+
+  // Block update and edit operations
+  const updateBlock = (id, val) => {
+    setBlocks(b => b.map(bl => bl.id === id ? { ...bl, content: val } : bl))
+  } 
+  const deleteBlock = (id) => {
+    // Prevent deleting the last block
+    if(blocks.length === 1) return;
+
+    const idx = blocks.findIndex(bl => bl.id === id);
+    const prevId = idx > 0 ? blocks[idx - 1].id : blocks[1].id;
+
+    setBlocks(b => b.length > 1 ? b.filter(bl => bl.id !== id) : b)
+
+    // Focus on the previous block after deletion
+    setTimeout(() => {
+      blockRefs.current[prevId]?.focus();
+    }, 0);
+  }
+  const addAfter = (id) => {
+    const newBlk = newBlock();
+
+    setBlocks(b => {
+      const i = b.findIndex(bl => bl.id === id); 
+      if(i === -1) return b;
+      
+      const nb = [...b];
+      nb.splice(i + 1, 0, newBlk);
+      
+      return nb;
+    })
+
+    // Focus on the new block after state update
+    setTimeout(() => {
+      blockRefs.current[newBlk.id]?.focus();
+    }, 0);
+  }
+  const changeType = (id, type) => {
+    setBlocks(b => b.map(bl => bl.id === id ? { ...bl, type } : bl))
+  }
+  const addDivider = () => {
+    setBlocks(b => [...b, newBlock('divider'), newBlock()])
+  }
+
+  // Slash menu handlers
+  const openSlashMenu = (blockId, position, filter = '') => {
+    setSlashMenu({ open: true, blockId, position, filter })
+  }
+  const closeSlashMenu = () => {
+    setSlashMenu({ open: false, blockId: null, position: { x: 0, y: 0 }, filter: '' })
+  }
+  const handleSlashSelect = (item) => {
+    console.log('Handle select')
+    if (slashMenu.blockId && item) {
+      changeType(slashMenu.blockId, item.type)
+      // Optionally clear the "/" and filter from content
+      setBlocks(b => b.map(bl => bl.id === slashMenu.blockId ? { ...bl, content: bl.content.replace(/^\/.*/, '') } : bl))
+    }
+    closeSlashMenu()
+    // Refocus block
+    setTimeout(() => {
+      blockRefs.current[slashMenu.blockId]?.focus()
+    }, 0)
+  }
+
   return (
     <div className="max-w-185 px-8 pt-10 pb-20">
       
@@ -150,7 +226,7 @@ export default function WritePage() {
       />
 
       {/* ── Block editor ── */}
-      <div className="flex flex-col gap-2 mb-8">
+      <div className="flex flex-col gap-2 mb-8 relative">
         {blocks.map((bl) => (
           <Block
             key={bl.id}
@@ -159,12 +235,27 @@ export default function WritePage() {
             onDelete={() => deleteBlock(bl.id)}
             onAdd={() => addAfter(bl.id)}
             onTypeChange={(t) => changeType(bl.id, t)}
+            openSlashMenu={openSlashMenu}
+            closeSlashMenu={closeSlashMenu}
+            ref={(el) => blockRefs.current[bl.id] = el}
+            isSlashMenuOpen={slashMenu.open}
           />
         ))}
+
+        {slashMenu.open && (
+          <SlashMenu
+            options={BLOCK_TYPES.filter(b => b.type !== 'divider' || blocks.length > 1)}
+            position={slashMenu.position}
+            filter={slashMenu.filter}
+            onSelect={handleSlashSelect}
+            onClose={closeSlashMenu}
+          />
+        )}
+
       </div>
 
       {/* ── Toolbar ── */}
-      <div className="flex gap-2 mb-8 flex-wrap">
+      {/* <div className="flex gap-2 mb-8 flex-wrap">
         {BLOCK_TYPES.map((bt) => (
           <button
             key={bt.type}
@@ -178,7 +269,7 @@ export default function WritePage() {
             {bt.icon} {bt.label}
           </button>
         ))}
-      </div>
+      </div> */}
 
       {/* ── Tags ── */}
       <div className="p-4 bg-(--color-bg-alt) rounded-[14px] border border-(--color-border)">
@@ -224,64 +315,109 @@ export default function WritePage() {
 }
 
 // Single editable block
-function Block({ block, onChange, onDelete, onAdd, onTypeChange }) {
-  const ref = useRef()
+const Block = forwardRef(
+  function Block(
+    { block, onChange, onDelete, onAdd, onTypeChange, openSlashMenu, closeSlashMenu, isSlashMenuOpen },
+    ref
+  ) {
 
-  const handleKey = e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onAdd() }
-    if (e.key === 'Backspace' && !block.content) { e.preventDefault(); onDelete() }
-  }
+    const cls = {
+      text:  'text-[15px] leading-[1.8] text-[var(--color-text)]',
+      h1:    'text-[32px] font-bold leading-[1.3] text-[var(--color-text)]',
+      h2:    'text-[24px] font-bold leading-[1.35] text-[var(--color-text)]',
+      h3:    'text-[18px] font-semibold leading-[1.4] text-[var(--color-text)]',
+      quote: 'text-[17px] italic leading-[1.7] text-[var(--color-text-secondary)] border-l-4 border-[var(--color-accent)] pl-4',
+      code:  'font-mono text-[13px] leading-[1.7] bg-[var(--color-bg-alt)] px-4 py-2 rounded-[10px] text-[var(--color-text)]',
+      image: 'text-[13px] text-[var(--color-text-secondary)]',
+    }
+ 
+    // Handle key events for slash menu
+   const handleKey = (e) => {
+      // Add new block on Enter
+      if (e.key === 'Enter' && !e.shiftKey && !isSlashMenuOpen) { 
+        console.log('Handle key')
+        e.preventDefault();
+        onAdd();
+      }
+      // Delete block on backspace if empty
+      if (e.key === 'Backspace' && !block.content) { 
+        e.preventDefault();
+        onDelete();
+      }
+      // Open Slash menu
+      if (e.key === '/' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        // Get caret position for menu
+        const textarea = e.target;
+        const { selectionStart } = textarea;
+        // Calculate position
+        const rect = textarea.getBoundingClientRect();
+        // Estimate caret position (imperfect, but works for single-line)
+        const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight) || 24;
+        const x = rect.left + 24;
+        const y = rect.top + (lineHeight * (textarea.value.slice(0, selectionStart).split('\n').length - 1)) + 32 + window.scrollY;
+        openSlashMenu(block.id, { x, y }, '');
+      }
+      // If menu is open, update filter
+      if (e.key.length === 1 && block.content.endsWith('/')) {
+        // Start filtering after /
+        openSlashMenu(block.id, { x: 200, y: 100 }, '');
+      }
+   }
 
-  const cls = {
-    text:  'text-[15px] leading-[1.8] text-[var(--color-text)]',
-    h1:    'text-[32px] font-bold leading-[1.3] text-[var(--color-text)]',
-    h2:    'text-[24px] font-bold leading-[1.35] text-[var(--color-text)]',
-    h3:    'text-[18px] font-semibold leading-[1.4] text-[var(--color-text)]',
-    quote: 'text-[17px] italic leading-[1.7] text-[var(--color-text-secondary)] border-l-4 border-[var(--color-accent)] pl-4',
-    code:  'font-mono text-[13px] leading-[1.7] bg-[var(--color-bg-alt)] px-4 py-2 rounded-[10px] text-[var(--color-text)]',
-    image: 'text-[13px] text-[var(--color-text-secondary)]',
-  }
+    // Handle input for filtering
+    const handleChange = (val) => {
+      onChange(val)
+      // If slash menu is open, update filter
+      const match = val.match(/\/(\w*)$/)
+      if (match) {
+        // Get caret position
+        const textarea = ref?.current
+        let x = 200, y = 100
+        if (textarea) {
+          const rect = textarea.getBoundingClientRect()
+          const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight) || 24
+          x = rect.left + 24
+          y = rect.top + (lineHeight * (textarea.value.slice(0, textarea.selectionStart).split('\n').length - 1)) + 32 + window.scrollY
+        }
+        openSlashMenu(block.id, { x, y }, match[1])
+      } else {
+        closeSlashMenu()
+      }
+    }
+ 
+   if (block.type === 'divider')
+     return <div className="h-px bg-(--color-border) my-4 w-full" />
 
-  if (block.type === 'divider')
-    return <div className="h-px bg-(--color-border) my-4 w-full" />
-
-  return (
-    <div className="relative group flex items-start gap-2">
-      
-      {/* Block type selector */}
-      <select value={block.type} onChange={e => onTypeChange(e.target.value)}
-        className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] border border-(--color-border) rounded bg-(--color-bg-alt) text-(--color-text-muted) cursor-pointer outline-none mt-0.75 shrink-0">
-        {BLOCK_TYPES.filter(b => b.type !== 'divider').map(b => (
-          <option key={b.type} value={b.type}>{b.icon}</option>
-        ))}
-      </select>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        {block.type === 'image' && block.content && (
-          <img src={block.content} alt="block" className="w-full rounded-[10px] mb-2 object-cover max-h-100 block" />
-        )}
-        <textarea ref={ref}
-          value={block.content}
-          onChange={e => onChange(e.target.value)}
-          onKeyDown={handleKey}
-          placeholder={{
-            text: 'Write something…', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3',
-            quote: 'A thought worth quoting…', code: '// code here', image: 'Paste image URL…',
-          }[block.type]}
-          rows={1}
-          className={`w-full bg-transparent border-none outline-none resize-none overflow-hidden placeholder:text-(--color-text-muted) ${cls[block.type] || cls.text}`}
-          style={{ minHeight: '1.6em' }}
-          onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-        />
+   return (
+      <div className="relative group flex items-start gap-2">
+        
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {block.type === 'image' && block.content && (
+            <img src={block.content} alt="block" className="w-full rounded-[10px] mb-2 object-cover max-h-100 block" />
+          )}
+          <textarea
+            ref={ref}
+            value={block.content}
+            onChange={e => handleChange(e.target.value)}
+            onKeyDown={handleKey}
+            placeholder={{
+              text: 'Write something…', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3',
+              quote: 'A thought worth quoting…', code: '// code here', image: 'Paste image URL…',
+            }[block.type]}
+            rows={1}
+            className={`w-full bg-transparent border-none outline-none resize-none overflow-hidden placeholder:text-(--color-text-muted) ${cls[block.type] || cls.text}`}
+            style={{ minHeight: '1.6em' }}
+            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+          />
+        </div>
+        
+        {/* Delete button */}
+        <button onClick={onDelete}
+          className="opacity-0 group-hover:opacity-100 transition-opacity mt-1 w-6 h-6 flex items-center justify-center rounded text-(--color-text-muted) hover:text-red-500 bg-transparent border-none cursor-pointer text-[16px] shrink-0">
+          ×
+        </button>
       </div>
-
-      {/* Delete button */}
-      <button onClick={onDelete}
-        className="opacity-0 group-hover:opacity-100 transition-opacity mt-1 w-6 h-6 flex items-center justify-center rounded text-(--color-text-muted) hover:text-red-500 bg-transparent border-none cursor-pointer text-[16px] shrink-0">
-        ×
-      </button>
-    </div>
-  )
-}
-
+    )
+ }
+);
