@@ -117,22 +117,26 @@ export default function WritePage() {
       blockRefs.current[prevId]?.focus();
     }, 0);
   }
-  const addAfter = (id) => {
+  // Add a block after the given block, optionally with initial content
+  const addAfter = (id, initialContent = '') => {
     const newBlk = newBlock();
+    if (initialContent) newBlk.content = initialContent;
 
     setBlocks(b => {
       const i = b.findIndex(bl => bl.id === id); 
       if(i === -1) return b;
-      
       const nb = [...b];
       nb.splice(i + 1, 0, newBlk);
-      
       return nb;
-    })
+    });
 
-    // Focus on the new block after state update
     setTimeout(() => {
       blockRefs.current[newBlk.id]?.focus();
+      if (initialContent) {
+        // Move cursor to start if content was split
+        const el = blockRefs.current[newBlk.id];
+        if (el && el.setSelectionRange) el.setSelectionRange(0, 0);
+      }
     }, 0);
   }
   const changeType = (id, type) => {
@@ -179,7 +183,41 @@ export default function WritePage() {
     closeSlashMenu()
     // Refocus block
     setTimeout(() => {
-      blockRefs.current[slashMenu.blockId]?.focus()
+      blockRefs.current[slashMenu.blockId]?.focus();
+    }, 0)
+  }
+
+  const moveFocus = (id, dir) => {
+    const i = blocks.findIndex(b => b.id === id);
+    const nextIdx = i + dir;
+    if (nextIdx >= 0 && nextIdx < blocks.length) {
+      const nextId = blocks[nextIdx].id;
+      setTimeout(() => {
+        blockRefs.current[nextId]?.focus();
+      }, 0);
+    }
+  }
+
+  const mergeToPrevBlock = (id, content) => {
+    const idx = blocks.findIndex(b => b.id === id);
+    if(idx == 0) return;
+
+    const blk = blocks[idx];
+    const prevBlk = blocks[idx - 1];
+    
+    if(blk.type == 'image' || prevBlk.type == 'image') return;
+    
+    setBlocks(prev => 
+      prev
+      .map((b, i) => (i == idx - 1) ? {...b, content: b.content + content} : b)
+      .filter(b => b.id != blk.id)
+    );
+    
+    setTimeout(() => {
+      const textarea = blockRefs.current[prevBlk.id];
+      const cursorPos = prevBlk.content.length;
+      textarea.focus();
+      textarea.setSelectionRange(cursorPos, cursorPos);
     }, 0)
   }
 
@@ -248,18 +286,20 @@ export default function WritePage() {
 
       {/* ── Block editor ── */}
       <div className="flex flex-col gap-2 mb-8 relative" ref={editorRef}>
-        {blocks.map((bl) => (
+        {blocks.map((bl, idx) => (
           <Block
             key={bl.id}
             block={bl}
             ref={(el) => blockRefs.current[bl.id] = el}
             onChange={(v) => updateBlock(bl.id, v)}
             onDelete={() => deleteBlock(bl.id)}
-            onAdd={() => addAfter(bl.id)}
+            onAdd={(content) => addAfter(bl.id, content)}
             onTypeChange={(t) => changeType(bl.id, t)}
             openSlashMenu={openSlashMenu}
             closeSlashMenu={closeSlashMenu}
             isSlashMenuOpen={slashMenu.open}
+            moveFocus={moveFocus}
+            mergeToPrevBlock={mergeToPrevBlock}
           />
         ))}
 
@@ -274,23 +314,6 @@ export default function WritePage() {
         )}
 
       </div>
-
-      {/* ── Toolbar ── */}
-      {/* <div className="flex gap-2 mb-8 flex-wrap">
-        {BLOCK_TYPES.map((bt) => (
-          <button
-            key={bt.type}
-            onClick={() =>
-              bt.type === "divider"
-                ? addDivider()
-                : setBlocks((b) => [...b, newBlock(bt.type)])
-            }
-            className="px-3 py-1.5 rounded-full border border-(--color-border) bg-(--color-bg-alt) text-[12px] text-(--color-text-secondary) cursor-pointer hover:bg-(--color-surface) transition-colors font-medium"
-          >
-            {bt.icon} {bt.label}
-          </button>
-        ))}
-      </div> */}
 
       {/* ── Tags ── */}
       <div className="p-4 bg-(--color-bg-alt) rounded-[14px] border border-(--color-border)">
@@ -338,7 +361,7 @@ export default function WritePage() {
 // Single editable block
 const Block = forwardRef(
   function Block(
-    { block, onChange, onDelete, onAdd, onTypeChange, openSlashMenu, closeSlashMenu, isSlashMenuOpen },
+    { block, onChange, onDelete, onAdd, onTypeChange, openSlashMenu, closeSlashMenu, isSlashMenuOpen, moveFocus, mergeToPrevBlock },
     ref
   ) {
 
@@ -351,17 +374,50 @@ const Block = forwardRef(
       code:  'font-mono text-[13px] leading-[1.7] bg-[var(--color-bg-alt)] px-4 py-2 rounded-[10px] text-[var(--color-text)]',
       image: 'text-[13px] text-[var(--color-text-secondary)]',
     }
- 
-    // Handle key events for slash menu
-   const handleKey = (e) => {
-      // Add new block on Enter
-      if (e.key === 'Enter' && !e.shiftKey && !isSlashMenuOpen) { 
-        console.log('Handle key')
+
+    // Handle key events for slash menu and navigation
+    const handleKey = (e) => {
+
+      const textarea = e.target;
+      const cursorPos = textarea.selectionStart;
+      const linesBeforeCursor = textarea.value.substring(0, cursorPos).split("\n");
+      const currentLine = linesBeforeCursor.length;
+      
+      // Arrow up navigation
+      if (e.key === "ArrowUp") {
+        // only move blocks if already at first line
+        if (currentLine === 1) {
+          e.preventDefault();
+          moveFocus(block.id, -1);
+        }
+        return;
+      }
+      // Arrow down navigation
+      if (e.key === "ArrowDown") {
+        const totalLines = textarea.value.split("\n").length;
+        // only move blocks if already at last line
+        if (currentLine === totalLines) {
+          e.preventDefault();
+          moveFocus(block.id, 1);
+        }
+        return;
+      }
+      // Add new block on Enter (split block if content after cursor)
+      if (e.key === 'Enter' && !e.shiftKey && !isSlashMenuOpen) {
         e.preventDefault();
-        onAdd();
+        const value = textarea.value;
+        const before = value.slice(0, cursorPos);
+        const after = value.slice(cursorPos);
+        onChange(before);
+        onAdd(after);
+      }
+      // Merge with previous block on Backspace at start
+      if (e.key === 'Backspace' && e.target.selectionStart === 0 && block.content.length > 0) {
+        e.preventDefault();
+        mergeToPrevBlock(block.id, block.content);
       }
       // Delete block on backspace if empty
-      if (e.key === 'Backspace' && !block.content) { 
+      if (e.key === 'Backspace' && !block.content) {
         e.preventDefault();
         onDelete();
       }
@@ -371,10 +427,9 @@ const Block = forwardRef(
       }
       // If menu is open, update filter
       if (e.key.length === 1 && block.content.endsWith('/')) {
-        // Start filtering after /
         openSlashMenu(block.id, '');
       }
-   }
+    }
 
     // Handle input for filtering
     const handleChange = (val) => {
@@ -387,13 +442,21 @@ const Block = forwardRef(
         closeSlashMenu()
       }
     }
- 
-   if (block.type === 'divider')
-     return <div className="h-px bg-(--color-border) my-4 w-full" />
 
-   return (
+    if (block.type === 'divider')
+      return <div className="h-px bg-(--color-border) my-4 w-full" />
+
+    return (
       <div className="relative group flex items-start gap-2">
-        
+        {/* Add block button (appears on hover) */}
+        <button
+          onClick={() => onAdd()}
+          className="opacity-0 group-hover:opacity-100 transition-opacity mt-1 w-6 h-6 flex items-center justify-center rounded text-(--color-text-muted) hover:text-green-500 bg-transparent border-none cursor-pointer text-[18px] shrink-0"
+          title="Add block after"
+          tabIndex={-1}
+        >
+          +
+        </button>
         {/* Content */}
         <div className="flex-1 min-w-0">
           {block.type === 'image' && block.content && (
@@ -414,7 +477,6 @@ const Block = forwardRef(
             onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
           />
         </div>
-        
         {/* Delete button */}
         <button onClick={onDelete}
           className="opacity-0 group-hover:opacity-100 transition-opacity mt-1 w-6 h-6 flex items-center justify-center rounded text-(--color-text-muted) hover:text-red-500 bg-transparent border-none cursor-pointer text-[16px] shrink-0">
@@ -422,5 +484,5 @@ const Block = forwardRef(
         </button>
       </div>
     )
- }
+  }
 );
