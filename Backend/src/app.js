@@ -32,7 +32,7 @@ app.use((req, res) => {
 
 // Connecting Database and checking connection status
 connectToMongoDB();
-app.get('/status', async (req, res) => {
+app.get('/database-status', async (req, res) => {
     const isDatabaseRunning = await checkMongoConnection()
     if(isDatabaseRunning)
         res.status(200).send({status: 'ok'});

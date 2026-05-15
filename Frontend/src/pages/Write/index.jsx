@@ -48,6 +48,7 @@ export default function WritePage() {
   const [saved,   setSaved]   = useState(false)
   const fileRef   = useRef()
   const blockRefs  = useRef({})
+  const editorRef = useRef()
 
   // Creating Post
   const { mutate, isLoading } = useMutation({
@@ -142,8 +143,28 @@ export default function WritePage() {
   }
 
   // Slash menu handlers
-  const openSlashMenu = (blockId, position, filter = '') => {
-    setSlashMenu({ open: true, blockId, position, filter })
+  const openSlashMenu = (blockId, filter = '') => {
+    const blockEl = blockRefs.current[blockId];
+    const editorEl = editorRef.current;
+
+    if (!blockEl || !editorEl) return;
+
+    const blockRect = blockEl.getBoundingClientRect();
+    const editorRect = editorEl.getBoundingClientRect();
+
+    const MENU_HEIGHT = 200;
+
+    // Position relative to editor
+    let y = blockRect.bottom - editorRect.top + 10
+
+    // Detect viewport overflow
+    const wouldOverflow = blockRect.bottom + MENU_HEIGHT > window.innerHeight;
+
+    // Open upward if needed
+    if (wouldOverflow)
+      y = blockRect.top - editorRect.top - MENU_HEIGHT - 10;
+
+    setSlashMenu({ open: true, blockId, position: { x: 0, y }, filter })
   }
   const closeSlashMenu = () => {
     setSlashMenu({ open: false, blockId: null, position: { x: 0, y: 0 }, filter: '' })
@@ -226,18 +247,18 @@ export default function WritePage() {
       />
 
       {/* ── Block editor ── */}
-      <div className="flex flex-col gap-2 mb-8 relative">
+      <div className="flex flex-col gap-2 mb-8 relative" ref={editorRef}>
         {blocks.map((bl) => (
           <Block
             key={bl.id}
             block={bl}
+            ref={(el) => blockRefs.current[bl.id] = el}
             onChange={(v) => updateBlock(bl.id, v)}
             onDelete={() => deleteBlock(bl.id)}
             onAdd={() => addAfter(bl.id)}
             onTypeChange={(t) => changeType(bl.id, t)}
             openSlashMenu={openSlashMenu}
             closeSlashMenu={closeSlashMenu}
-            ref={(el) => blockRefs.current[bl.id] = el}
             isSlashMenuOpen={slashMenu.open}
           />
         ))}
@@ -346,21 +367,12 @@ const Block = forwardRef(
       }
       // Open Slash menu
       if (e.key === '/' && !e.ctrlKey && !e.altKey && !e.metaKey) {
-        // Get caret position for menu
-        const textarea = e.target;
-        const { selectionStart } = textarea;
-        // Calculate position
-        const rect = textarea.getBoundingClientRect();
-        // Estimate caret position (imperfect, but works for single-line)
-        const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight) || 24;
-        const x = rect.left + 24;
-        const y = rect.top + (lineHeight * (textarea.value.slice(0, selectionStart).split('\n').length - 1)) + 32 + window.scrollY;
-        openSlashMenu(block.id, { x, y }, '');
+        openSlashMenu(block.id, '');
       }
       // If menu is open, update filter
       if (e.key.length === 1 && block.content.endsWith('/')) {
         // Start filtering after /
-        openSlashMenu(block.id, { x: 200, y: 100 }, '');
+        openSlashMenu(block.id, '');
       }
    }
 
@@ -370,16 +382,7 @@ const Block = forwardRef(
       // If slash menu is open, update filter
       const match = val.match(/\/(\w*)$/)
       if (match) {
-        // Get caret position
-        const textarea = ref?.current
-        let x = 200, y = 100
-        if (textarea) {
-          const rect = textarea.getBoundingClientRect()
-          const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight) || 24
-          x = rect.left + 24
-          y = rect.top + (lineHeight * (textarea.value.slice(0, textarea.selectionStart).split('\n').length - 1)) + 32 + window.scrollY
-        }
-        openSlashMenu(block.id, { x, y }, match[1])
+        openSlashMenu(block.id, match[1])
       } else {
         closeSlashMenu()
       }
