@@ -1,4 +1,4 @@
-import { useState, useRef, forwardRef } from 'react'
+import { useState, useRef, forwardRef, useEffect } from 'react'
 import SlashMenu from '@/components/ui/SlashMenu'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
@@ -46,6 +46,7 @@ export default function WritePage() {
   const [cover,   setCover]   = useState(null)
   const [coverURL, setCoverURL] = useState('')
   const [saved,   setSaved]   = useState(false)
+  const [menuPosition, setMenuPosition] = useState(null);
   const fileRef   = useRef()
   const blockRefs  = useRef({})
   const editorRef = useRef()
@@ -221,8 +222,66 @@ export default function WritePage() {
     }, 0)
   }
 
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      setMenuPosition(null);
+      return;
+    }
+
+    const selectedText = selection.toString().trim();
+    console.log('Selected text - ', selectedText)
+    if (!selectedText) {
+      setMenuPosition(null);
+      return;
+    }
+
+    const editor = editorRef.current;
+    if(!editor) return;
+
+    const isInsideEditor = editor.contains(selection.anchorNode) && editor.contains(selection.focusNode);
+    if(!isInsideEditor){
+      setMenuPosition(null);
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    setMenuPosition({ 
+      x: rect.left + rect.width / 2 + window.scrollX, 
+      y: rect.top + window.scrollY - 40 
+    });
+  };
+
+  const applyFormatting = (format) => {
+    const selection = window.getSelection();
+    if(!selection || selection.rangeCount === 0) return;
+
+    if (format === 'link') {
+      const url = window.prompt('Enter URL');
+      if (url) {
+        // document.execCommand('createLink', false, url);
+      }
+    } else {
+      // document.execCommand(format, false, null);
+    }
+    setMenuPosition(null);
+  };
+
+  // useEffect(() => {
+  //   document.addEventListener('mouseup', handleTextSelection);
+  //   document.addEventListener('keyup', handleTextSelection);
+  //   return () => {
+  //     document.removeEventListener('mouseup', handleTextSelection);
+  //     document.removeEventListener('keyup', handleTextSelection);
+  //   };
+  // }, []);
+
   return (
     <div className="max-w-185 px-8 pt-10 pb-20">
+
+      {/* <HoveringMenu position={menuPosition} onFormat={applyFormatting} /> */}
       
       {/* ── Top bar ── */}
       <div className="flex items-center justify-between mb-8 gap-4">
@@ -486,3 +545,19 @@ const Block = forwardRef(
     )
   }
 );
+
+const HoveringMenu = ({ position, onFormat }) => {
+  if (!position) return null;
+
+  return (
+    <div
+      className="absolute bg-white shadow-md rounded-md p-2 flex gap-2 z-50"
+      style={{ top: position.y, left: position.x }}
+    >
+      <button onMouseDown={(e) => e.preventDefault()} onClick={() => onFormat('bold')} className="hover:bg-gray-200 p-1 rounded font-bold">B</button>
+      <button onMouseDown={(e) => e.preventDefault()} onClick={() => onFormat('italic')} className="hover:bg-gray-200 p-1 rounded italic">I</button>
+      <button onMouseDown={(e) => e.preventDefault()} onClick={() => onFormat('underline')} className="hover:bg-gray-200 p-1 rounded underline">U</button>
+      <button onMouseDown={(e) => e.preventDefault()} onClick={() => onFormat('link')} className="hover:bg-gray-200 p-1 rounded">🔗</button>
+    </div>
+  );
+}
