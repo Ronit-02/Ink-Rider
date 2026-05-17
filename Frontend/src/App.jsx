@@ -1,23 +1,22 @@
-/* App — route definitions */
 import { Routes, Route, Navigate } from 'react-router-dom'
-import AppLayout from '@/components/layout/AppLayout'
-
-import LoginPage         from '@/pages/Authentication/Login'
-import HomePage          from '@/pages/Home'
-import ExplorePage       from '@/pages/Explore'
-import TrendingTab       from '@/pages/Explore/TrendingTab'
-import QuestionsTab      from '@/pages/Explore/QuestionsTab'
-import CompetitionsTab   from '@/pages/Explore/CompetitionsTab'
-import CompetitionDetail from '@/pages/Explore/CompetitionDetail'
-import SearchPage        from '@/pages/Search'
-import PostPage          from '@/pages/Post'
-import AuthorPage        from '@/pages/Author'
-import OnboardingPage    from '@/pages/Onboarding'
-import WritePage         from '@/pages/Write'
-import CollectionsPage   from '@/pages/Collections'
-import CollectionDetail  from '@/pages/Collections/CollectionDetail'
-import ProfilePage       from '@/pages/Profile'
-import PublicRoute       from './routes/PublicRoute'
+import AppLayout         from '@/shared/components/layout/AppLayout'
+import LoginPage         from '@/features/auth/pages/Login'
+import HomePage          from '@/features/discovery/pages/Home'
+import ExplorePage       from '@/features/discovery/pages/Explore'
+import TrendingTab       from '@/features/discovery/pages/Explore/TrendingTab'
+import QuestionsTab      from '@/features/discovery/pages/Explore/QuestionsTab'
+import CompetitionsTab   from '@/features/discovery/pages/Explore/CompetitionsTab'
+import CompetitionDetail from '@/features/discovery/pages/Explore/CompetitionDetail'
+import SearchPage        from '@/features/discovery/pages/Search'
+import PostPage          from '@/features/posts/pages'
+import AuthorPage        from '@/features/user/pages/Author'
+import OnboardingPage    from '@/features/onboarding/pages'
+import WritePage         from '@/features/editor/pages'
+import CollectionsPage   from '@/features/collection/pages'
+import CollectionDetail  from '@/features/collection/pages'
+import ProfilePage       from '@/features/user/pages/Profile'
+import PublicRoute       from '@/app/routes/PublicRoute'
+import PrivateRoute      from '@/app/routes/PrivateRoute'
 
 export default function App() {
   return (
@@ -38,19 +37,21 @@ export default function App() {
           <Route path="questions"    element={<QuestionsTab />} />
           <Route path="competitions" element={<CompetitionsTab />} />
         </Route>
+
         {/* Competition detail — standalone page within AppLayout */}
         <Route path="/explore/competitions/:id" element={<CompetitionDetail />} />
 
         <Route path="/search"          element={<SearchPage />} />
         <Route path="/post/:id"        element={<PostPage />} />
         <Route path="/author"          element={<AuthorPage />} />
-        <Route path="/write"           element={<WritePage />} />
         <Route path="/collections"     element={<CollectionsPage />} />
         <Route path="/collections/:id" element={<CollectionDetail />} />
-        <Route path="/profile"         element={<ProfilePage />} />
+
+        {/* ── Private routes ── */}
+        <Route path="/write"           element={<PrivateRoute><WritePage /></PrivateRoute>} />
+        <Route path="/profile"         element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
 
         {/* Redirects */}
-        <Route path="/artist"  element={<Navigate to="/author" replace />} />
         <Route path="*"        element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

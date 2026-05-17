@@ -1,0 +1,14 @@
+import api from "@/app/api";
+
+const fetchPost = async ({queryKey}) => {
+
+    const [_, postId] = queryKey;
+
+    const response = await api.get(
+        `/api/post/${postId}`,
+    )
+
+    return response.data.post;
+}
+
+export default fetchPost;
