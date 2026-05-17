@@ -8,7 +8,7 @@ const fetchPost = async ({queryKey}) => {
         `/api/post/${postId}`,
     )
 
-    return response.data;
+    return response.data.post;
 }
 
 export default fetchPost;

@@ -61,7 +61,7 @@ const renderBlock = (item) => {
       return (
         <pre
           key={item.id}
-          className="bg-[#111] text-white p-4 rounded-lg mb-5 overflow-x-auto text-[13px]"
+          className="bg-[#f4f4f4] p-4 rounded-lg mb-5 overflow-x-auto text-[13px]"
         >
           <code>{item.content}</code>
         </pre>

@@ -34,7 +34,10 @@ export default function WritePage() {
   // State and refs
   const navigate  = useNavigate()
   const [title,   setTitle]   = useState('')
-  const [blocks,  setBlocks]  = useState([newBlock()])
+  const [blocks, setBlocks] = useState(() => {
+    const saved = localStorage.getItem("unsaved content")
+    return saved ? JSON.parse(saved) : [newBlock()]
+  })
   const [slashMenu, setSlashMenu] = useState({ 
     open: false, 
     blockId: null, 
@@ -55,6 +58,7 @@ export default function WritePage() {
   const { mutate, isLoading } = useMutation({
     mutationFn: createPost,
     onSuccess: (response) => {
+      localStorage.removeItem("unsaved content");
       navigate(`/post/${response.postId}`);
       // displayNotification(response.message);
     },
@@ -105,17 +109,24 @@ export default function WritePage() {
     setBlocks(b => b.map(bl => bl.id === id ? { ...bl, content: val } : bl))
   } 
   const deleteBlock = (id) => {
-    // Prevent deleting the last block
-    if(blocks.length === 1) return;
+    let focusBlkId = null;
+    
+    // If last, Prevent deleting the last block
+    if(blocks.length === 1) {
+      const newBlk = newBlock();
+      setBlocks([newBlk]);
+      focusBlkId = newBlk.id
+    }
+    // Otherwise, Delete current block
+    else{
+      const idx = blocks.findIndex(bl => bl.id === id);
+      focusBlkId = idx > 0 ? blocks[idx - 1].id : blocks[1].id;
+      setBlocks(b => b.length > 1 ? b.filter(bl => bl.id !== id) : b)
+    }
 
-    const idx = blocks.findIndex(bl => bl.id === id);
-    const prevId = idx > 0 ? blocks[idx - 1].id : blocks[1].id;
-
-    setBlocks(b => b.length > 1 ? b.filter(bl => bl.id !== id) : b)
-
-    // Focus on the previous block after deletion
+    // Focus on the new block after deletion
     setTimeout(() => {
-      blockRefs.current[prevId]?.focus();
+      placeCaretAtEnd(blockRefs.current[focusBlkId]);
     }, 0);
   }
   // Add a block after the given block, optionally with initial content
@@ -175,7 +186,6 @@ export default function WritePage() {
     setSlashMenu({ open: false, blockId: null, position: { x: 0, y: 0 }, filter: '' })
   }
   const handleSlashSelect = (item) => {
-    console.log('Handle select')
     if (slashMenu.blockId && item) {
       changeType(slashMenu.blockId, item.type)
       // Optionally clear the "/" and filter from content
@@ -269,6 +279,57 @@ export default function WritePage() {
     setMenuPosition(null);
   };
 
+  const placeCaretAtEnd = (el) => {
+    if (!el) return;
+    // Use requestAnimationFrame to ensure DOM is updated
+    requestAnimationFrame(() => {
+      // For textarea or input
+      if (el.setSelectionRange && typeof el.value === 'string') {
+        el.focus();
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      } else {
+        // For contenteditable
+        el.focus();
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    });
+  };
+
+  // Copy content into blocks
+  const copyPasteContent = async (id) => {
+    try {
+      const content = await navigator.clipboard.readText();
+      const contentArray = content
+        .split('\n')
+        .map(line => line.replace(/\n/g, '').trimEnd())
+        .filter(line => line !== '');
+      if (contentArray.length === 0) return;
+
+      setBlocks(prev => {
+        const idx = prev.findIndex(bl => bl.id === id);
+        if (idx === -1) return prev;
+        // Replace current block with first line, insert rest after
+        const updated = [...prev];
+        updated[idx] = { ...updated[idx], content: contentArray[0] };
+        const newBlocks = contentArray.slice(1).map(c => ({
+          id: uuid(),
+          type: "text",
+          content: c
+        }));
+        updated.splice(idx + 1, 0, ...newBlocks);
+        return updated;
+      });
+    } catch (err) {
+      console.error("Failed to read clipboard - ", err);
+    }
+  }
+
   // useEffect(() => {
   //   document.addEventListener('mouseup', handleTextSelection);
   //   document.addEventListener('keyup', handleTextSelection);
@@ -277,6 +338,13 @@ export default function WritePage() {
   //     document.removeEventListener('keyup', handleTextSelection);
   //   };
   // }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "unsaved content",
+      JSON.stringify(blocks)
+    )
+  }, [blocks])
 
   return (
     <div className="max-w-185 px-8 pt-10 pb-20">
@@ -359,6 +427,7 @@ export default function WritePage() {
             isSlashMenuOpen={slashMenu.open}
             moveFocus={moveFocus}
             mergeToPrevBlock={mergeToPrevBlock}
+            copyPasteContent={copyPasteContent}
           />
         ))}
 
@@ -420,18 +489,18 @@ export default function WritePage() {
 // Single editable block
 const Block = forwardRef(
   function Block(
-    { block, onChange, onDelete, onAdd, onTypeChange, openSlashMenu, closeSlashMenu, isSlashMenuOpen, moveFocus, mergeToPrevBlock },
+    { block, onChange, onDelete, onAdd, onTypeChange, openSlashMenu, closeSlashMenu, isSlashMenuOpen, moveFocus, mergeToPrevBlock, copyPasteContent },
     ref
   ) {
 
     const cls = {
-      text:  'text-[15px] leading-[1.8] text-[var(--color-text)]',
-      h1:    'text-[32px] font-bold leading-[1.3] text-[var(--color-text)]',
-      h2:    'text-[24px] font-bold leading-[1.35] text-[var(--color-text)]',
-      h3:    'text-[18px] font-semibold leading-[1.4] text-[var(--color-text)]',
-      quote: 'text-[17px] italic leading-[1.7] text-[var(--color-text-secondary)] border-l-4 border-[var(--color-accent)] pl-4',
-      code:  'font-mono text-[13px] leading-[1.7] bg-[var(--color-bg-alt)] px-4 py-2 rounded-[10px] text-[var(--color-text)]',
-      image: 'text-[13px] text-[var(--color-text-secondary)]',
+      text:  'text-[15px] bg-transparent border-none leading-[1.8] text-[var(--color-text)]',
+      h1:    'text-[32px] bg-transparent border-none font-bold leading-[1.3] text-[var(--color-text)]',
+      h2:    'text-[24px] bg-transparent border-none font-bold leading-[1.35] text-[var(--color-text)]',
+      h3:    'text-[18px] bg-transparent border-none font-semibold leading-[1.4] text-[var(--color-text)]',
+      quote: 'text-[17px] bg-transparent italic leading-[1.7] border-l-4 text-[var(--color-text-secondary)] border-[#111] pl-4',
+      code:  'font-mono bg-[#f4f4f4] border-none text-[13px] leading-[1.7] p-4 rounded-[10px] rounded-lg',
+      image: 'text-[13px] bg-transparent border-none text-[var(--color-text-secondary)]',
     }
 
     // Handle key events for slash menu and navigation
@@ -461,6 +530,11 @@ const Block = forwardRef(
         }
         return;
       }
+      // Pasting content into editor into separate blocks
+      if (e.key === 'v' && e.ctrlKey) {
+        e.preventDefault();
+        copyPasteContent(block.id);
+      }
       // Add new block on Enter (split block if content after cursor)
       if (e.key === 'Enter' && !e.shiftKey && !isSlashMenuOpen) {
         e.preventDefault();
@@ -471,7 +545,7 @@ const Block = forwardRef(
         onAdd(after);
       }
       // Merge with previous block on Backspace at start
-      if (e.key === 'Backspace' && e.target.selectionStart === 0 && block.content.length > 0) {
+      if (e.key === 'Backspace' && e.target.selectionStart === 0 && e.target.selectionEnd === 0 && block.content.length > 0) {
         e.preventDefault();
         mergeToPrevBlock(block.id, block.content);
       }
@@ -502,9 +576,6 @@ const Block = forwardRef(
       }
     }
 
-    if (block.type === 'divider')
-      return <div className="h-px bg-(--color-border) my-4 w-full" />
-
     return (
       <div className="relative group flex items-start gap-2">
         {/* Add block button (appears on hover) */}
@@ -516,26 +587,34 @@ const Block = forwardRef(
         >
           +
         </button>
+
         {/* Content */}
-        <div className="flex-1 min-w-0">
-          {block.type === 'image' && block.content && (
-            <img src={block.content} alt="block" className="w-full rounded-[10px] mb-2 object-cover max-h-100 block" />
-          )}
-          <textarea
-            ref={ref}
-            value={block.content}
-            onChange={e => handleChange(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder={{
-              text: 'Write something…', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3',
-              quote: 'A thought worth quoting…', code: '// code here', image: 'Paste image URL…',
-            }[block.type]}
-            rows={1}
-            className={`w-full bg-transparent border-none outline-none resize-none overflow-hidden placeholder:text-(--color-text-muted) ${cls[block.type] || cls.text}`}
-            style={{ minHeight: '1.6em' }}
-            onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-          />
-        </div>
+        {
+          block.type === "divider"
+        ? 
+          <div className="h-px bg-(--color-border) my-4 w-full" />
+        :
+          <div className="flex-1 min-w-0">
+            {block.type === 'image' && block.content && (
+              <img src={block.content} alt="block" className="w-full rounded-[10px] mb-2 object-cover max-h-100 block" />
+            )}
+            <textarea
+              ref={ref}
+              value={block.content}
+              onChange={e => handleChange(e.target.value)}
+              onKeyDown={handleKey}
+              placeholder={{
+                text: 'Write something…', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3',
+                quote: 'A thought worth quoting…', code: '// code here', image: 'Paste image URL…',
+              }[block.type]}
+              rows={1}
+              className={`w-full outline-none resize-none overflow-hidden placeholder:text-(--color-text-muted) ${cls[block.type] || cls.text}`}
+              style={{ minHeight: '1.6em' }}
+              onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+            />
+          </div>
+        }
+        
         {/* Delete button */}
         <button onClick={onDelete}
           className="opacity-0 group-hover:opacity-100 transition-opacity mt-1 w-6 h-6 flex items-center justify-center rounded text-(--color-text-muted) hover:text-red-500 bg-transparent border-none cursor-pointer text-[16px] shrink-0">

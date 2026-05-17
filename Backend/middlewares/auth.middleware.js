@@ -6,7 +6,10 @@ const validateToken = async (req, res, next) => {
         const authHeader = req.headers.authorization;
         
         if (!authHeader?.startsWith('Bearer ')) {
-            return res.status(401).send({ message: 'No token is provided' });
+            return res.status(401).json({ 
+                success: false,
+                message: 'No token is provided' 
+            });
         }
         
         // Separating "Bearer <token>"
@@ -21,7 +24,10 @@ const validateToken = async (req, res, next) => {
     }
     catch(err){
         console.log('Error encountered validating token - ', err)
-        res.status(403).send({message: 'Login first'});
+        res.status(401).json({
+            success: false,
+            message: 'Login first'
+        });
     }
 }
 

@@ -9,6 +9,7 @@ export default function SlashMenu({
 }) {
   const [selected, setSelected] = useState(0)
   const menuRef = useRef()
+  const itemRefs = useRef([])
 
   // Filter options
   const filtered = options.filter(
@@ -38,9 +39,23 @@ export default function SlashMenu({
         onClose()
       }
     }
+    
     document.addEventListener('keydown', handleKey)
+    
     return () => document.removeEventListener('keydown', handleKey)
   }, [filtered, selected, onSelect, onClose])
+
+  // Auto scroll selected item into view
+  useEffect(() => {
+    const selectedItem = itemRefs.current[selected]
+
+    if (selectedItem) {
+      selectedItem.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth',
+      })
+    }
+  }, [selected])
 
   useEffect(() => {
     function handleClick(e) {
@@ -48,7 +63,9 @@ export default function SlashMenu({
         onClose()
       }
     }
+    
     document.addEventListener('mousedown', handleClick)
+    
     return () => document.removeEventListener('mousedown', handleClick)
   }, [onClose])
 
@@ -77,6 +94,7 @@ export default function SlashMenu({
         <div
           key={opt.type}
           onClick={() => onSelect(opt)}
+          ref={(el) => itemRefs.current[i] = el}
           style={{
             padding: '8px 12px',
             borderRadius: 6,
