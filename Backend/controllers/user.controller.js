@@ -1,5 +1,6 @@
 const User = require('../schemas/user.schema');
 const Post = require('../schemas/post.schema');
+const Save = require('../schemas/save.schema');
 
 /* GET /api/user — fetch user by email */
 const fetchUser = async (req, res) => {
@@ -62,14 +63,33 @@ const toggleFollow = async (req, res) => {
 /* POST /api/user/bookmark/:postId — toggle bookmark */
 const toggleBookmark = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-    const idx  = user.saved.findIndex(id => id.toString() === req.params.postId);
-    if (idx > -1) user.saved.splice(idx, 1);
-    else          user.saved.push(req.params.postId);
-    await user.save();
-    return res.status(200).json({ bookmarked: idx === -1 });
-  } catch (err) {
-    return res.status(500).send({ message: 'Error' });
+    const user = await User.findById(req.user.id);
+    if(!user) return res.status(404).json({ message: 'User not found' });
+
+    const post = await Post.findById(req.params.postId);
+    if (!post) return res.status(404).json({ message: 'Post not found' });
+
+    console.log('Toggling bookmark for user ', user?.username, ' on post ', post?.title);
+
+    const existingSave = await Save.findOne({ userId: user._id, postId: post._id });
+    if (existingSave) {
+      await Save.deleteOne({ userId: user._id, postId: post._id });
+    }
+    else{
+      await Save.create({ userId: user._id, postId: post._id });
+    }
+      
+    return res.status(200).json({ 
+      success: true, 
+      isBookmarked: !existingSave 
+    });
+  } 
+  catch (err) {
+    console.log('Error toggling bookmark - ', err);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Error toggling bookmark' 
+    });
   }
 };
 

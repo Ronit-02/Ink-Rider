@@ -443,14 +443,31 @@ const refreshToken = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: 'Token refreshed successfully',
-            token: newAccessToken,
+            accessToken: newAccessToken,
             user: user.username,
             email: user.email,
             role: user.role
         });
     }
     catch(err){
-        console.log('Error in refreshing token:', err);
+
+        // Refresh Token expired
+        if(err.name === 'TokenExpiredError'){
+            return res.status(401).json({
+                success: false,
+                message: 'Refresh token expired, login again'
+            });
+        }
+
+        // Invalid token
+        if(err.name === 'JsonWebTokenError'){
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid refresh token'
+            });
+        }
+
+        console.log('Error in refreshing token:', err);        
         return res.status(500).json({
             success: false,
             message: 'Cant refresh token now, try again later'

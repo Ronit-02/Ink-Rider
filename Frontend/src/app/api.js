@@ -1,6 +1,6 @@
 import axios from "axios";
 import store from "./store";
-import { setNewAccessToken, logout } from "@/features/auth/store/authSlice";
+import { setAccessToken, logout } from "@/features/auth/store/authSlice";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -32,7 +32,7 @@ api.interceptors.response.use(
   },
 
   async (error) => {
-    console.log('Response Interceptor Error 3- ', error)
+    console.log('Response Interceptor Error - ', error)
 
     // Check if originalRequest exists to avoid issues with non-HTTP errors
     const originalRequest = error.config;
@@ -43,12 +43,13 @@ api.interceptors.response.use(
     // Check if error is 401 or we haven't already tried refreshing or if it's not the refresh token endpoint
     if (error.response?.status === 401 
       && !originalRequest._retry 
-      && !originalRequest.url.includes('/api/auth/refresh-token')
+      && !originalRequest.url?.includes('/api/auth/refresh-token')
     ) {
       
       originalRequest._retry = true;
 
       try {
+
         // Attempt to refresh token (don't use api instance to avoid interceptor loop)
         const response = await axios.post(
           `${import.meta.env.VITE_API_URL}/api/auth/refresh-token`, 
@@ -58,7 +59,7 @@ api.interceptors.response.use(
 
         // Save new access token
         const newAccessToken = response.data.accessToken;
-        store.dispatch(setNewAccessToken({ token: newAccessToken }));
+        store.dispatch(setAccessToken({ token: newAccessToken }));
         
         // Update and Retry original request
         originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
@@ -67,6 +68,8 @@ api.interceptors.response.use(
       catch (refreshError) {
         // If refresh fails, dispatch logout or handle as needed
         store.dispatch(logout());
+        sessionStorage.clear(); // Clear any session storage if used
+        localStorage.clear(); // Clear any local storage if used
 
         // Redirect to login page
         window.location.href = '/login';  

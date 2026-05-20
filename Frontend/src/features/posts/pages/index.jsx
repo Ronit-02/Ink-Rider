@@ -1,29 +1,26 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useSelector } from 'react-redux'
-import AuthorMeta from '@/shared/components/ui/AuthorMeta'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BackIcon, BookmarkIcon, ShareIcon, LinkIcon, XIcon } from '@/shared/icons'
+import AuthorMeta from '@/shared/components/ui/AuthorMeta'
 import Tag from '@/shared/components/ui/Tag'
 import Divider from '@/shared/components/ui/Divider'
-import { selectToken } from '@/features/auth/store/authSelector'
 import { LightLoader } from '@/shared/components/layout/Loader'
 import PostBody from './PostBody'
 import AuthorBio from './AuthorBio'
 import CommentsSection from './CommentsSection'
 import { AIStickyButtons, SummaryPanel, ReadAloudPanel } from './AIPanel'
 import fetchPost from '../api/fetchPost'
+import bookmarkPost from '../api/bookmarkPost'
 
 export default function PostPage() {
   const navigate  = useNavigate()
   const queryClient = useQueryClient();
-  const [bookmarked,  setBookmarked]  = useState(false)
   const [showSummary, setShowSummary] = useState(false)
   const [readAloud,   setReadAloud]   = useState(false)
   const [progress,    setProgress]    = useState(0)
   const [showShare,   setShowShare]   = useState(false)
   
-  const token = useSelector(selectToken);
   const { id: postId } = useParams();
 
   // Fetching Post
@@ -32,18 +29,25 @@ export default function PostPage() {
     queryFn: fetchPost,
     retry: 1   // limited retries (faster reload)
   })
-  // Fetching User
-  // const { data: userData, isLoading: fetchUserIsLoading } = useQuery({
-  //   queryKey: ["user", token],
-  //   queryFn: fetchUser,
-  //   enabled: !!token
-  // })
 
-
-  // Retrieve Post Data
-  useEffect(() => {
-    console.log("Post Data - ", postData)
-  }, [postData])
+  // Bookmarking logic
+  const BookmarkMutation = useMutation({
+    mutationFn: bookmarkPost,
+    onSuccess: (data) => {
+      queryClient.setQueryData(["post", postId], 
+        (oldData) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+              isBookmarked: data.isBookmarked
+          }
+        }
+      );
+    },
+    onError: (error) => {
+      console.error("Bookmarking failed: ", error);
+    }
+  }) 
 
   // Reading progress bar
   useEffect(() => {
@@ -64,6 +68,10 @@ export default function PostPage() {
   }, [showShare])
 
   const hasSidePanel = showSummary || readAloud
+
+  const handleBookmark = () => {
+    BookmarkMutation.mutate({ postId });
+  }
 
   // Conditional Rendering
   if (fetchPostIsLoading) return <LightLoader />;
@@ -98,6 +106,12 @@ export default function PostPage() {
             </div>
           )}
 
+          {/* Hero image */}
+          <img src={postData.coverImage} alt={postData.title}
+            className="w-full object-cover rounded-[20px] mb-8 block"
+            style={{ height: 'clamp(180px, 30vw, 320px)' }} 
+          />
+
           {/* Title */}
           <h1 className="font-bold text-(--color-text) leading-[1.3] tracking-[-0.5px] mb-5 text-[clamp(22px,4vw,32px)]"
             style={{ fontFamily: 'var(--font-display)' }}>
@@ -111,10 +125,10 @@ export default function PostPage() {
             <div className="flex gap-2 shrink-0">
               
               {/* Bookmark */}
-              <button onClick={() => setBookmarked(v => !v)}
+              <button onClick={handleBookmark}
                 className={`w-9 h-9 rounded-full border border-(--color-border) flex items-center justify-center cursor-pointer transition-all duration-150
-                  ${bookmarked ? 'bg-(--color-accent) text-white' : 'bg-(--color-surface) text-(--color-text-secondary)'}`}>
-                <BookmarkIcon filled={bookmarked} />
+                  ${postData.isBookmarked ? 'bg-(--color-accent) text-white' : 'bg-(--color-surface) text-(--color-text-secondary)'}`}>
+                <BookmarkIcon filled={postData.isBookmarked} />
               </button>
               
               {/* Share */}
@@ -130,12 +144,6 @@ export default function PostPage() {
           </div>
 
           <Divider className="mb-6" />
-
-          {/* Hero image */}
-          <img src={postData.coverImage} alt={postData.title}
-            className="w-full object-cover rounded-[20px] mb-8 block"
-            style={{ height: 'clamp(180px, 30vw, 320px)' }} 
-          />
 
           {/* Body */}
           <PostBody body={JSON.parse(postData.body)} />

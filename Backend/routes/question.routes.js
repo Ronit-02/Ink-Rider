@@ -1,6 +1,6 @@
 const express       = require('express');
 const router        = express.Router();
-const validateToken = require('../middlewares/auth.middleware');
+const { validateToken } = require('../middlewares/auth.middleware');
 const { getQuestions, createQuestion, upvoteQuestion, postAnswer } = require('../controllers/question.controller');
 
 /* Public */

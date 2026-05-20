@@ -35,7 +35,7 @@ const authSlice = createSlice({
             state.email = null;
             state.role = null;
         },
-        setNewAccessToken(state, action){
+        setAccessToken(state, action){
             state.token = action.payload.token;
         },
         restoreCreds(state, action) {
@@ -53,7 +53,7 @@ export const {
     loginSuccess, 
     loginFailure, 
     logout, 
-    setNewAccessToken, 
+    setAccessToken, 
     restoreCreds 
 } = authSlice.actions;
 export const authReducer = authSlice.reducer;

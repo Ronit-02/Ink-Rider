@@ -1,6 +1,6 @@
 const express       = require('express');
 const router        = express.Router();
-const validateToken = require('../middlewares/auth.middleware');
+const { validateToken } = require('../middlewares/auth.middleware');
 const { getCompetitions, getCompetitionById, enterCompetition, likeEntry } = require('../controllers/competition.controller');
 
 /* Public */

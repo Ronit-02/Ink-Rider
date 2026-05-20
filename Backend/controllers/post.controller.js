@@ -1,5 +1,7 @@
 const fs = require("fs")
-const Post = require('../schemas/post.schema')
+const Post = require('../schemas/post.schema');
+const User = require('../schemas/user.schema');
+const Save = require('../schemas/save.schema');
 const { uploadOnCloudinary } = require('../utils/cloudinary');
 
 const createPost = async (req, res) => {
@@ -61,8 +63,9 @@ const getPost = async (req, res) => {
     try{
         // post id is sent in request parameter
         const postId = req.params.id;
+        let isBookmarked = false;
 
-        // populating related post-author-data and comments-author-data
+        // Fetching post
         const post = await Post.findById(postId)
             .populate({
                 path: 'author', 
@@ -76,14 +79,24 @@ const getPost = async (req, res) => {
             });
         }
 
+        // Optional auth check
+        // if user is logged in, then we can check if the post is saved by the user or not
+        if(req.user){
+            const savedPost = await Save.findOne({ userId: req.user.id, postId });
+            isBookmarked = !!savedPost;
+        }
+
         // update views
         post.metadata.views++;
         await post.save();
 
+        const postData = post.toObject();
+        postData.isBookmarked = isBookmarked;
+
         return res.status(200).json({
             success: true,
             message: "Post fetched successfully",
-            post,
+            postData
         });
     }
     catch(error) {

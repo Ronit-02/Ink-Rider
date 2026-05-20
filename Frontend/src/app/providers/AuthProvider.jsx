@@ -17,7 +17,7 @@ function AuthProvider({children}) {
                 const data = await refreshToken();
                 
                 dispatch(restoreCreds({
-                    token: data.token,
+                    token: data.accessToken,
                     user: data.user,
                     email: data.email,
                     role: data.role
