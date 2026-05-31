@@ -3,8 +3,8 @@ import { articles, authors } from '@/shared/data'
 import Button from '@/shared/components/ui/Button'
 import Divider from '@/shared/components/ui/Divider'
 import Pill from '@/shared/components/ui/Pill'
-import ArticleCard from '@/features/posts/components/ArticleCard'
-import HorizontalCard from '@/features/posts/components/HorizontalCard'
+import ArticleCard from '@/features/post/components/ArticleCard'
+import HorizontalCard from '@/features/post/components/HorizontalCard'
 
 // ─── Mock logged-in user ───────────────────────────────────────────────────────
 const ME = { ...authors[0], joinDate: 'January 2023', totalViews: 12400, weeklyViews: 118, subscribers: 84 }

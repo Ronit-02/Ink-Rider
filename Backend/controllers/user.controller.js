@@ -69,8 +69,6 @@ const toggleBookmark = async (req, res) => {
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ message: 'Post not found' });
 
-    console.log('Toggling bookmark for user ', user?.username, ' on post ', post?.title);
-
     const existingSave = await Save.findOne({ userId: user._id, postId: post._id });
     if (existingSave) {
       await Save.deleteOne({ userId: user._id, postId: post._id });

@@ -1,5 +1,5 @@
 import { articles } from '@/shared/data'
-import HorizontalCard from '@/features/posts/components/HorizontalCard'
+import HorizontalCard from '@/features/post/components/HorizontalCard'
 import SectionHeading from '@/shared/components/ui/SectionHeading'
 
 export default function TrendingTab() {

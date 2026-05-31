@@ -3,7 +3,7 @@ import { authors, articles } from '@/shared/data'
 import Button from '@/shared/components/ui/Button'
 import Divider from '@/shared/components/ui/Divider'
 import Pill from '@/shared/components/ui/Pill'
-import ArticleCard from '@/features/posts/components/ArticleCard'
+import ArticleCard from '@/features/post/components/ArticleCard'
 
 // ─── Keep SubscriberContent here from old Artist folder ───────────────────────
 import SubscriberContent from './SubscriberContent'

@@ -4,7 +4,7 @@ import { authors, articles } from '@/shared/data'
 import Pill from '@/shared/components/ui/Pill'
 import Button from '@/shared/components/ui/Button'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
-import HorizontalCard from '@/features/posts/components/HorizontalCard'
+import HorizontalCard from '@/features/post/components/HorizontalCard'
 
 // ─── Seed data ─────────────────────────────────────────────────────────────────
 const QUESTIONS = [

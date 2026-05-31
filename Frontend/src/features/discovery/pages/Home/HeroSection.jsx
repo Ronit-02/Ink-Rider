@@ -1,7 +1,7 @@
 /* HeroSection — article of the day + top recommendations */
 import { articles } from '@/shared/data'
-import FeaturedCard from '@/features/posts/components/FeaturedCard'
-import CompactCard from '@/features/posts/components/CompactCard'
+import FeaturedCard from '@/features/post/components/FeaturedCard'
+import CompactCard from '@/features/post/components/CompactCard'
 import SectionHeading from '@/shared/components/ui/SectionHeading'
 
 export default function HeroSection() {

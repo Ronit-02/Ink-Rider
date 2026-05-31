@@ -1,5 +1,5 @@
 import { articles } from '@/shared/data'
-import ArticleCard from '@/features/posts/components/ArticleCard'
+import ArticleCard from '@/features/post/components/ArticleCard'
 
 function SectionLabel({ children }) {
   return (

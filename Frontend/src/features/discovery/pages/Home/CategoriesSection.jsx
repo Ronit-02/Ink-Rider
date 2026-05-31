@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { articles, categories } from '@/shared/data'
 import SectionHeading from '@/shared/components/ui/SectionHeading'
 import Pill from '@/shared/components/ui/Pill'
-import ArticleCard from '@/features/posts/components/ArticleCard'
+import ArticleCard from '@/features/post/components/ArticleCard'
 
 export default function CategoriesSection() {
   const [active, setActive] = useState(categories[0])

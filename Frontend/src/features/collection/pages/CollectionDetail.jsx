@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { articles } from '@/shared/data'
 import Divider from '@/shared/components/ui/Divider'
-import HorizontalCard from '@/features/posts/components/HorizontalCard'
+import HorizontalCard from '@/features/post/components/HorizontalCard'
 import Button from '@/shared/components/ui/Button'
 import { ALL_COLLECTIONS } from './index'
 

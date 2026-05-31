@@ -10,54 +10,23 @@ import PostBody from './PostBody'
 import AuthorBio from './AuthorBio'
 import CommentsSection from './CommentsSection'
 import { AIStickyButtons, SummaryPanel, ReadAloudPanel } from './AIPanel'
-import fetchPost from '../api/fetchPost'
-import bookmarkPost from '../api/bookmarkPost'
+import useFetchPost from '../hooks/useFetchPost'
+import useBookmarkPost from '../hooks/useBookmarkPost'
+import useReadingProgress from '../hooks/useProgressBar'
 
 export default function PostPage() {
   const navigate  = useNavigate()
-  const queryClient = useQueryClient();
-  const [showSummary, setShowSummary] = useState(false)
-  const [readAloud,   setReadAloud]   = useState(false)
-  const [progress,    setProgress]    = useState(0)
-  const [showShare,   setShowShare]   = useState(false)
-  
   const { id: postId } = useParams();
 
-  // Fetching Post
-  const { data: postData, isLoading: fetchPostIsLoading, isError, error } = useQuery({
-    queryKey: ["post", postId],
-    queryFn: fetchPost,
-    retry: 1   // limited retries (faster reload)
-  })
+  // UI State
+  const [showSummary, setShowSummary] = useState(false)
+  const [readAloud,   setReadAloud]   = useState(false)
+  const [showShare,   setShowShare]   = useState(false)
 
-  // Bookmarking logic
-  const BookmarkMutation = useMutation({
-    mutationFn: bookmarkPost,
-    onSuccess: (data) => {
-      queryClient.setQueryData(["post", postId], 
-        (oldData) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-              isBookmarked: data.isBookmarked
-          }
-        }
-      );
-    },
-    onError: (error) => {
-      console.error("Bookmarking failed: ", error);
-    }
-  }) 
-
-  // Reading progress bar
-  useEffect(() => {
-    const onScroll = () => {
-      const total = document.documentElement.scrollHeight - window.innerHeight
-      setProgress(total > 0 ? (window.pageYOffset / total) * 100 : 0)
-    }
-    window.addEventListener('scroll', onScroll)
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+  // Hooks
+  const { data: postData, isLoading: fetchPostIsLoading, isError, error } = useFetchPost(postId); 
+  const BookmarkMutation = useBookmarkPost(postId);
+  const progress = useReadingProgress();
 
   // Close share menu on outside click
   useEffect(() => {
