@@ -1,0 +1,31 @@
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import Button from '@/shared/components/ui/Button'
+import { fetchCompetition, fetchCompetitions } from '@/features/competition/api/competitions'
+import { publishCompetitionResults, scoreCompetitionEntry } from '../api/staff'
+
+const fieldClass = 'rounded-[9px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] px-2 py-2 text-[12px]'
+
+export default function CompetitionOperations({ isAdmin }) {
+  const queryClient = useQueryClient()
+  const [selectedId, setSelectedId] = useState('')
+  const [winners, setWinners] = useState([])
+  const [scores, setScores] = useState({})
+  const competitions = useQuery({ queryKey: ['competitions'], queryFn: fetchCompetitions })
+  const detail = useQuery({ queryKey: ['competition', selectedId], queryFn: () => fetchCompetition(selectedId), enabled: Boolean(selectedId) })
+  const score = useMutation({ mutationFn: scoreCompetitionEntry, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['competition', selectedId] }) })
+  const publish = useMutation({ mutationFn: publishCompetitionResults, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['competitions'] }); queryClient.invalidateQueries({ queryKey: ['competition', selectedId] }) } })
+  const setEntryScore = (entryId, key, value) => setScores(current => ({ ...current, [entryId]: { craft: 5, originality: 5, relevance: 5, note: '', ...current[entryId], [key]: value } }))
+  const toggleWinner = entryId => setWinners(current => current.includes(entryId) ? current.filter(id => id !== entryId) : current.length < 5 ? [...current, entryId] : current)
+
+  return <section className="rounded-[18px] border border-[var(--color-border)] p-6">
+    <h2 className="text-[18px] font-bold text-[var(--color-text)]">Judge and publish results</h2><p className="mt-1 text-[12px] text-[var(--color-text-muted)]">Scores are auditable. Only administrators can finalize up to five winners.</p>
+    <label htmlFor="competition-to-judge" className="mt-5 block text-[11px] font-semibold text-[var(--color-text-muted)]">Competition</label><select id="competition-to-judge" aria-describedby="competition-to-judge-help" className="mt-1 w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px]" value={selectedId} onChange={event => { setSelectedId(event.target.value); setWinners([]) }}><option value="">Select a competition</option>{competitions.data?.map(item => <option key={item.id} value={item.id}>{item.title} · {item.status}</option>)}</select><p id="competition-to-judge-help" className="mt-1 text-[11px] text-[var(--color-text-muted)]">Choose a judging competition to score entries and publish results.</p>
+    {detail.isLoading && <p className="py-6 text-[12px] text-[var(--color-text-muted)]">Loading entries…</p>}{detail.data && !detail.data.entries?.length && <p className="py-6 text-[12px] text-[var(--color-text-muted)]">This competition has no entries yet.</p>}
+    <div className="mt-4 space-y-3">{detail.data?.entries?.map(entry => { const values = { craft: 5, originality: 5, relevance: 5, note: '', ...scores[entry.id] }; const canScore = ['judges', 'hybrid'].includes(detail.data.votingMode) && detail.data.status === 'judging'; const noteId = `judging-note-${entry.id}`; return <article key={entry.id} className="rounded-[12px] border border-[var(--color-border)] p-4"><div className="flex items-start gap-3"><input type="checkbox" className="mt-1" checked={winners.includes(entry.id)} disabled={entry.isWinner || detail.data.status === 'closed'} onChange={() => toggleWinner(entry.id)} aria-label={`Select ${entry.post?.title || 'entry'} as winner`} /><div><h3 className="font-semibold text-[13px] text-[var(--color-text)]">{entry.post?.title || 'Unavailable article'}</h3><p className="text-[11px] text-[var(--color-text-muted)]">{entry.author?.username} · {entry.likesCount} reader votes{entry.isWinner ? ' · winner' : ''}</p></div></div>{canScore && detail.data.status !== 'closed' && <div className="mt-4 grid grid-cols-3 gap-2"><Score label="Craft" value={values.craft} onChange={value => setEntryScore(entry.id, 'craft', value)} /><Score label="Originality" value={values.originality} onChange={value => setEntryScore(entry.id, 'originality', value)} /><Score label="Relevance" value={values.relevance} onChange={value => setEntryScore(entry.id, 'relevance', value)} /><label htmlFor={noteId} className="col-span-3 text-[10px] text-[var(--color-text-muted)]">Judging note <span className="font-normal">(optional)</span><input id={noteId} value={values.note} maxLength={1000} aria-describedby={`${noteId}-help`} onChange={event => setEntryScore(entry.id, 'note', event.target.value)} className={`${fieldClass} mt-1 w-full`} /></label><p id={`${noteId}-help`} className="col-span-3 text-right text-[10px] text-[var(--color-text-muted)]">{values.note.length}/1,000 characters</p><Button variant="secondary" disabled={score.isPending} onClick={() => score.mutate({ competitionId: selectedId, entryId: entry.id, craft: Number(values.craft), originality: Number(values.originality), relevance: Number(values.relevance), note: values.note })}>Save score</Button></div>}</article> })}</div>
+    {detail.data?.entries?.length > 0 && detail.data.status !== 'closed' && <div className="mt-5"><Button disabled={!isAdmin || winners.length < 1 || publish.isPending} onClick={() => publish.mutate({ competitionId: selectedId, winnerEntryIds: winners })}>{publish.isPending ? 'Publishing…' : isAdmin ? `Publish ${winners.length} winner${winners.length === 1 ? '' : 's'}` : 'Admin required'}</Button><p className="mt-2 text-[10px] text-[var(--color-text-muted)]">Publishing results closes the public competition record.</p></div>}
+    {(score.isError || publish.isError) && <p role="alert" className="mt-3 text-[11px] text-[var(--color-danger)]">{score.error?.response?.data?.message || publish.error?.response?.data?.message || 'The operation could not be completed.'}</p>}
+  </section>
+}
+
+function Score({ label, value, onChange }) { return <label className="text-[10px] text-[var(--color-text-muted)]">{label}<input type="number" min="1" max="10" value={value} onChange={event => onChange(event.target.value)} className={`${fieldClass} mt-1 w-full`} /></label> }

@@ -48,8 +48,12 @@ export default function HorizontalCard({ article }) {
           {/* Bookmark */}
           <button
             onClick={e => { e.stopPropagation(); setSaved(v => !v) }}
-            className={`ml-auto flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center
+            type="button"
+            aria-label={saved ? `Remove ${article.title} from saved articles` : `Save ${article.title}`}
+            aria-pressed={saved}
+            className={`ml-auto flex-shrink-0 min-h-10 min-w-10 rounded-full flex items-center justify-center
               border border-[var(--color-border)] transition-all duration-150 opacity-0 group-hover:opacity-100
+              focus-visible:opacity-100
               ${saved ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)]' : 'bg-transparent text-[var(--color-text-secondary)]'}`}
           >
             <BookmarkIcon filled={saved} />

@@ -1,8 +1,12 @@
 import { motion } from "framer-motion";
 import darkLogo from "@/assets/ink-rider-dark-logo.png";
 import lightLogo from "@/assets/ink-rider-light-logo.png";
+import { useTheme } from "../../hooks/useTheme";
 
 function LightLoader() {
+  const { dark } = useTheme();
+  if (dark) return <DarkLoader />;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white overflow-hidden">
 

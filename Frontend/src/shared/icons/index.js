@@ -10,3 +10,5 @@ export { default as BookmarkIcon } from './BookmarkIcon';
 export { default as ShareIcon } from './ShareIcon';
 export { default as LinkIcon } from './LinkIcon';
 export { default as XIcon } from './XIcon';
+export { default as MembershipIcon } from './MembershipIcon';
+export { default as UserIcon } from './UserIcon';

@@ -1,11 +1,40 @@
-import { Outlet } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { Outlet, useLocation } from 'react-router-dom'
 import Navbar from './Navbar'
 import Sidebar from './Sidebar'
 import BottomBar from './BottomBar'
 
 export default function AppLayout() {
+  const location = useLocation()
+  const previousPathname = useRef(location.pathname)
+
+  useEffect(() => {
+    if (previousPathname.current === location.pathname) return
+    previousPathname.current = location.pathname
+
+    const frame = requestAnimationFrame(() => {
+      const mainContent = document.getElementById('main-content')
+      mainContent?.focus({ preventScroll: true })
+      mainContent?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    })
+
+    return () => cancelAnimationFrame(frame)
+  }, [location.pathname])
+
+  const handleSkipToContent = event => {
+    event.preventDefault()
+    document.getElementById('main-content')?.focus()
+  }
+
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[var(--color-bg)]">
+    <div className="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-[var(--color-bg)]">
+      <a
+        href="#main-content"
+        onClick={handleSkipToContent}
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-[8px] focus:bg-[var(--color-surface)] focus:px-4 focus:py-3 focus:text-[13px] focus:font-semibold focus:text-[var(--color-text)] focus:shadow-[var(--shadow-menu)] focus:outline-none focus:ring-2 focus:ring-[var(--color-focus)]"
+      >
+        Skip to content
+      </a>
       {/* Fixed-height navbar */}
       <Navbar />
 
@@ -16,9 +45,9 @@ export default function AppLayout() {
         <Sidebar />
 
         {/* Main — scrolls independently */}
-        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden max-md:pb-[72px]">
+        <div id="main-content" tabIndex={-1} data-app-scroll="true" className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden focus:outline-none max-md:pb-[72px]">
           <Outlet />
-        </main>
+        </div>
       </div>
 
       {/* Mobile bottom bar */}

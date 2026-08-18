@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --port 3000",
     "build": "vite build",
-    "preview": "vite preview --port 3000"
+    "preview": "vite preview --port 3000",
+    "test:e2e": "playwright test",
+    "test:seo": "node scripts/seo-crawl.js"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
@@ -20,6 +22,7 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "^4.2.4",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

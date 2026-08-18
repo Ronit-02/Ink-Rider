@@ -1,176 +1,71 @@
-/* CollectionsPage — browse + filter collections, create popup */
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { collections, articles, authors } from '@/shared/data'
-import SectionHeading from '@/shared/components/ui/SectionHeading'
+import { useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Button from '@/shared/components/ui/Button'
 import Pill from '@/shared/components/ui/Pill'
+import PageHeader from '@/shared/components/ui/PageHeader'
+import useAuth from '@/features/auth/hooks/useAuth'
+import { useCollectionEligiblePosts, useCollections, useCreateCollection } from '../hooks/useCollections'
+import { PostCardSkeleton } from '@/shared/components/ui/Skeleton'
+import PageFrame from '@/shared/components/layout/PageFrame'
+import FilterBar from '@/shared/components/ui/FilterBar'
+import CollectionCard from '../components/CollectionCard'
+import useDialogFocus from '@/shared/hooks/useDialogFocus'
 
-// ─── Extended seed data ────────────────────────────────────────────────────────
-export const ALL_COLLECTIONS = [
-  ...collections.map(c => ({ ...c, createdAt: 'Dec 1, 2024', author: authors[0] })),
-  { id: 3, title: 'AI & the Creative Mind', description: 'The best thinking on what AI means for writers and the creative process.', stories: 18, image: 'https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=600&q=80', curator: null, recommended: true, tag: "Editor's Pick", createdAt: 'Nov 28, 2024', author: null },
-  { id: 4, title: 'The Science of Everything', description: 'Approachable science writing that doesn\'t dumb anything down.', stories: 24, image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&q=80', curator: null, recommended: true, tag: 'Trending', createdAt: 'Nov 20, 2024', author: null },
-  { id: 5, title: 'Remote Work Diaries', description: 'Stories from writers who took their work on the road.', stories: 11, image: 'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=600&q=80', curator: { name: 'Inu Etc', avatar: authors[5].avatar }, createdAt: 'Nov 10, 2024', author: authors[5] },
-  { id: 6, title: 'Slow Philosophy', description: 'Long-form essays on ideas worth sitting with.', stories: 9, image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80', curator: { name: 'Mill Hoorneat', avatar: authors[8].avatar }, createdAt: 'Oct 30, 2024', author: authors[8] },
-]
-
-const FILTERS = ['All', "Editor's Pick", 'By Authors', 'Trending']
-
-// ─── Collection Card ───────────────────────────────────────────────────────────
-function CollectionCard({ collection }) {
-  const navigate = useNavigate()
-  const [saved, setSaved] = useState(false)
-
-  return (
-    <div className="hover-lift bg-[var(--color-surface)] rounded-[20px] border border-[var(--color-border)]
-      overflow-hidden cursor-pointer flex flex-col"
-      onClick={() => navigate(`/collections/${collection.id}`)}>
-      {/* Image */}
-      <div className="relative">
-        <img src={collection.image} alt={collection.title} className="w-full h-[160px] object-cover block" />
-        {collection.tag && (
-          <span className="absolute top-3 left-3 px-[10px] py-[3px] rounded-full text-[10px] font-semibold
-            bg-black/60 text-white">{collection.tag}</span>
-        )}
-        <button onClick={e => { e.stopPropagation(); setSaved(v => !v) }}
-          className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center border
-            border-[var(--color-border)] transition-all cursor-pointer
-            ${saved ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)]' : 'bg-white/90 text-[var(--color-text-secondary)]'}`}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Body */}
-      <div className="p-4 flex-1 flex flex-col">
-        {collection.curator ? (
-          <div className="flex items-center gap-2 mb-[10px]">
-            <img src={collection.curator.avatar} alt={collection.curator.name}
-              className="w-6 h-6 rounded-full object-cover" />
-            <span className="text-[12px] text-[var(--color-text-secondary)] font-medium">
-              by {collection.curator.name}
-            </span>
-          </div>
-        ) : (
-          <div className="mb-[10px]">
-            <span className="text-[10px] px-2 py-[2px] rounded-full bg-[var(--color-bg-alt)]
-              text-[var(--color-text-muted)] font-medium">✦ Recommended by Ink Rider</span>
-          </div>
-        )}
-        <h3 className="font-bold text-[16px] text-[var(--color-text)] leading-[1.35] mb-2"
-          style={{ fontFamily: 'var(--font-display)' }}>{collection.title}</h3>
-        <p className="text-[12px] text-[var(--color-text-secondary)] leading-[1.6] flex-1 line-clamp-3">
-          {collection.description}
-        </p>
-        <div className="mt-3 flex justify-between items-center">
-          <span className="text-[12px] text-[var(--color-text-muted)] font-medium">{collection.stories} stories</span>
-          <span className="text-[12px] text-[var(--color-accent)] font-semibold">View →</span>
-        </div>
-      </div>
-    </div>
-  )
+function CreateCollectionModal({ onClose }) {
+  const closeButtonRef = useRef(null)
+  const dialogRef = useDialogFocus(onClose, closeButtonRef)
+  const posts = useCollectionEligiblePosts(true)
+  const create = useCreateCollection()
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [visibility, setVisibility] = useState('public')
+  const [postIds, setPostIds] = useState([])
+  const toggle = id => setPostIds(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id])
+  const submit = event => {
+    event.preventDefault()
+    if (title.trim().length < 2 || create.isPending) return
+    create.mutate({ title, description, visibility, postIds }, { onSuccess: onClose })
+  }
+  return <div className="fixed inset-0 z-[300] grid place-items-center p-4 bg-black/45" onMouseDown={event => event.target === event.currentTarget && onClose()}><section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="create-collection-title" tabIndex={-1} className="w-full max-w-[560px] max-h-[90vh] overflow-y-auto rounded-[20px] border border-[var(--color-border)] bg-[var(--color-surface)] p-6"><div className="flex justify-between gap-4"><h2 id="create-collection-title" className="text-[19px] font-bold text-[var(--color-text)]">Create a collection</h2><button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Close">×</button></div><form className="mt-6" onSubmit={submit}><label htmlFor="collection-title" className="mb-2 block text-[12px] font-semibold text-[var(--color-text)]">Title <span aria-hidden="true">(required)</span></label><input id="collection-title" required minLength={2} value={title} maxLength={100} aria-describedby="collection-title-help" onChange={event => setTitle(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] px-3 py-2.5 text-[13px] text-[var(--color-text)]" /><p id="collection-title-help" className="mt-1 text-right text-[11px] text-[var(--color-text-muted)]">{title.length}/100 characters</p><label htmlFor="collection-description" className="mt-4 mb-2 block text-[12px] font-semibold text-[var(--color-text)]">Description <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><textarea id="collection-description" value={description} maxLength={500} aria-describedby="collection-description-help" onChange={event => setDescription(event.target.value)} className="w-full min-h-20 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]" /><p id="collection-description-help" className="mt-1 text-right text-[11px] text-[var(--color-text-muted)]">{description.length}/500 characters</p><label htmlFor="collection-visibility" className="mt-4 mb-2 block text-[12px] font-semibold text-[var(--color-text)]">Visibility</label><select id="collection-visibility" value={visibility} onChange={event => setVisibility(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]"><option value="public">Public</option><option value="unlisted">Unlisted</option><option value="private">Private</option></select><p className="mt-5 mb-2 text-[12px] font-semibold text-[var(--color-text)]">Choose your published stories in reading order</p><div className="max-h-56 overflow-y-auto rounded-[10px] border border-[var(--color-border)]">{posts.data?.map(post => <label key={post.id} className="flex items-center gap-3 border-b border-[var(--color-border)] p-3 last:border-0 cursor-pointer"><input type="checkbox" checked={postIds.includes(post.id)} onChange={() => toggle(post.id)} /><span className="text-[13px] text-[var(--color-text)]">{post.title}</span></label>)}{posts.data?.length === 0 && <p className="p-4 text-[12px] text-[var(--color-text-muted)]">Publish an article before creating a collection.</p>}</div>{create.isError && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">{create.error?.response?.data?.message || 'Collection could not be created.'}</p>}<div className="mt-5 flex justify-end gap-2"><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" disabled={title.trim().length < 2 || create.isPending}>{create.isPending ? 'Creating…' : 'Create collection'}</Button></div></form></section></div>
 }
 
-// ─── Create Collection popup ───────────────────────────────────────────────────
-function CreateModal({ onClose }) {
-  const [title, setTitle]   = useState('')
-  const [desc,  setDesc]    = useState('')
-  const [selected, setSelected] = useState([])
-
-  const togglePost = id =>
-    setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
-
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.4)' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="bg-[var(--color-surface)] rounded-[20px] border border-[var(--color-border)]
-        p-6 w-full max-w-[540px] shadow-[0_16px_48px_rgba(0,0,0,0.15)] max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="font-bold text-[18px] text-[var(--color-text)]"
-            style={{ fontFamily: 'var(--font-display)' }}>New Collection</h3>
-          <button onClick={onClose}
-            className="w-8 h-8 rounded-full border border-[var(--color-border)] bg-transparent
-              text-[var(--color-text-muted)] flex items-center justify-center cursor-pointer text-[18px]">×</button>
-        </div>
-
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Collection title"
-          className="w-full px-[14px] py-[10px] border border-[var(--color-border)] rounded-[10px]
-            bg-[var(--color-bg-alt)] text-[13px] text-[var(--color-text)] mb-3 outline-none"
-        />
-        <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="What is this collection about?"
-          className="w-full px-[14px] py-[10px] border border-[var(--color-border)] rounded-[10px]
-            bg-[var(--color-bg-alt)] text-[13px] text-[var(--color-text)] resize-none h-[80px]
-            font-[inherit] outline-none mb-5"
-        />
-
-        <p className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-[0.06em] mb-3">
-          Select from your posts
-        </p>
-        <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto mb-5">
-          {articles.slice(0, 6).map(a => (
-            <label key={a.id}
-              className="flex items-center gap-3 p-3 rounded-[10px] border border-[var(--color-border)]
-                cursor-pointer hover:bg-[var(--color-bg-alt)] transition-colors">
-              <input type="checkbox" checked={selected.includes(a.id)} onChange={() => togglePost(a.id)}
-                className="w-4 h-4 cursor-pointer" />
-              <img src={a.image} alt={a.title} className="w-10 h-10 rounded-[6px] object-cover flex-shrink-0" />
-              <span className="text-[13px] text-[var(--color-text)] font-medium line-clamp-1">{a.title}</span>
-            </label>
-          ))}
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={onClose} disabled={!title.trim() || !selected.length}>
-            Create Collection
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Collections Page ──────────────────────────────────────────────────────────
 export default function CollectionsPage() {
-  const [activeFilter, setActiveFilter] = useState('All')
-  const [showCreate,   setShowCreate]   = useState(false)
-
-  const filtered = ALL_COLLECTIONS.filter(col => {
-    if (activeFilter === 'All')          return true
-    if (activeFilter === "Editor's Pick") return col.recommended && col.tag === "Editor's Pick"
-    if (activeFilter === 'Trending')     return col.tag === 'Trending'
-    if (activeFilter === 'By Authors')   return !!col.curator
-    return true
-  })
-
-  return (
-    <div className="max-w-[1200px] px-8 pt-12 pb-20">
-
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between mb-9 gap-6 flex-wrap">
-        <div>
-          <SectionHeading className="mb-2">Collections</SectionHeading>
-          <p className="text-[13px] text-[var(--color-text-secondary)] max-w-[480px]">
-            Curated sets of articles — handpicked by authors you love, or recommended by Ink Rider.
-          </p>
-        </div>
-        <Button variant="primary" onClick={() => setShowCreate(true)}>+ Create Collection</Button>
-      </div>
-
-      {/* ── Filters ── */}
-      <div className="flex gap-2 mb-8 flex-wrap">
-        {FILTERS.map(f => <Pill key={f} label={f} active={activeFilter === f} onClick={() => setActiveFilter(f)} />)}
-      </div>
-
-      {/* ── Grid ── */}
-      <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-        {filtered.map(col => <CollectionCard key={col.id} collection={col} />)}
-      </div>
-
-      {showCreate && <CreateModal onClose={() => setShowCreate(false)} />}
-    </div>
-  )
+  const { loggedIn, signIn } = useAuth()
+  const [params, setParams] = useSearchParams()
+  const mine = loggedIn && params.get('collectionView') === 'mine'
+  const collectionViews = loggedIn ? ['discover', 'mine'] : ['discover']
+  const visibility = ['all', 'public', 'unlisted', 'private'].includes(params.get('collectionVisibility')) ? params.get('collectionVisibility') : 'all'
+  const sort = ['latest', 'popular'].includes(params.get('collectionSort')) ? params.get('collectionSort') : 'latest'
+  const [showCreate, setShowCreate] = useState(false)
+  const query = useCollections(mine, sort)
+  const collections = query.data?.pages.flatMap(page => page.data) || []
+  const filteredCollections = visibility === 'all' ? collections : collections.filter(collection => collection.visibility === visibility)
+  const updateFilter = (key, value, defaultValue) => {
+    setParams(current => {
+      const next = new URLSearchParams(current)
+    if (value === defaultValue) next.delete(key)
+    else next.set(key, value)
+      return next
+    })
+  }
+  const resetFilters = () => {
+    const next = new URLSearchParams(params)
+    next.delete('collectionVisibility')
+    next.delete('collectionSort')
+    setParams(next)
+  }
+  const handleViewKeyDown = event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+    event.preventDefault()
+    const currentIndex = collectionViews.indexOf(mine ? 'mine' : 'discover')
+    const nextIndex = event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? collectionViews.length - 1
+        : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + collectionViews.length) % collectionViews.length
+    const nextView = collectionViews[nextIndex]
+    updateFilter('collectionView', nextView, 'discover')
+    requestAnimationFrame(() => document.querySelectorAll('[role="tab"][aria-controls="collections-tabpanel"]')[nextIndex]?.focus())
+  }
+  return <PageFrame><PageHeader eyebrow="Curated reading" title="Collections" description="Reading paths for stories worth keeping together." actions={<Button onClick={() => loggedIn ? setShowCreate(true) : signIn()}><span aria-hidden="true" className="mr-1 text-[17px] leading-none">+</span>Create collection</Button>} /><div className="mb-8 flex items-center justify-between gap-4"><div className="flex gap-2" role="tablist" aria-label="Collection views"><Pill label="Discover" role="tab" ariaControls="collections-tabpanel" tabIndex={!mine ? 0 : -1} active={!mine} onKeyDown={handleViewKeyDown} onClick={() => updateFilter('collectionView', 'discover', 'discover')} />{loggedIn && <Pill label="My collections" role="tab" ariaControls="collections-tabpanel" tabIndex={mine ? 0 : -1} active={mine} onKeyDown={handleViewKeyDown} onClick={() => updateFilter('collectionView', 'mine', 'discover')} />}</div><FilterBar label="Topic" value={visibility} onChange={value => updateFilter('collectionVisibility', value, 'all')} onReset={resetFilters} options={[{ id: 'all', label: 'All' }, { id: 'public', label: 'Public' }, { id: 'unlisted', label: 'Unlisted' }, { id: 'private', label: 'Private' }]} sortOptions={[{ id: 'latest', label: 'Latest' }, { id: 'popular', label: 'Most saved' }]} sortValue={sort} onSortChange={value => updateFilter('collectionSort', value, 'latest')} /></div><div id="collections-tabpanel" role="tabpanel" aria-label={`${mine ? 'My collections' : 'Discover'} content`}>{query.isPending && <div role="status" aria-label="Loading collections"><div className="card-grid card-grid--collection gap-5">{Array.from({ length: 6 }, (_, index) => <PostCardSkeleton key={index} compact />)}</div></div>}{query.isError && <div role="alert" className="py-16 text-center"><p className="text-[13px] text-[var(--color-danger)]">Collections could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => query.refetch()}>Try again</Button></div>}{!query.isPending && !query.isError && filteredCollections.length === 0 && <p className="py-16 text-center text-[13px] text-[var(--color-text-muted)]">{mine ? 'You have not created a collection yet.' : 'No collections match this filter.'}</p>}<section className="card-grid card-grid--collection gap-5">{filteredCollections.map(collection => <CollectionCard key={collection.id} collection={collection} />)}</section>{query.hasNextPage && <div className="pt-9 text-center"><Button variant="secondary" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage}>{query.isFetchingNextPage ? 'Loading…' : 'Load more'}</Button></div>}</div>{showCreate && <CreateCollectionModal onClose={() => setShowCreate(false)} />}</PageFrame>
 }

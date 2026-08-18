@@ -18,10 +18,14 @@
   --color-border-light:   #F0EDE6;
   --color-text:           #191919;
   --color-text-secondary: #6B6560;
-  --color-text-muted:     #A09890;
+  --color-text-muted:     #8A837C;
   --color-text-inverted:  #FFFFFF;
   --color-accent:         #191919;
   --color-accent-hover:   #333333;
+  --color-focus:          #191919;
+  --color-danger:         #A13F3F;
+  --color-success:        #356A4A;
+  --color-info:           #3F6078;
   --font-display: 'Libre Baskerville', Georgia, serif;
   --font-sans:    'DM Sans', 'Helvetica Neue', sans-serif;
 }
@@ -32,14 +36,18 @@
   --color-bg-alt:         #1A1A18;
   --color-surface:        #161614;
   --color-surface-hover:  #1F1F1D;
-  --color-border:         #2A2925;
+  --color-border:         #302F2B;
   --color-border-light:   #222220;
   --color-text:           #EEECE8;
-  --color-text-secondary: #9B9590;
-  --color-text-muted:     #6B6560;
+  --color-text-secondary: #B1AAA3;
+  --color-text-muted:     #8D867F;
   --color-text-inverted:  #111110;
   --color-accent:         #EEECE8;
   --color-accent-hover:   #D0CEC9;
+  --color-focus:          #EEECE8;
+  --color-danger:         #DA7A7A;
+  --color-success:        #77B28C;
+  --color-info:           #82A9C1;
 }
 
 html {
@@ -65,6 +73,81 @@ button { cursor: pointer; font-family: inherit; }
 input, textarea { font-family: inherit; }
 img { display: block; max-width: 100%; }
 a { text-decoration: none; color: inherit; }
+h1, h2, h3, h4, p, a, button, td, th { overflow-wrap: anywhere; }
+
+/* Keep keyboard focus visible across native controls and route links. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Components that opt into a custom focus ring should not also receive the
+   global rectangular outline. */
+.outline-none:focus-visible {
+  outline: none;
+}
+
+/* Inputs and textareas that use a custom border treatment still need a
+   high-contrast keyboard indicator. Keep the existing neutral focus token and
+   let the ring follow rounded controls without changing their layout. */
+input.outline-none:focus-visible,
+textarea.outline-none:focus-visible,
+select.outline-none:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-focus);
+}
+
+/* The comment composer deliberately exposes one rounded focus-within ring on
+   its container, so do not stack a second ring on the transparent textarea. */
+[data-comment-composer] textarea.outline-none:focus-visible {
+  box-shadow: none;
+}
+
+/* Keep anonymous authentication actions usable on the smallest supported width.
+   Search remains available from the mobile bottom bar when the header is tight. */
+@media (max-width: 480px) {
+  .navbar-shell { gap: 0.5rem; padding-left: 0.5rem; padding-right: 0.5rem; }
+  .navbar-auth-action { padding-left: 0.5rem; padding-right: 0.5rem; font-size: 0.6875rem; }
+}
+
+@media (max-width: 420px) {
+  .navbar-mobile-search { display: none; }
+}
+
+/* ─── Flexible card grids ──────────────────────────────────────────────────── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, var(--card-grid-min-width, 240px)), 1fr)
+  );
+  align-items: stretch;
+  justify-content: start;
+}
+
+.card-grid > * {
+  width: 100%;
+  min-width: min(100%, var(--card-grid-min-width, 240px));
+  max-width: var(--card-grid-max-width, 320px);
+}
+
+.card-grid--short {
+  --card-grid-min-width: 240px;
+  --card-grid-max-width: 320px;
+}
+
+.card-grid--collection {
+  --card-grid-min-width: 360px;
+  --card-grid-max-width: 520px;
+}
+
+.card-grid--post {
+  --card-grid-min-width: 280px;
+  --card-grid-max-width: 360px;
+}
 
 /* ─── Animation utilities ─────────────────────────────────────────────────── */
 .hover-lift { transition: transform 0.18s ease, box-shadow 0.18s ease; }
@@ -84,6 +167,96 @@ a { text-decoration: none; color: inherit; }
   to   { opacity: 1; transform: translateY(0); }
 }
 .stream-line { animation: streamLine 0.45s ease both; }
+
+/* ─── In-house action notifications ───────────────────────────────────────── */
+.toast-viewport {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 100;
+  display: flex;
+  width: min(360px, calc(100vw - 32px));
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 48px;
+  padding: 11px 12px;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--toast-tone, var(--color-accent));
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 12px 30px rgba(42, 36, 30, 0.14);
+  color: var(--color-text);
+  pointer-events: auto;
+  animation: toastIn 0.2s var(--ease-standard, ease) both;
+}
+
+.toast--error { --toast-tone: var(--color-danger); }
+.toast--info { --toast-tone: var(--color-info); }
+
+.toast__icon {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--toast-tone, var(--color-accent)) 14%, transparent);
+  color: var(--toast-tone, var(--color-accent));
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.toast__message {
+  flex: 1;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.toast__close {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.toast__close:hover { background: var(--color-bg-alt); color: var(--color-text); }
+.toast__close:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .toast-viewport { right: 16px; bottom: 88px; left: 16px; width: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 /* ─── Sidebar hide on mobile ─────────────────────────────────────────────── */
 @media (max-width: 768px) {

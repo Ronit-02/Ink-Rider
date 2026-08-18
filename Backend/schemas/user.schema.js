@@ -7,6 +7,12 @@ const userSchema = new mongoose.Schema({
         default: null,
         trim: true,
     },
+    bio: {
+        type: String,
+        default: '',
+        trim: true,
+        maxlength: 500,
+    },
     username: {
         type: String,
         required: true,
@@ -24,7 +30,7 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        minlength: 3,
+        minlength: 8,
         required: function(){
             return !this.googleId
         },
@@ -39,8 +45,14 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['regular', 'premium', 'exclusive-writer'],
+        enum: ['regular', 'premium', 'exclusive-writer', 'moderator', 'admin'],
         default: 'regular',
+    },
+    accountStatus: {
+        type: String,
+        enum: ['active', 'suspended'],
+        default: 'active',
+        index: true,
     },
     followers: {
         type: Number,
@@ -62,6 +74,10 @@ const userSchema = new mongoose.Schema({
     followingCount: {
         type: Number,
         default: 0,
+    },
+    onboardingCompletedAt: {
+        type: Date,
+        default: null,
     },
 
     // Nested Values
@@ -86,6 +102,12 @@ const userSchema = new mongoose.Schema({
 // Text Indexes for searching
 userSchema.index({ username: 'text' });  // text indexing
 userSchema.index({ email: 1 }, { unique: true });  // ascending order indexing
-userSchema.index({ googleId: 1 }, { unique: true });  // ascending order indexing
+userSchema.index(
+    { googleId: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { googleId: { $type: 'string' } },
+    }
+);
 
 module.exports = mongoose.model('User', userSchema);
