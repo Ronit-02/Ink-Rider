@@ -7,6 +7,10 @@ const questionSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  normalizedText: {
+    type: String,
+    default: null,
+  },
   context: {
     type: String,
     default: '',
@@ -21,6 +25,11 @@ const questionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   }],
+  upvotesCount: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   answers: [{
     text:      { type: String, required: true },
     author:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -31,9 +40,41 @@ const questionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Post',
   }],
+  followers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
+  claimedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  claimedAt: {
+    type: Date,
+    default: null,
+  },
+  declinedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
+  targetWriterIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
+  status: {
+    type: String,
+    enum: ['open', 'answered', 'closed'],
+    default: 'open',
+    index: true,
+  },
 }, { timestamps: true, versionKey: false });
 
 questionSchema.index({ text: 'text', tags: 'text' });
 questionSchema.index({ author: 1 });
+questionSchema.index({ upvotesCount: -1, createdAt: -1 });
+questionSchema.index(
+  { normalizedText: 1 },
+  { unique: true, partialFilterExpression: { normalizedText: { $type: 'string' } } }
+);
 
 module.exports = mongoose.model('Question', questionSchema);

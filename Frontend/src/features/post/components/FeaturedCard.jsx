@@ -26,8 +26,12 @@ export default function FeaturedCard({ article }) {
       {/* Bookmark overlay */}
       <button
         onClick={e => { e.stopPropagation(); setSaved(v => !v) }}
-        className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center
+        type="button"
+        aria-label={saved ? `Remove ${article.title} from saved articles` : `Save ${article.title}`}
+        aria-pressed={saved}
+        className={`absolute top-2 right-2 min-h-10 min-w-10 rounded-full flex items-center justify-center
           border border-[var(--color-border)] transition-all duration-150 opacity-0 group-hover:opacity-100
+          focus-visible:opacity-100
           ${saved ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)]' : 'bg-white/90 text-[var(--color-text-secondary)]'}`}
       >
         <BookmarkIcon filled={saved} />

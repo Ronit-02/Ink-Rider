@@ -52,7 +52,7 @@ export default function SlashMenu({
     if (selectedItem) {
       selectedItem.scrollIntoView({
         block: 'nearest',
-        behavior: 'smooth',
+         behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
       })
     }
   }, [selected])
@@ -74,6 +74,9 @@ export default function SlashMenu({
   return (
     <div
       ref={menuRef}
+      id="editor-slash-menu"
+      role="listbox"
+      aria-label="Insert block"
       style={{
         position: 'absolute',
         left: position.x,
@@ -91,11 +94,19 @@ export default function SlashMenu({
       }}
     >
       {filtered.map((opt, i) => (
-        <div
+        <button
           key={opt.type}
+          type="button"
+          role="option"
+          aria-selected={i === selected}
+          aria-label={`Insert ${opt.label}`}
           onClick={() => onSelect(opt)}
           ref={(el) => itemRefs.current[i] = el}
+          tabIndex={i === selected ? 0 : -1}
           style={{
+            width: '100%',
+            border: 0,
+            textAlign: 'left',
             padding: '8px 12px',
             borderRadius: 6,
             background: i === selected ? 'var(--color-bg-alt)' : 'transparent',
@@ -109,7 +120,7 @@ export default function SlashMenu({
         >
           <span style={{ width: 28, display: 'inline-block', textAlign: 'center' }}>{opt.icon}</span>
           {opt.label}
-        </div>
+        </button>
       ))}
     </div>
   )

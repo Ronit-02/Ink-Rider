@@ -7,10 +7,11 @@ const api = axios.create({
   withCredentials: true,    // include cookies in requests (for refresh token)
 });
 
+let refreshPromise = null;
+
 // Request Interceptor (attach token to headers)
 api.interceptors.request.use(
   (config) => {
-    console.log('Request Interceptor Triggered')
     const token = store.getState().auth.token;
     if(token){
       config.headers['Authorization'] = `Bearer ${token}`;
@@ -19,7 +20,6 @@ api.interceptors.request.use(
   },
 
   (error) => {
-    console.log('Request Interceptor Error - ', error); 
     return Promise.reject(error)
   }
 );
@@ -27,21 +27,22 @@ api.interceptors.request.use(
 // Response Interceptor (handle 401 / access token errors)
 api.interceptors.response.use(
   (response) => {
-    console.log('Response Interceptor Triggered')
     return response;
   },
 
   async (error) => {
-    console.log('Response Interceptor Error - ', error)
-
     // Check if originalRequest exists to avoid issues with non-HTTP errors
     const originalRequest = error.config;
     if (!originalRequest) {
       return Promise.reject(error);
     }
 
-    // Check if error is 401 or we haven't already tried refreshing or if it's not the refresh token endpoint
+    // Only an established session can have an expired access token. Public auth
+    // failures (including invalid login credentials) must preserve their original
+    // response instead of being replaced by a missing-refresh-cookie error.
+    const hasAccessToken = Boolean(store.getState().auth.token);
     if (error.response?.status === 401 
+      && hasAccessToken
       && !originalRequest._retry 
       && !originalRequest.url?.includes('/api/auth/refresh-token')
     ) {
@@ -49,13 +50,17 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-
-        // Attempt to refresh token (don't use api instance to avoid interceptor loop)
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/auth/refresh-token`, 
-          {}, 
-          { withCredentials: true }
-        );
+        // Share one refresh request across simultaneous 401 responses.
+        if (!refreshPromise) {
+          refreshPromise = axios.post(
+            `${import.meta.env.VITE_API_URL}/api/auth/refresh-token`,
+            {},
+            { withCredentials: true }
+          ).finally(() => {
+            refreshPromise = null;
+          });
+        }
+        const response = await refreshPromise;
 
         // Save new access token
         const newAccessToken = response.data.accessToken;
@@ -66,12 +71,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } 
       catch (refreshError) {
-        // If refresh fails, dispatch logout or handle as needed
         store.dispatch(logout());
-        sessionStorage.clear(); // Clear any session storage if used
-        localStorage.clear(); // Clear any local storage if used
-
-        // Redirect to login page
         window.location.href = '/login';  
         return Promise.reject(refreshError);
       }

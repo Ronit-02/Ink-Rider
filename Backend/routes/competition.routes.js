@@ -1,14 +1,31 @@
 const express       = require('express');
 const router        = express.Router();
-const { validateToken } = require('../middlewares/auth.middleware');
-const { getCompetitions, getCompetitionById, enterCompetition, likeEntry } = require('../controllers/competition.controller');
+const { validateToken, optionalAuth, requireRoles } = require('../middlewares/auth.middleware');
+const { createRateLimiter } = require('../middlewares/rate-limit.middleware');
+const { getCompetitions, getCompetitionById, getEligiblePosts, enterCompetition, voteEntry, removeEntryVote, createCompetition, scoreEntry, publishResults, disqualifyEntry, submitAppeal, decideAppeal } = require('../controllers/competition.controller');
+
+const competitionVoteLimiter = createRateLimiter({ windowMs: 60_000, max: 30, keyPrefix: 'competition-vote' });
+const competitionUserVoteLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 30,
+  keyPrefix: 'competition-vote-user',
+  keyResolver: req => req.auth?.userId,
+});
 
 /* Public */
-router.get('/',    getCompetitions);
-router.get('/:id', getCompetitionById);
+router.get('/',    optionalAuth, getCompetitions);
+router.get('/:id/eligible-posts', validateToken, getEligiblePosts);
+router.get('/:id', optionalAuth, getCompetitionById);
 
 /* Auth required */
-router.post('/:id/enter',                    validateToken, enterCompetition);
-router.post('/:id/entries/:entryId/like',    validateToken, likeEntry);
+router.post('/:id/entries',                  validateToken, enterCompetition);
+router.post('/:id/entries/:entryId/disqualification', validateToken, requireRoles('moderator', 'admin'), disqualifyEntry);
+router.post('/:id/entries/:entryId/appeals', validateToken, submitAppeal);
+router.patch('/:id/appeals/:appealId', validateToken, requireRoles('moderator', 'admin'), decideAppeal);
+router.put('/:id/entries/:entryId/vote',     validateToken, competitionVoteLimiter, competitionUserVoteLimiter, voteEntry);
+router.delete('/:id/entries/:entryId/vote',  validateToken, competitionVoteLimiter, competitionUserVoteLimiter, removeEntryVote);
+router.post('/', validateToken, requireRoles('admin'), createCompetition);
+router.put('/:id/entries/:entryId/score', validateToken, requireRoles('moderator', 'admin'), scoreEntry);
+router.post('/:id/results', validateToken, requireRoles('admin'), publishResults);
 
 module.exports = router;

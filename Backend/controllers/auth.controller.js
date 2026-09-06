@@ -6,16 +6,120 @@ const { sendEmail } = require('../services/email.service.js');
 const User = require('../schemas/user.schema');
 const Session = require('../schemas/session.schema');
 const OTP = require('../schemas/otp.schema');
+const config = require('../config/config');
+const { createProfileForUser } = require('../services/profile.service');
+
+const refreshCookieOptions = {
+    httpOnly: true,
+    secure: config.COOKIE_SECURE,
+    sameSite: config.COOKIE_SAME_SITE,
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+const clearRefreshCookie = (res) => {
+    const { maxAge, ...clearOptions } = refreshCookieOptions;
+    res.clearCookie('refreshToken', clearOptions);
+};
+
+const createGoogleUsername = async (name, email) => {
+    const base = String(name || email.split('@')[0] || 'Ink Rider writer')
+        .trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'ink-rider-writer';
+    let username = base;
+    let suffix = 1;
+    while (await User.exists({ username })) {
+        username = `${base}-${suffix}`.slice(0, 30);
+        suffix += 1;
+    }
+    return username;
+};
+
+const verifyGoogleCredential = async credential => {
+    if (!config.GOOGLE_CLIENT_ID) {
+        const error = new Error('Google authentication is not configured');
+        error.code = 'GOOGLE_NOT_CONFIGURED';
+        throw error;
+    }
+    const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+    if (!response.ok) {
+        const error = new Error('Invalid Google credential');
+        error.code = 'GOOGLE_CREDENTIAL_INVALID';
+        throw error;
+    }
+    const claims = await response.json();
+    if (claims.aud !== config.GOOGLE_CLIENT_ID || claims.iss !== 'https://accounts.google.com' || claims.email_verified !== 'true' || !claims.sub || !claims.email) {
+        const error = new Error('Invalid Google credential');
+        error.code = 'GOOGLE_CREDENTIAL_INVALID';
+        throw error;
+    }
+    return claims;
+};
+
+const googleLogin = async (req, res) => {
+    try {
+        const credential = String(req.body?.credential || '').trim();
+        if (!credential) return res.status(400).json({ success: false, message: 'Google credential is required' });
+        const claims = await verifyGoogleCredential(credential);
+        const email = claims.email.trim().toLowerCase();
+        let user = await User.findOne({ googleId: claims.sub });
+
+        if (!user) {
+            const emailUser = await User.findOne({ email });
+            if (emailUser) {
+                if (emailUser.googleId && emailUser.googleId !== claims.sub) {
+                    return res.status(409).json({
+                        success: false,
+                        code: 'GOOGLE_IDENTITY_CONFLICT',
+                        message: 'This email is linked to a different Google account',
+                    });
+                }
+                if (!emailUser.googleId) {
+                    return res.status(409).json({
+                        success: false,
+                        code: 'GOOGLE_ACCOUNT_COLLISION',
+                        message: 'An account already exists with this email. Sign in with your password instead.',
+                    });
+                }
+                user = emailUser;
+            }
+        }
+
+        if (user) {
+            user.googleId = claims.sub;
+            user.verified = true;
+            if (claims.picture && !user.picture) user.picture = claims.picture;
+            await user.save();
+        } else {
+            user = await User.create({ username: await createGoogleUsername(claims.name, email), email, googleId: claims.sub, picture: claims.picture || null, verified: true });
+            await createProfileForUser({ userId: user._id, username: user.username, picture: user.picture });
+        }
+
+        const sessionId = crypto.randomUUID();
+        const accessToken = generateToken({ email, id: user._id }, '10m');
+        const refreshToken = generateToken({ email, id: user._id, sessionId }, '7d');
+        await Session.create({ user: user._id, sessionId, ip: req.ip, userAgent: req.get('User-Agent') || 'unknown' });
+        res.cookie('refreshToken', refreshToken, refreshCookieOptions);
+        return res.status(200).json({ success: true, message: 'Google login successful', token: accessToken, username: user.username, avatarUrl: user.picture || null, email, role: user.role });
+    } catch (err) {
+        console.error(`[${req.requestId}] Google login failed`);
+        if (err?.code === 'GOOGLE_NOT_CONFIGURED') return res.status(503).json({ success: false, code: err.code, message: 'Google authentication is not configured' });
+        if (err?.code === 'GOOGLE_CREDENTIAL_INVALID') return res.status(401).json({ success: false, code: err.code, message: 'Google authentication failed' });
+        return res.status(500).json({ success: false, message: 'Unable to sign in with Google at this time' });
+    }
+};
 
 const login = async (req, res) => {
     
     try{
         // login data is sent in request body
         const { email, password } = req.body;
+        if (!email?.trim() || !password) {
+            return res.status(400).json({ success: false, message: 'Email and password are required' });
+        }
 
-        const user = await User.findOne({email});
-        console.log('User found !');
+        const normalizedEmail = email.trim().toLowerCase();
 
+        const user = await User.findOne({email: normalizedEmail});
         // check if google logged-in
         if(user && user.googleId)
             return res.status(400).json({message: 'Account is Google logged-in'});
@@ -27,8 +131,9 @@ const login = async (req, res) => {
             const otp = generateOTP();
             const otpHash = await hashPassword(otp);
             const otpHtml = getOTPHTML(otp);
+            await OTP.deleteMany({ email: normalizedEmail });
             await OTP.create({
-                email,
+                email: normalizedEmail,
                 user: user._id,
                 otpHash,
                 expiresAt: new Date(Date.now() + 10 * 60 * 1000) // OTP expires in 10 minutes
@@ -36,7 +141,7 @@ const login = async (req, res) => {
 
             // Sending OTP to user's email
             await sendEmail(
-                email,
+                normalizedEmail,
                 'Ink Rider - Email Verification',
                 `Your OTP for email verification is ${otp}`,
                 otpHtml
@@ -54,11 +159,11 @@ const login = async (req, res) => {
                 // Issuing a JWT
                 const sessionId = crypto.randomUUID();
                 const accessToken = generateToken(
-                    { email, id: user._id }, 
+                    { email: normalizedEmail, id: user._id }, 
                     '10m'
                 );
                 const refreshToken = generateToken(
-                    { email, id: user._id, sessionId }, 
+                    { email: normalizedEmail, id: user._id, sessionId }, 
                     '7d'
                 );
 
@@ -67,39 +172,36 @@ const login = async (req, res) => {
                     user: user._id,
                     sessionId,
                     ip: req.ip,
-                    userAgent: req.get('User-Agent')
+                    userAgent: req.get('User-Agent') || 'unknown'
                 })
                 await session.save();
 
                 // Setting refresh token in cookie
-                res.cookie('refreshToken', refreshToken, {
-                    httpOnly: true,
-                    secure: true,
-                    sameSite: 'strict',
-                    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-                });
+                res.cookie('refreshToken', refreshToken, refreshCookieOptions);
                 
-                console.log('Login successful !!');
                 return res.status(200).json({
                     success: true,
                     message: 'Login successful',
                     token: accessToken, 
                     username: user.username, 
-                    email, 
+                    avatarUrl: user.picture || null,
+                    email: normalizedEmail, 
                     role: user.role
                 });
         }
         else{
-            return res.status(500).json({
+            return res.status(401).json({
                 success: false,
                 message: 'Invalid credentials'
             });
         }
     }
     catch(err){
+        console.error(`[${req.requestId}] Login failed`);
+        if (err?.code === 'PROVIDER_NOT_CONFIGURED') return res.status(503).json({ code: err.code, message: 'Email verification is not configured' });
         return res.status(500).json({
             success: false, 
-            message: err.toString()
+            message: 'Unable to log in at this time'
         });
     }
 }
@@ -109,6 +211,15 @@ const signup = async (req, res) => {
     try{
         // signup data is sent in request body
         const { username, email, password } = req.body;
+        if (!username?.trim() || !email?.trim() || !password) {
+            return res.status(400).json({ success: false, message: 'Username, email, and password are required' });
+        }
+        if (password.length < 8) {
+            return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+        }
+
+        const normalizedUsername = username.trim();
+        const normalizedEmail = email.trim().toLowerCase();
         
         // Assigning a random image from assets
         const random = generateRandom(0, Avatars.length - 1);
@@ -118,16 +229,17 @@ const signup = async (req, res) => {
         const hashedPassowrd = await hashPassword(password);
     
         // Email and Username Validation
-        if(await User.findOne({email: email})){
-            console.log('Email linked with another account');
-            return res.status(500).json({
+        const existingEmailUser = await User.findOne({ email: normalizedEmail }).select('googleId');
+        if(existingEmailUser){
+            return res.status(409).json({
                 success: false,
-                message: 'Email linked with another account'
+                message: existingEmailUser.googleId
+                    ? 'Email linked with Google account'
+                    : 'Email linked with another account'
             });
         } 
-        if(await User.findOne({username: username})){
-            console.log('Username already in use');
-            return res.status(500).json({
+        if(await User.findOne({username: normalizedUsername})){
+            return res.status(409).json({
                 success: false,
                 message: 'Username already in use'
             });
@@ -136,18 +248,29 @@ const signup = async (req, res) => {
         // Creating User
         const user = new User({
             picture: picture,
-            username: username, 
-            email: email, 
+            username: normalizedUsername, 
+            email: normalizedEmail, 
             password: hashedPassowrd
         });
         await user.save();
+
+        try {
+            await createProfileForUser({
+                userId: user._id,
+                username: normalizedUsername,
+                picture,
+            });
+        } catch (profileError) {
+            await User.deleteOne({ _id: user._id });
+            throw profileError;
+        }
 
         // Generating OTP and saving in database
         const otp = generateOTP();
         const otpHash = await hashPassword(otp);
         const otpHtml = getOTPHTML(otp);
         await OTP.create({
-            email,
+            email: normalizedEmail,
             user: user._id,
             otpHash,
             expiresAt: new Date(Date.now() + 10 * 60 * 1000) // OTP expires in 10 minutes
@@ -155,7 +278,7 @@ const signup = async (req, res) => {
 
         // Sending OTP to user's email
         await sendEmail(
-            email,
+            normalizedEmail,
             'Ink Rider - Email Verification',
             `Your OTP for email verification is ${otp}`,
             otpHtml
@@ -167,7 +290,14 @@ const signup = async (req, res) => {
         });
     }
     catch(err){
-        console.log('Error in signup:', err);
+        console.error(`[${req.requestId}] Signup failed`);
+        if (err?.code === 'PROVIDER_NOT_CONFIGURED') return res.status(503).json({ code: err.code, message: 'Email verification is not configured' });
+        if (err?.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                message: 'Email or username already in use'
+            });
+        }
         return res.status(500).json({
             success: false,
             message: 'Cant Signup now, try again later'
@@ -178,8 +308,12 @@ const signup = async (req, res) => {
 const verifyEmail = async (req, res) =>{
     try{
         const { email, otp } = req.body;
+        if (!email?.trim() || !/^\d{6}$/.test(otp || '')) {
+            return res.status(400).json({ success: false, message: 'Email and a 6-digit OTP are required' });
+        }
+        const normalizedEmail = email.trim().toLowerCase();
 
-        const otpRecord = await OTP.findOne({email});
+        const otpRecord = await OTP.findOne({email: normalizedEmail});
         if(!otpRecord)
             return res.status(400).json({
                 success: false,
@@ -198,22 +332,22 @@ const verifyEmail = async (req, res) =>{
 
             // Marking user as verified
             await User.findOneAndUpdate(
-                { email }, 
+                { email: normalizedEmail }, 
                 { verified: true }
             );
             
             // Deleting all OTPs of the user after successful verification
-            await OTP.deleteMany({email}); 
+            await OTP.deleteMany({email: normalizedEmail}); 
 
             // Issuing JWT
-            const user = await User.findOne({email});
+            const user = await User.findOne({email: normalizedEmail});
             const sessionId = crypto.randomUUID();
             const accessToken = generateToken(
-                { email, id: user._id }, 
+                { email: normalizedEmail, id: user._id }, 
                 '10m'
             );
             const refreshToken = generateToken(
-                { email, id: user._id, sessionId },
+                { email: normalizedEmail, id: user._id, sessionId },
                 '7d'
             );
             
@@ -222,24 +356,20 @@ const verifyEmail = async (req, res) =>{
                 user: user._id,
                 sessionId,
                 ip: req.ip,
-                userAgent: req.get('User-Agent')
+                userAgent: req.get('User-Agent') || 'unknown'
             })
             await session.save();
 
             // Setting refresh token in httpOnly cookie
-            res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                secure: true,
-                sameSite: 'strict',
-                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-            });
+            res.cookie('refreshToken', refreshToken, refreshCookieOptions);
 
             return res.status(200).json({
                 success: true,
                 message: 'Email verified successfully',
                 token: accessToken, 
                 username: user.username, 
-                email,
+                avatarUrl: user.picture || null,
+                email: normalizedEmail,
                 role: user.role, 
             });
         }
@@ -251,7 +381,7 @@ const verifyEmail = async (req, res) =>{
         }
     } 
     catch(err){
-        console.log('Error in email verification:', err);
+        console.error(`[${req.requestId}] Email verification failed`);
         return res.status(500).json({
             success: false,
             message: 'Cant verify email now, try again later'
@@ -276,7 +406,7 @@ const logout = async (req, res) => {
         );
 
         // Clearing refresh token cookie
-        res.clearCookie('refreshToken');
+        clearRefreshCookie(res);
 
         return res.status(200).json({
             success: true,
@@ -284,7 +414,7 @@ const logout = async (req, res) => {
         });
     }
     catch(err){
-        console.log('Error in logout:', err);
+        console.error(`[${req.requestId}] Logout failed`);
         return res.status(500).json({
             success: false,
             message: 'Cant logout now, try again later'
@@ -311,7 +441,7 @@ const logoutAll = async (req, res) => {
         );
 
         // clearing refresh token cookie
-        res.clearCookie('refreshToken');
+        clearRefreshCookie(res);
 
         return res.status(200).json({
             success: true,
@@ -319,7 +449,7 @@ const logoutAll = async (req, res) => {
         });
     }
     catch(err){
-        console.log('Error in logout all sessions:', err);
+        console.error(`[${req.requestId}] Logout-all failed`);
         return res.status(500).json({
             success: false,
             message: 'Cant logout all sessions now, try again later'
@@ -330,23 +460,25 @@ const logoutAll = async (req, res) => {
 const resendOtp = async (req, res) => {
     try{
         const { email } = req.body;
+        if (!email?.trim()) return res.status(400).json({ message: 'Email is required' });
+        const normalizedEmail = email.trim().toLowerCase();
 
         // Check if user exists and not verified
-        const user = await User.findOne({email});
+        const user = await User.findOne({email: normalizedEmail});
         if(!user)
             return res.status(404).json({message: 'User not found'});
         if(user.verified)
             return res.status(400).json({message: 'Email already verified'});
 
         // delete old OTPs
-        await OTP.deleteMany({email});
+        await OTP.deleteMany({email: normalizedEmail});
 
         // Generating OTP and saving in database
         const otp = generateOTP();
         const otpHash = await hashPassword(otp);
         const otpHtml = getOTPHTML(otp);
         await OTP.create({
-            email,
+            email: normalizedEmail,
             user: user._id,
             otpHash,
             expiresAt: new Date(Date.now() + 10 * 60 * 1000) // OTP expires in 10 minutes
@@ -354,7 +486,7 @@ const resendOtp = async (req, res) => {
 
         // Sending OTP to user's email
         await sendEmail(
-            email,
+            normalizedEmail,
             'Ink Rider - Email Verification',
             `Your OTP for email verification is ${otp}`,
             otpHtml
@@ -366,7 +498,8 @@ const resendOtp = async (req, res) => {
         });
     }
     catch(err){
-        console.log('Error in resending OTP:', err);
+        console.error(`[${req.requestId}] OTP resend failed`);
+        if (err?.code === 'PROVIDER_NOT_CONFIGURED') return res.status(503).json({ code: err.code, message: 'Email verification is not configured' });
         return res.status(500).json({
             success: false,
             message: 'Cant resend OTP now, try again later'
@@ -432,12 +565,7 @@ const refreshToken = async (req, res) => {
             );
             
             // Setting new refresh token in httpOnly cookie
-            res.cookie('refreshToken', newRefreshToken, {
-                httpOnly: true,
-                secure: true,
-                sameSite: 'strict',
-                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-            });
+            res.cookie('refreshToken', newRefreshToken, refreshCookieOptions);
         }
 
         return res.status(200).json({
@@ -445,6 +573,7 @@ const refreshToken = async (req, res) => {
             message: 'Token refreshed successfully',
             accessToken: newAccessToken,
             user: user.username,
+            avatarUrl: user.picture || null,
             email: user.email,
             role: user.role
         });
@@ -467,7 +596,7 @@ const refreshToken = async (req, res) => {
             });
         }
 
-        console.log('Error in refreshing token:', err);        
+        console.error(`[${req.requestId}] Token refresh failed`);        
         return res.status(500).json({
             success: false,
             message: 'Cant refresh token now, try again later'
@@ -482,5 +611,6 @@ module.exports = {
     logout,
     logoutAll,
     resendOtp,
-    refreshToken
+    refreshToken,
+    googleLogin
 }

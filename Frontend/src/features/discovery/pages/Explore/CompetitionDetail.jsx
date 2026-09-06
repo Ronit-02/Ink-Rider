@@ -1,151 +1,52 @@
-/* CompetitionDetail — full competition page */
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { articles } from '@/shared/data'
+import { useRef, useState } from 'react'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import Button from '@/shared/components/ui/Button'
-import AuthorMeta from '@/shared/components/ui/AuthorMeta'
-import Divider from '@/shared/components/ui/Divider'
-import { COMPETITIONS } from './CompetitionsTab'
+import Avatar from '@/shared/components/ui/Avatar'
+import ImageBox from '@/shared/components/ui/ImageBox'
+import CompetitionImage from '@/features/competition/components/CompetitionImage'
+import useAuth from '@/features/auth/hooks/useAuth'
+import { useCompetition, useEligiblePosts, useEntryVote, useSubmitEntry } from '@/features/competition/hooks/useCompetitions'
+import { ListSkeleton, Skeleton } from '@/shared/components/ui/Skeleton'
+import PageFrame from '@/shared/components/layout/PageFrame'
+import useDialogFocus from '@/shared/hooks/useDialogFocus'
 
-const HeartIcon = ({ f }) => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill={f ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-    <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-  </svg>
-)
+const date = value => value ? new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : 'To be announced'
+const entryMetaDate = value => value ? new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Date unavailable'
 
-const ENTRIES = [
-  { id: 1, article: articles[0], likes: 48, liked: false },
-  { id: 2, article: articles[2], likes: 32, liked: false },
-  { id: 3, article: articles[4], likes: 27, liked: false },
-]
-
-function EntryCard({ entry, rank }) {
-  const [liked, setLiked] = useState(false)
-  const [likes, setLikes] = useState(entry.likes)
-  const medals = ['🥇', '🥈', '🥉']
-  return (
-    <div className="bg-[var(--color-surface)] rounded-[20px] border border-[var(--color-border)] overflow-hidden flex flex-col">
-      <div className="relative">
-        <img src={entry.article.image} alt={entry.article.title} className="w-full h-[160px] object-cover block" />
-        {rank <= 3 && <div className="absolute top-[10px] left-[10px] bg-black/60 rounded-full px-[10px] py-1 text-[14px]">{medals[rank-1]}</div>}
-      </div>
-      <div className="p-4 flex-1">
-        <AuthorMeta author={entry.article.author} readTime={entry.article.readTime} size="sm" />
-        <h3 className="font-bold text-[14px] text-[var(--color-text)] leading-[1.4] mt-2 mb-3 line-clamp-2"
-          style={{ fontFamily: 'var(--font-display)' }}>{entry.article.title}</h3>
-        <div className="flex justify-between items-center">
-          <button onClick={() => { setLiked(v => !v); setLikes(n => liked ? n-1 : n+1) }}
-            className={`flex items-center gap-[6px] px-3 py-[5px] rounded-full border text-[12px] font-medium cursor-pointer transition-all
-              ${liked ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)] border-[var(--color-accent)]'
-                      : 'bg-transparent text-[var(--color-text-secondary)] border-[var(--color-border)]'}`}>
-            <HeartIcon f={liked} /> {likes}
-          </button>
-          <span className="text-[12px] text-[var(--color-accent)] font-medium cursor-pointer">Read →</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function EnterModal({ compTitle, onClose }) {
-  const [note, setNote]   = useState('')
-  const [post, setPost]   = useState('')
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.4)' }}
-      onClick={e => { if(e.target===e.currentTarget) onClose() }}>
-      <div className="bg-[var(--color-surface)] rounded-[20px] border border-[var(--color-border)] p-6 w-full max-w-[520px]
-        shadow-[0_16px_48px_rgba(0,0,0,0.15)] max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="font-bold text-[18px] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>
-            Enter: {compTitle}
-          </h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full border border-[var(--color-border)] bg-transparent
-            text-[var(--color-text-muted)] flex items-center justify-center cursor-pointer text-[18px]">×</button>
-        </div>
-        <p className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-[0.06em] mb-2">Select a post</p>
-        <select value={post} onChange={e => setPost(e.target.value)}
-          className="w-full px-[14px] py-[10px] border border-[var(--color-border)] rounded-[10px]
-            bg-[var(--color-bg-alt)] text-[13px] text-[var(--color-text)] mb-4 outline-none cursor-pointer">
-          <option value="">— Choose one of your posts —</option>
-          {articles.slice(0,4).map(a => <option key={a.id} value={a.id}>{a.title}</option>)}
-        </select>
-        <p className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-[0.06em] mb-2">Author's note (optional)</p>
-        <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Tell the judges what makes this piece special…"
-          className="w-full px-[14px] py-[10px] border border-[var(--color-border)] rounded-[10px]
-            bg-[var(--color-bg-alt)] text-[13px] text-[var(--color-text)] resize-none h-[80px] font-[inherit] outline-none mb-5"
-        />
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" disabled={!post} onClick={onClose}>Submit Entry</Button>
-        </div>
-      </div>
-    </div>
-  )
+function EnterModal({ competitionId, onClose }) {
+  const closeButtonRef = useRef(null)
+  const dialogRef = useDialogFocus(onClose, closeButtonRef)
+  const posts = useEligiblePosts(competitionId, true)
+  const submit = useSubmitEntry(competitionId)
+  const [postId, setPostId] = useState('')
+  const [note, setNote] = useState('')
+  const enter = event => {
+    event.preventDefault()
+    if (!postId || submit.isPending) return
+    submit.mutate({ postId, note }, { onSuccess: onClose })
+  }
+  return <div className="fixed inset-0 z-[300] grid place-items-center p-4 bg-black/45" onMouseDown={event => event.target === event.currentTarget && onClose()}><section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="entry-title" tabIndex={-1} className="w-full max-w-[520px] rounded-[20px] border border-[var(--color-border)] bg-[var(--color-surface)] p-6"><div className="flex justify-between gap-4"><h2 id="entry-title" className="text-[19px] font-bold text-[var(--color-text)]">Submit an article</h2><button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Close" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)]">×</button></div><form className="mt-6" onSubmit={enter}><label className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]" htmlFor="entry-post">Your published article <span aria-hidden="true">(required)</span></label><select id="entry-post" required aria-describedby="entry-post-help" value={postId} onChange={event => setPostId(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]"><option value="">Choose an article</option>{posts.data?.map(post => <option key={post.id} value={post.id}>{post.title}</option>)}</select><p id="entry-post-help" className="mt-1 text-[11px] text-[var(--color-text-muted)]">Choose one of your published articles that follows the competition rules.</p><label className="block mt-4 mb-2 text-[12px] font-semibold text-[var(--color-text)]" htmlFor="entry-note">Author note <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><textarea id="entry-note" value={note} maxLength={500} aria-describedby="entry-note-help" onChange={event => setNote(event.target.value)} className="w-full min-h-20 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]" /><p id="entry-note-help" className="mt-1 text-right text-[11px] text-[var(--color-text-muted)]">{note.length}/500 characters</p>{submit.isError && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">{submit.error?.response?.data?.message || 'Entry could not be submitted.'}</p>}<div className="mt-5 flex justify-end gap-2"><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" disabled={!postId || submit.isPending}>{submit.isPending ? 'Submitting…' : 'Submit entry'}</Button></div></form></section></div>
 }
 
 export default function CompetitionDetail() {
-  const { id }   = useParams()
-  const navigate = useNavigate()
-  const comp     = COMPETITIONS.find(c => c.id === Number(id)) ?? COMPETITIONS[0]
-  const [entered,   setEntered]   = useState(false)
-  const [showModal, setShowModal] = useState(false)
-  const isOpen = comp.status === 'open'
-
-  return (
-    <div className="max-w-[800px] px-6 pt-8 pb-20">
-      <button onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-[6px] bg-[var(--color-bg-alt)] border border-[var(--color-border)]
-          text-[var(--color-text-secondary)] text-[13px] cursor-pointer mb-7 px-[14px] py-[6px]
-          rounded-full transition-all hover:bg-[var(--color-border)]">
-        ← Back
-      </button>
-
-      <img src={comp.image} alt={comp.title} className="w-full h-[240px] object-cover rounded-[20px] block mb-6" />
-
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <span className={`px-[10px] py-[3px] rounded-full text-[11px] font-semibold
-          ${isOpen ? 'bg-[#FFF3CD] text-[#856404]' : 'bg-[var(--color-bg-alt)] text-[var(--color-text-muted)]'}`}>
-          {isOpen ? '🏆 Open' : '✓ Closed'} · {comp.closes}
-        </span>
-        <span className="px-[10px] py-[3px] bg-[var(--color-bg-alt)] rounded-full text-[11px] text-[var(--color-text-secondary)]">{comp.entries} participants</span>
-        <span className="px-[10px] py-[3px] bg-[var(--color-bg-alt)] rounded-full text-[11px] text-[var(--color-text-secondary)]">Prize pool: {comp.prizePool}</span>
-        <span className="px-[10px] py-[3px] bg-[var(--color-bg-alt)] rounded-full text-[11px] text-[var(--color-text-secondary)]">Results: {comp.resultsDate}</span>
-      </div>
-
-      <h1 className="font-bold text-[28px] text-[var(--color-text)] leading-[1.3] mb-3"
-        style={{ fontFamily: 'var(--font-display)' }}>{comp.title}</h1>
-      <p className="text-[14px] text-[var(--color-text-secondary)] leading-[1.7] mb-6">{comp.description}</p>
-
-      <div className="flex gap-3 mb-8 flex-wrap">
-        {comp.prizes.map(p => (
-          <div key={p.rank} className="flex-1 min-w-[100px] p-3 bg-[var(--color-bg-alt)] rounded-[10px] text-center border border-[var(--color-border)]">
-            <p className="text-[12px] font-semibold text-[var(--color-text)] mb-1">{p.rank}</p>
-            <p className="text-[11px] text-[var(--color-text-secondary)]">{p.amount}</p>
-          </div>
-        ))}
-      </div>
-
-      {isOpen && !entered && (
-        <div className="mb-10">
-          <Button variant="primary" onClick={() => setShowModal(true)}>Enter Competition</Button>
-        </div>
-      )}
-      {entered && (
-        <p className="text-[13px] text-[var(--color-text-secondary)] mb-10">
-          ✓ You've entered. Submit before {comp.closes}.
-        </p>
-      )}
-
-      <Divider className="mb-8" />
-      <p className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-[0.08em] mb-4">
-        Current Entries — vote for your favourite
-      </p>
-      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))' }}>
-        {ENTRIES.map((e,i) => <EntryCard key={e.id} entry={e} rank={i+1} />)}
-      </div>
-
-      {showModal && <EnterModal compTitle={comp.title} onClose={() => { setShowModal(false); setEntered(true) }} />}
-    </div>
-  )
+  const { id } = useParams()
+  const location = useLocation()
+  const { loggedIn, signIn } = useAuth()
+  const query = useCompetition(id)
+  const vote = useEntryVote(id)
+  const [showEntry, setShowEntry] = useState(false)
+  if (query.isPending) return <PageFrame><div role="status" aria-label="Loading competition"><Skeleton className="h-8 w-20 rounded-full" /><Skeleton className="mt-7 h-[clamp(180px,30vw,300px)] w-full rounded-[20px]" /><Skeleton className="mt-7 h-10 w-3/5" /><Skeleton className="mt-4 h-4 w-full max-w-2xl" /><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
+  if (query.isError) return <PageFrame><div role="alert"><p className="text-[13px] text-[var(--color-danger)]">Competition could not be loaded.</p><Button className="mt-4" onClick={() => query.refetch()}>Try again</Button></div></PageFrame>
+  const competition = query.data
+  const canEnter = competition.status === 'open' && !competition.isEntered
+  return <PageFrame>
+    <Link to="/explore/competitions" className="mb-7 inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-3 py-1.5 text-[12px] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">← Competitions</Link>
+    <div className="mb-7"><CompetitionImage src={competition.coverImage} title={competition.title} status={competition.status} height="clamp(180px, 30vw, 300px)" radius="20px" /></div>
+    <div className="flex flex-wrap gap-2 text-[11px] text-[var(--color-text-secondary)]"><span className="rounded-full bg-[var(--color-bg-alt)] px-2.5 py-1 font-semibold uppercase">{competition.status}</span><span className="rounded-full bg-[var(--color-bg-alt)] px-2.5 py-1">Closes {date(competition.closeDate)}</span><span className="rounded-full bg-[var(--color-bg-alt)] px-2.5 py-1">{competition.entriesCount} entries</span></div>
+    <div className="mt-5 flex flex-wrap items-center justify-between gap-6"><h1 className="text-[clamp(30px,5vw,48px)] font-bold leading-[1.05] tracking-[-0.045em] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{competition.title}</h1><div className="flex flex-col items-end gap-2"><Button variant={canEnter ? 'primary' : 'secondary'} disabled={!canEnter} onClick={() => loggedIn ? setShowEntry(true) : signIn()}>{competition.isEntered ? 'Entry submitted' : competition.status === 'open' ? 'Add your entry' : 'Entries closed'}</Button>{competition.isEntered && <span className="text-right text-[12px] text-[var(--color-text-secondary)]">You have already added an entry for this competition.</span>}</div></div>
+    <p className="mt-4 max-w-[760px] text-[14px] leading-7 text-[var(--color-text-secondary)]">{competition.description}</p>
+    {(competition.rules?.length > 0 || competition.prizes?.length > 0) && <div className="mt-8 grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.65fr)] md:items-start">{competition.rules?.length > 0 && <section className="max-w-[760px]"><h2 className="text-[18px] font-bold text-[var(--color-text)]">Rules</h2><ul className="mt-3 space-y-2 text-[13px] leading-6 text-[var(--color-text-secondary)]">{competition.rules.map((rule, index) => <li key={`${rule}-${index}`} className="flex gap-3"><span className="text-[var(--color-accent)]">{String(index + 1).padStart(2, '0')}</span><span>{rule}</span></li>)}</ul></section>}{competition.prizes?.length > 0 && <section><h2 className="text-[18px] font-bold text-[var(--color-text)]">Prizes</h2><div className="mt-3 flex flex-wrap gap-3">{competition.prizes.map(prize => <div key={`${prize.rank}-${prize.amount}`} className="min-w-32 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3"><p className="text-[12px] font-semibold text-[var(--color-text)]">{prize.rank}</p><p className="mt-1 text-[11px] text-[var(--color-text-secondary)]">{prize.amount}</p></div>)}</div></section>}</div>}
+    <section className="mt-12 border-t border-[var(--color-border)] pt-8"><div className="mb-5 flex flex-wrap items-center justify-between gap-4"><div><h2 className="text-[22px] font-bold text-[var(--color-text)]">Entries</h2><p className="mt-1 text-[12px] text-[var(--color-text-muted)]">Reader voting is {['open', 'judging'].includes(competition.status) ? 'open' : 'closed'}. Each signed-in reader gets one vote per entry, except their own.</p>{['judges', 'hybrid'].includes(competition.votingMode) && <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">Judge scores are handled separately by moderators and administrators.</p>}<span className="mt-1 block text-[12px] text-[var(--color-text-muted)]">{competition.entries.length} submitted</span></div></div><div className="card-grid card-grid--post items-start gap-4">{competition.entries.map(entry => <article key={entry.id} className="group relative overflow-hidden rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)]"><ImageBox src={entry.post?.coverImage} alt="" height={144} radius="0" placeholderLabel="Text-only entry" /><div className="p-4"><div className="flex items-center gap-2 pr-16"><Avatar src={entry.author.picture} name={entry.author.username} size={28} /><span className="text-[12px] text-[var(--color-text-secondary)]">{entry.author.username}</span>{entry.post && <span className="min-w-0 truncate text-[11px] text-[var(--color-text-muted)]">· {entryMetaDate(entry.post.createdAt)} · {entry.post.readTime || '1 min read'}</span>}{entry.isWinner && <span className="ml-auto text-[11px] font-semibold text-[var(--color-accent)]">Winner</span>}</div><h3 className="mt-3 text-[17px] font-bold leading-snug text-[var(--color-text)]"><>{entry.post ? <Link to={`/post/${entry.post._id}`} state={{ from: location.pathname }} className="rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">{entry.post.title}</Link> : 'Unavailable article'}</></h3>{entry.post && <div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-[var(--color-text-muted)]"><span>{entry.post.commentsCount || 0} comments</span>{entry.rank && <span>Rank {entry.rank}</span>}</div>}</div><button type="button" onClick={event => { event.stopPropagation(); loggedIn ? vote.mutate({ entryId: entry.id, isVoted: !entry.isVoted }) : signIn() }} aria-label={`${entry.isVoted ? 'Remove vote from' : 'Vote for'} ${entry.post?.title || 'this entry'}`} aria-pressed={entry.isVoted} className={`absolute right-4 top-4 z-10 flex min-h-11 items-center justify-center gap-2 rounded-[12px] border px-3.5 py-2 text-[12px] font-semibold shadow-sm backdrop-blur-sm transition-transform active:scale-95 ${entry.isVoted ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-text-inverted)]' : 'border-[var(--color-border)] bg-[var(--color-surface)]/95 text-[var(--color-text-secondary)]'}`}><span aria-hidden="true" className="text-[15px]">{entry.isVoted ? '✓' : '＋'}</span><span>{entry.isVoted ? 'Voted' : 'Vote'}</span><span className="tabular-nums">{entry.likesCount}</span></button></article>)}</div>{competition.entries.length === 0 && <p className="py-10 text-[13px] text-[var(--color-text-muted)]">No entries yet.</p>}</section>
+    {showEntry && <EnterModal competitionId={id} onClose={() => setShowEntry(false)} />}
+  </PageFrame>
 }

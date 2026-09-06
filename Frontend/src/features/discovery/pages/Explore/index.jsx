@@ -1,29 +1,35 @@
 /* ExplorePage — wraps sub-tabs with an in-page selector on mobile */
-import { useNavigate, useLocation, Outlet } from 'react-router-dom'
-import Pill from '@/shared/components/ui/Pill'
+import { Link, Outlet, useLocation } from 'react-router-dom'
+import PageFrame from '@/shared/components/layout/PageFrame'
 
-const SUB_TABS = [
-  { id: 'trending',     label: '🔥 Trending',     path: '/explore/trending' },
-  { id: 'questions',    label: '❓ Questions',    path: '/explore/questions' },
-  { id: 'competitions', label: '🏆 Competitions', path: '/explore/competitions' },
+const exploreSections = [
+  { path: '/explore/trending', label: 'Trending' },
+  { path: '/explore/questions', label: 'Questions' },
+  { path: '/explore/competitions', label: 'Competitions' },
 ]
 
 export default function ExplorePage() {
   const { pathname } = useLocation()
-  const navigate     = useNavigate()
-
-  const active = SUB_TABS.find(t => pathname.startsWith(t.path))?.id || 'trending'
 
   return (
-    <div className="flex-1 max-w-[1200px] pt-10 pb-20 px-8">
-      {/* Sub-tab pills — always visible, replaces sidebar sub-items on mobile */}
-      <div className="flex gap-2 mb-7 flex-wrap">
-        {SUB_TABS.map(t => (
-          <Pill key={t.id} label={t.label} active={active === t.id} onClick={() => navigate(t.path)} />
-        ))}
-      </div>
-
+    <PageFrame>
+      <nav aria-label="Explore sections" className="mb-8 overflow-x-auto border-b border-[var(--color-border)]">
+        <div className="flex min-w-max gap-2">
+          {exploreSections.map(section => {
+            const isCurrent = pathname === section.path
+            return <Link
+              key={section.path}
+              to={section.path}
+              aria-current={isCurrent ? 'page' : undefined}
+              className={`inline-flex min-h-11 items-center rounded-t-[10px] border-b-2 px-3 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0 ${isCurrent
+                ? 'border-[var(--color-accent)] text-[var(--color-text)]'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+              }`}
+            >{section.label}</Link>
+          })}
+        </div>
+      </nav>
       <Outlet />
-    </div>
+    </PageFrame>
   )
 }

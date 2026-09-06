@@ -1,10 +1,11 @@
 import api from "@/app/api";
 
-const bookmarkPost = async ({postId}) => {
+const bookmarkPost = async ({ postId, isBookmarked }) => {
 
-    const response = await api.post(
-        `/api/post/bookmark/${postId}`,
-    )
+    const response = await api.request({
+        method: isBookmarked ? 'put' : 'delete',
+        url: `/api/post/${postId}/bookmark`,
+    });
 
     return response.data;
 }

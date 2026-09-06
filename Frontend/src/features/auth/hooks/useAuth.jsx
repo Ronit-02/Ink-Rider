@@ -8,6 +8,7 @@ import logoutAll from "../api/logoutAll"
 
 export default function useAuth() {
   const user = useSelector(selectUser)
+  const avatarUrl = useSelector(state => state.auth.avatarUrl)
   const navigate = useNavigate()
   const dispatch = useDispatch()
 
@@ -59,6 +60,7 @@ export default function useAuth() {
 
   return {
     user,
+    avatarUrl,
     loggedIn: !!user,
     signIn,
     signUp,

@@ -1,79 +1,39 @@
-/* CollectionDetail — view posts inside a collection */
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { articles } from '@/shared/data'
-import Divider from '@/shared/components/ui/Divider'
-import HorizontalCard from '@/features/post/components/HorizontalCard'
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import Avatar from '@/shared/components/ui/Avatar'
 import Button from '@/shared/components/ui/Button'
-import { ALL_COLLECTIONS } from './index'
+import DiscoveryPostCard from '@/features/discovery/components/DiscoveryPostCard'
+import useAuth from '@/features/auth/hooks/useAuth'
+import { useCollection, useCollectionFollow, useCollectionSave, useUpdateCollection } from '../hooks/useCollections'
+import { ListSkeleton, Skeleton } from '@/shared/components/ui/Skeleton'
+import PageFrame from '@/shared/components/layout/PageFrame'
+import ImageBox from '@/shared/components/ui/ImageBox'
+import useToast from '@/shared/hooks/useToast'
 
 export default function CollectionDetail() {
-  const { id }   = useParams()
-  const navigate = useNavigate()
-  const col      = ALL_COLLECTIONS.find(c => c.id === Number(id)) ?? ALL_COLLECTIONS[0]
-  const [saved, setSaved] = useState(false)
-
-  // Simulate collection posts (use first N articles)
-  const posts = articles.slice(0, col.stories ? Math.min(col.stories, articles.length) : 4)
-
-  return (
-    <div className="max-w-200 px-6 pt-8 pb-20">
-      
-      {/* Back */}
-      <button onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 bg-(--color-bg-alt) border border-(--color-border) text-(--color-text-secondary) text-[13px] cursor-pointer mb-7 px-3.5 py-1.5rounded-full transition-all hover:bg-(--color-border)">
-        ← Back to Collections
-      </button>
-
-      {/* Hero */}
-      <img src={col.image} alt={col.title} className="w-full h-55 object-cover rounded-[20px] block mb-6" />
-
-      {/* Metadata header */}
-      <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
-        <div className="flex-1">
-          {col.recommended && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-(--color-bg-alt)
-              text-(--color-text-muted) font-medium mb-3 inline-block">✦ Recommended by Ink Rider</span>
-          )}
-          <h1 className="font-bold text-[28px] text-(--color-text) leading-[1.3] mb-2"
-            style={{ fontFamily: 'var(--font-display)' }}>{col.title}</h1>
-          <p className="text-[14px] text-(--color-text-secondary) leading-[1.7]">{col.description}</p>
-        </div>
-        <button onClick={() => setSaved(v => !v)}
-          className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full border text-[13px] font-medium cursor-pointer transition-all
-            ${saved ? 'bg-(--color-accent) text-(--color-text-inverted) border-(--color-accent)'
-                    : 'bg-(--color-surface) text-(--color-text-secondary) border-(--color-border)'}`}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-          </svg>
-          {saved ? 'Saved' : 'Save'}
-        </button>
-      </div>
-
-      {/* Meta row */}
-      <div className="flex gap-4 items-center mb-6 flex-wrap">
-        {col.curator && (
-          <div className="flex items-center gap-2">
-            <img src={col.curator.avatar} alt={col.curator.name} className="w-7 h-7 rounded-full object-cover" />
-            <span className="text-[12px] text-(--color-text-secondary) font-medium">
-              Curated by {col.curator.name}
-            </span>
-          </div>
-        )}
-        {col.createdAt && (
-          <span className="text-[12px] text-(--color-text-muted)">Created {col.createdAt}</span>
-        )}
-        <span className="text-[12px] text-(--color-text-muted)">{posts.length} stories</span>
-      </div>
-
-      <Divider className="mb-8" />
-
-      {/* Posts */}
-      <p className="text-[11px] font-bold text-(--color-text-muted) uppercase tracking-[0.08em] mb-4">
-        Stories in this collection
-      </p>
-      {posts.map(a => <HorizontalCard key={a.id} article={a} />)}
-
-    </div>
-  )
+  const { id } = useParams()
+  const { loggedIn, signIn } = useAuth()
+  const { notify } = useToast()
+  const query = useCollection(id)
+  const save = useCollectionSave(id)
+  const update = useUpdateCollection(id)
+  const follow = useCollectionFollow(id)
+  const [shareStatus, setShareStatus] = useState('')
+  const [orderedPosts, setOrderedPosts] = useState([])
+  useEffect(() => { if (query.data?.posts) setOrderedPosts(query.data.posts) }, [query.data])
+  if (query.isPending) return <PageFrame><div role="status" aria-label="Loading collection"><Skeleton className="h-8 w-24 rounded-full" /><Skeleton className="mt-7 h-[clamp(180px,32vw,300px)] w-full rounded-[20px]" /><Skeleton className="mt-7 h-10 w-3/5" /><Skeleton className="mt-4 h-4 w-full max-w-2xl" /><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
+  if (query.isError) return <PageFrame><div role="alert"><p className="text-[13px] text-[var(--color-danger)]">{query.error?.response?.status === 404 ? 'This collection is private or no longer exists.' : 'Collection could not be loaded.'}</p><Link to="/collections" className="mt-4 inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-4 py-2 text-[12px] font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Back to collections</Link></div></PageFrame>
+  const collection = query.data
+  const toggleSave = () => loggedIn ? save.mutate(!collection.isSaved) : signIn()
+  const move = (index, direction) => setOrderedPosts(current => { const next = [...current]; const target = index + direction; if (target < 0 || target >= next.length) return current; [next[index], next[target]] = [next[target], next[index]]; return next })
+  const saveOrder = () => update.mutate({ postIds: orderedPosts.map(post => post.id) })
+  const shareCollection = async () => {
+    try {
+      if (navigator.share) await navigator.share({ title: collection.title, url: window.location.href })
+      else await navigator.clipboard.writeText(window.location.href)
+      setShareStatus('Shared')
+      notify('Collection link shared.')
+    } catch { setShareStatus(''); notify('The collection link could not be shared.', { tone: 'error' }) }
+  }
+  return <PageFrame><Link to="/collections" className="mb-7 inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-3 py-1.5 text-[12px] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">← Collections</Link><ImageBox src={collection.coverImage} alt="" height="clamp(180px, 32vw, 300px)" radius="20px" placeholderLabel="Reading collection" style={{ marginBottom: '1.75rem' }} /><div className="flex items-start justify-between gap-5 flex-wrap"><div className="max-w-[680px]"><span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-accent)]">{collection.visibility} collection</span><h1 className="mt-3 text-[clamp(30px,5vw,48px)] leading-[1.05] tracking-[-0.045em] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{collection.title}</h1><p className="mt-4 text-[14px] leading-7 text-[var(--color-text-secondary)]">{collection.description}</p></div><div className="flex gap-2">{!collection.isOwner && <><Button variant={collection.isSaved ? 'primary' : 'secondary'} onClick={toggleSave} disabled={save.isPending}>{collection.isSaved ? 'Saved' : 'Save'}</Button><Button variant={collection.isFollowing ? 'primary' : 'secondary'} onClick={() => loggedIn ? follow.mutate(!collection.isFollowing) : signIn()} disabled={follow.isPending}>{collection.isFollowing ? 'Following' : 'Follow'}</Button></>}<Button variant="secondary" onClick={shareCollection}>{shareStatus || 'Share'}</Button></div></div><div className="mt-7 flex items-center gap-3"><Avatar src={collection.author.picture} name={collection.author.username} size={32} /><div><p className="text-[12px] font-semibold text-[var(--color-text)]">Curated by {collection.author.username}</p><p className="text-[11px] text-[var(--color-text-muted)]">{collection.postsCount} stories · {collection.savedCount} saves · {collection.followersCount} followers</p></div></div>{(save.isError || follow.isError) && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">The collection action could not be updated.</p>}<section className="mt-10 border-t border-[var(--color-border)] pt-8"><div className="mb-7 flex items-center justify-between gap-4"><h2 className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Reading order</h2>{collection.isOwner && <div className="flex items-center gap-3"><Button variant="secondary" onClick={saveOrder} disabled={update.isPending}>{update.isPending ? 'Saving…' : 'Save order'}</Button>{update.isSuccess && <span className="text-[11px] text-[var(--color-text-muted)]">Saved</span>}</div>}</div>{orderedPosts.map((post, index) => <div key={post.id} className="relative"><DiscoveryPostCard post={post} />{collection.isOwner && <div className="absolute right-0 top-5 z-10 flex gap-1"><button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={`Move ${post.title} earlier`} className="min-h-10 min-w-10 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:h-8 sm:w-8 sm:min-h-0 sm:min-w-0">↑</button><button type="button" onClick={() => move(index, 1)} disabled={index === orderedPosts.length - 1} aria-label={`Move ${post.title} later`} className="min-h-10 min-w-10 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:h-8 sm:w-8 sm:min-h-0 sm:min-w-0">↓</button></div>}</div>)}{orderedPosts.length === 0 && <p className="py-10 text-[13px] text-[var(--color-text-muted)]">This collection is empty.</p>}{update.isError && <p role="alert" className="mt-4 text-[12px] text-[var(--color-danger)]">The reading order could not be saved.</p>}</section></PageFrame>
 }
