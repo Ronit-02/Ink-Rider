@@ -45,9 +45,10 @@ const createRequestTimingMiddleware = ({ thresholdMs = slowRequestThresholdMs, b
   const startedAt = process.hrtime.bigint();
   const requestBudgetMs = budgetMs || getResponseBudgetMs(req);
   res.on('finish', () => {
-    const responseTimeMs = Math.round(requestDurationMs(startedAt) * 100) / 100;
+    const rawResponseTimeMs = requestDurationMs(startedAt);
+    const responseTimeMs = Math.round(rawResponseTimeMs * 100) / 100;
     req.responseTimeMs = responseTimeMs;
-    if (responseTimeMs >= requestBudgetMs) {
+    if (rawResponseTimeMs >= requestBudgetMs) {
       const alert = {
         level: 'response_budget_exceeded',
         requestId: req.requestId,
@@ -67,7 +68,7 @@ const createRequestTimingMiddleware = ({ thresholdMs = slowRequestThresholdMs, b
         responseTimeMs,
         budgetMs: requestBudgetMs,
       });
-    } else if (responseTimeMs >= thresholdMs) {
+    } else if (rawResponseTimeMs >= thresholdMs) {
       warn(JSON.stringify({
         level: 'slow_request',
         requestId: req.requestId,

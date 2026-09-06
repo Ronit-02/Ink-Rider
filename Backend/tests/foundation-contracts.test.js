@@ -665,7 +665,8 @@ test('unknown routes return a normalized error and request id', async t => {
   assert.equal(body.error.code, 'ROUTE_NOT_FOUND');
   assert.equal(body.error.requestId, response.headers.get('x-request-id'));
   assert.equal(robotsResponse.status, 200);
-  assert.match(robots, /Sitemap: http:\/\/localhost:3000\/sitemap\.xml/);
+  const expectedSitemapUrl = new URL('/sitemap.xml', process.env.FRONTEND_URL).toString();
+  assert.ok(robots.includes(`Sitemap: ${expectedSitemapUrl}`));
 });
 
 test('health and readiness endpoints separate liveness from database availability', async t => {
