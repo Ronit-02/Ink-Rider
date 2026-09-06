@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -23,7 +23,7 @@ export default function useDialogFocus(onClose, initialFocusRef, enabled = true)
     onCloseRef.current = onClose
   }, [onClose])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled) return undefined
     previousFocusRef.current = document.activeElement instanceof HTMLElement
       ? document.activeElement
