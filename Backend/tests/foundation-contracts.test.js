@@ -5,6 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { EventEmitter } = require('node:events');
+const mongoose = require('mongoose');
 
 const requiredEnvironment = {
   FRONTEND_URL: 'http://localhost:3000',
@@ -87,7 +88,7 @@ const { MAX_ATTEMPTS, calculateRetryAt } = require('../services/notification-del
 const { judgeAverage, rankCompetitionEntries } = require('../services/competition-scoring.service');
 const { buildRobotsTxt, buildSitemapXml, publicSitemapEntries } = require('../services/seo.service');
 const { providerReadiness, hasConfiguredValue } = require('../services/provider-readiness.service');
-const { withOptionalSession } = require('../utils/transaction');
+const { withTransaction, withOptionalSession } = require('../utils/transaction');
 const CompetitionAppeal = require('../schemas/competition-appeal.schema');
 const app = require('../src/app');
 
@@ -1418,4 +1419,14 @@ test('standalone transaction fallback does not attach a null session to queries'
   const session = { id: 'transaction-session' };
   assert.equal(withOptionalSession(query, session), query);
   assert.equal(query.sessionValue, session);
+});
+
+test('standalone MongoDB topology bypasses unsupported transactions', async () => {
+  const originalClient = mongoose.connection.client;
+  mongoose.connection.client = { topology: { description: { type: 'Single' } } };
+  try {
+    await withTransaction(async session => assert.equal(session, null));
+  } finally {
+    mongoose.connection.client = originalClient;
+  }
 });
