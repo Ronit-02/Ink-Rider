@@ -22,4 +22,9 @@ const withTransaction = async (work, { fallbackOnStandalone = true } = {}) => {
   }
 };
 
-module.exports = { withTransaction, isStandaloneMongoError };
+// Mongoose queries must not receive a literal `null` session. This helper keeps
+// standalone-Mongo fallback reads outside a transaction while preserving the
+// transaction session whenever one is available.
+const withOptionalSession = (query, session) => (session ? query.session(session) : query);
+
+module.exports = { withTransaction, isStandaloneMongoError, withOptionalSession };

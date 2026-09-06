@@ -87,6 +87,7 @@ const { MAX_ATTEMPTS, calculateRetryAt } = require('../services/notification-del
 const { judgeAverage, rankCompetitionEntries } = require('../services/competition-scoring.service');
 const { buildRobotsTxt, buildSitemapXml, publicSitemapEntries } = require('../services/seo.service');
 const { providerReadiness, hasConfiguredValue } = require('../services/provider-readiness.service');
+const { withOptionalSession } = require('../utils/transaction');
 const CompetitionAppeal = require('../schemas/competition-appeal.schema');
 const app = require('../src/app');
 
@@ -1402,4 +1403,19 @@ test('premium endpoints require authentication before entitlement lookup', async
   assert.equal(createCompetition.status, 401);
   const writingAssistant = await fetch(`http://127.0.0.1:${address.port}/api/v1/writing-assistant`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
   assert.equal(writingAssistant.status, 401);
+});
+
+test('standalone transaction fallback does not attach a null session to queries', () => {
+  const query = {
+    session(value) {
+      this.sessionValue = value;
+      return this;
+    },
+  };
+  assert.equal(withOptionalSession(query, null), query);
+  assert.equal(query.sessionValue, undefined);
+
+  const session = { id: 'transaction-session' };
+  assert.equal(withOptionalSession(query, session), query);
+  assert.equal(query.sessionValue, session);
 });

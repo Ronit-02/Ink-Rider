@@ -5,7 +5,7 @@
 
 ## Outcome
 
-The source-level findings from the application-security review were remediated without redesigning the UI, changing route names, or replacing domain models. Both npm dependency graphs now report zero known advisories. Backend contract tests pass 80/80, the production frontend build passes, and the generated 64-file artifact set contains no source maps. The database integration suite remains opt-in and was skipped locally because `RUN_DB_INTEGRATION=true` was not configured; CI retains the MongoDB-backed run.
+The source-level findings from the application-security review were remediated without redesigning the UI, changing route names, or replacing domain models. Both npm dependency graphs now report zero known advisories. Backend contract tests pass 81/81, the production frontend build passes, and the generated 64-file artifact set contains no source maps. The database integration suite remains opt-in and was skipped locally because `RUN_DB_INTEGRATION=true` was not configured; CI retains the MongoDB-backed run.
 
 Security is an ongoing release gate rather than a permanent “bug-free” state. Provider credentials, TLS termination, deployed CSP/HSTS headers, proxy topology, live Google/email/payment flows, and new advisories still require deployment-time and continuous verification.
 
@@ -49,7 +49,7 @@ Security is an ongoing release gate rather than a permanent “bug-free” state
 
 ## Verification evidence
 
-- Backend contracts: 80 passed, 0 failed on Node 24.19 (supported by the Node 22+ baseline).
+- Backend contracts: 81 passed, 0 failed on Node 24.19 (supported by the Node 22+ baseline).
 - Backend database integration command: completed with one explicit skip because the local opt-in flag/database was unavailable.
 - Frontend production build: passed with Vite 8.2.2; 694 modules transformed.
 - Source-map artifact gate: passed across 64 generated files.
