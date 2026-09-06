@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { isSafeHttpUrl } = require('../utils/safe-url');
 
 const profileSchema = new mongoose.Schema({
   userId: {
@@ -38,7 +39,7 @@ const profileSchema = new mongoose.Schema({
     type: String,
     default: null,
     trim: true,
-    match: [/^https?:\/\//i, 'Website must use http or https'],
+    validate: { validator: value => value == null || isSafeHttpUrl(value), message: 'Website must be a valid http or https URL' },
   },
   writerStatus: {
     type: String,

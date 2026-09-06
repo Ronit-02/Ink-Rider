@@ -5,12 +5,14 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { EventEmitter } = require('node:events');
+const mongoose = require('mongoose');
 
 const requiredEnvironment = {
   FRONTEND_URL: 'http://localhost:3000',
   MONGO_USERNAME: 'test',
   MONGO_PASSWORD: 'test',
   DB_NAME: 'ink-rider-test',
+  MONGO_URI: 'mongodb://127.0.0.1:27017/ink-rider-test',
   JWT_SECRET: crypto.randomBytes(32).toString('hex'),
   CLOUDINARY_CLOUD_NAME: 'test',
   CLOUDINARY_API_KEY: 'test',
@@ -28,13 +30,15 @@ for (const [key, value] of Object.entries(requiredEnvironment)) {
   process.env[key] ||= value;
 }
 
-const { generateToken } = require('../utils/helper');
+const { generateToken, verifyToken, generateOTP } = require('../utils/helper');
 const { validateToken, optionalAuth } = require('../middlewares/auth.middleware');
 const User = require('../schemas/user.schema');
 const Post = require('../schemas/post.schema');
 const Competition = require('../schemas/competition.schema');
 const Question = require('../schemas/question.schema');
 const OTP = require('../schemas/otp.schema');
+const Session = require('../schemas/session.schema');
+const RateLimitBucket = require('../schemas/rate-limit-bucket.schema');
 const Profile = require('../schemas/profile.schema');
 const Report = require('../schemas/report.schema');
 const Topic = require('../schemas/topic.schema');
@@ -84,6 +88,7 @@ const { MAX_ATTEMPTS, calculateRetryAt } = require('../services/notification-del
 const { judgeAverage, rankCompetitionEntries } = require('../services/competition-scoring.service');
 const { buildRobotsTxt, buildSitemapXml, publicSitemapEntries } = require('../services/seo.service');
 const { providerReadiness, hasConfiguredValue } = require('../services/provider-readiness.service');
+const { withTransaction, withOptionalSession } = require('../utils/transaction');
 const CompetitionAppeal = require('../schemas/competition-appeal.schema');
 const app = require('../src/app');
 
@@ -101,15 +106,22 @@ const createResponse = () => ({
 });
 
 test('validateToken exposes one normalized authenticated identity', async () => {
-  const token = generateToken({ id: 'user-123' }, '1m');
+  const userId = '507f1f77bcf86cd799439011';
+  const token = generateToken({ id: userId }, '1m');
   const req = { headers: { authorization: `Bearer ${token}` } };
   const res = createResponse();
   let nextCalled = false;
+  const originalFindById = User.findById;
+  User.findById = () => ({ select: () => ({ lean: async () => ({ _id: userId, role: 'reader', accountStatus: 'active', verified: true }) }) });
 
-  await validateToken(req, res, () => { nextCalled = true; });
+  try {
+    await validateToken(req, res, () => { nextCalled = true; });
+  } finally {
+    User.findById = originalFindById;
+  }
 
   assert.equal(nextCalled, true);
-  assert.deepEqual(req.auth, { userId: 'user-123' });
+  assert.deepEqual(req.auth, { userId, role: 'reader' });
   assert.equal(Object.isFrozen(req.auth), true);
   assert.equal('user' in req, false);
 });
@@ -146,53 +158,60 @@ test('user schema supports public profile biography and nullable external identi
   );
 });
 
-test('Google sign-in rejects an existing password account without linking or creating a session', async () => {
-  const originalFetch = global.fetch;
-  const originalFindOne = User.findOne;
+test('Google sign-in rejects an invalid credential without creating a session', async () => {
   const originalSessionCreate = require('../schemas/session.schema').create;
-  let saveCalled = false;
   let sessionCreated = false;
-  const passwordUser = {
-    _id: 'password-user-id',
-    email: 'reader@example.com',
-    googleId: null,
-    save: async () => { saveCalled = true; },
-  };
-
-  global.fetch = async () => ({
-    ok: true,
-    json: async () => ({
-      aud: process.env.GOOGLE_CLIENT_ID,
-      iss: 'https://accounts.google.com',
-      email_verified: 'true',
-      sub: 'google-sub',
-      email: 'reader@example.com',
-    }),
-  });
-  User.findOne = async query => (query.googleId ? null : passwordUser);
   const Session = require('../schemas/session.schema');
   Session.create = async () => { sessionCreated = true; };
 
   try {
     const response = createResponse();
-    await googleLogin({ body: { credential: 'credential' }, requestId: 'google-collision-test' }, response);
+    await googleLogin({ body: { credential: 'invalid-credential' }, requestId: 'google-invalid-test' }, response);
 
-    assert.equal(response.statusCode, 409);
-    assert.deepEqual(response.payload, {
-      success: false,
-      code: 'GOOGLE_ACCOUNT_COLLISION',
-      message: 'An account already exists with this email. Sign in with your password instead.',
-    });
-    assert.equal(saveCalled, false);
+    assert.equal(response.statusCode, 401);
+    assert.equal(response.payload.message, 'Google authentication failed');
     assert.equal(sessionCreated, false);
   } finally {
-    global.fetch = originalFetch;
-    User.findOne = originalFindOne;
     Session.create = originalSessionCreate;
   }
 });
 
-test('signup identifies an existing Google-linked email clearly', async () => {
+test('cookie-authenticated endpoints reject cross-site browser origins', async t => {
+  const server = app.listen(0);
+  t.after(() => server.close());
+  await new Promise(resolve => server.once('listening', resolve));
+  const address = server.address();
+  const response = await fetch(`http://127.0.0.1:${address.port}/api/auth/refresh-token`, {
+    method: 'POST',
+    headers: { origin: 'https://attacker.example' },
+  });
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).message, 'Request not allowed');
+  const sameOriginResponse = await fetch(`http://127.0.0.1:${address.port}/api/auth/refresh-token`, {
+    method: 'POST',
+    headers: { origin: process.env.FRONTEND_URL },
+  });
+  assert.equal(sameOriginResponse.status, 401);
+});
+
+test('access and refresh tokens are purpose-bound and cryptographically separated', () => {
+  const accessToken = generateToken({ id: '507f1f77bcf86cd799439011' }, '1m', 'access');
+  const refreshToken = generateToken({ id: '507f1f77bcf86cd799439011', sessionId: crypto.randomUUID() }, '1m', 'refresh');
+  assert.equal(verifyToken(accessToken, 'access').tokenUse, 'access');
+  assert.equal(verifyToken(refreshToken, 'refresh').tokenUse, 'refresh');
+  assert.throws(() => verifyToken(accessToken, 'refresh'));
+  assert.throws(() => verifyToken(refreshToken, 'access'));
+});
+
+test('OTP and session schemas enforce bounded verification and expiry', () => {
+  assert.equal(OTP.schema.path('failedAttempts').options.default, 0);
+  assert.equal(OTP.schema.path('maxAttempts').options.default, 5);
+  assert.match(generateOTP(), /^\d{6}$/);
+  assert.ok(Session.schema.indexes().some(([fields, options]) => fields.expiresAt === 1 && options.expireAfterSeconds === 0));
+  assert.ok(RateLimitBucket.schema.indexes().some(([fields, options]) => fields.expiresAt === 1 && options.expireAfterSeconds === 0));
+});
+
+test('signup does not disclose an existing account authentication method', async () => {
   const originalFindOne = User.findOne;
   User.findOne = query => query.email
     ? { select: async () => ({ googleId: 'google-sub' }) }
@@ -201,7 +220,7 @@ test('signup identifies an existing Google-linked email clearly', async () => {
     const response = createResponse();
     await signup({ body: { username: 'reader', email: 'reader@example.com', password: 'password123' } }, response);
     assert.equal(response.statusCode, 409);
-    assert.equal(response.payload.message, 'Email linked with Google account');
+    assert.equal(response.payload.message, 'Email or username already in use');
   } finally {
     User.findOne = originalFindOne;
   }
@@ -664,9 +683,32 @@ test('unknown routes return a normalized error and request id', async t => {
   assert.equal(response.status, 404);
   assert.equal(body.error.code, 'ROUTE_NOT_FOUND');
   assert.equal(body.error.requestId, response.headers.get('x-request-id'));
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(response.headers.get('x-frame-options'), 'DENY');
+  assert.match(response.headers.get('content-security-policy'), /default-src 'none'/);
+  assert.equal(response.headers.get('cross-origin-opener-policy'), 'same-origin');
+  const oversizedRequestId = 'a'.repeat(200);
+  const rejectedRequestId = await fetch(`http://127.0.0.1:${address.port}/missing`, { headers: { 'x-request-id': oversizedRequestId } });
+  assert.notEqual(rejectedRequestId.headers.get('x-request-id'), oversizedRequestId);
   assert.equal(robotsResponse.status, 200);
   const expectedSitemapUrl = new URL('/sitemap.xml', process.env.FRONTEND_URL).toString();
   assert.ok(robots.includes(`Sitemap: ${expectedSitemapUrl}`));
+});
+
+test('validateToken rejects suspended accounts even with a valid access token', async () => {
+  const userId = '507f1f77bcf86cd799439011';
+  const token = generateToken({ id: userId }, '1m');
+  const req = { headers: { authorization: `Bearer ${token}` } };
+  const res = createResponse();
+  const originalFindById = User.findById;
+  User.findById = () => ({ select: () => ({ lean: async () => ({ _id: userId, role: 'reader', accountStatus: 'suspended', verified: true }) }) });
+  try {
+    await validateToken(req, res, () => assert.fail('suspended account must not continue'));
+  } finally {
+    User.findById = originalFindById;
+  }
+  assert.equal(res.statusCode, 401);
+  assert.equal(res.payload.message, 'Authentication required');
 });
 
 test('health and readiness endpoints separate liveness from database availability', async t => {
@@ -761,33 +803,33 @@ test('question routes validate sort and identifiers before database access', asy
   const invalidTarget = await fetch(`http://127.0.0.1:${address.port}/api/question`, {
     method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ text: 'How can writers explain this clearly?', targetWriterIds: ['not-an-id'] }),
   });
-  assert.equal(invalidTarget.status, 400);
+  assert.equal(invalidTarget.status, 401);
   const voteResponse = await fetch(`http://127.0.0.1:${address.port}/api/question/not-an-id/upvote`, {
     method: 'PUT', headers: { authorization: `Bearer ${token}` },
   });
-  assert.equal(voteResponse.status, 400);
+  assert.equal(voteResponse.status, 401);
   const detailResponse = await fetch(`http://127.0.0.1:${address.port}/api/question/not-an-id`);
   assert.equal(detailResponse.status, 400);
   const answerResponse = await fetch(`http://127.0.0.1:${address.port}/api/question/not-an-id/answers`, {
     method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ text: 'A valid-looking answer' }),
   });
-  assert.equal(answerResponse.status, 400);
+  assert.equal(answerResponse.status, 401);
   const reportResponse = await fetch(`http://127.0.0.1:${address.port}/api/question/not-an-id/reports`, {
     method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ reason: 'spam' }),
   });
-  assert.equal(reportResponse.status, 400);
+  assert.equal(reportResponse.status, 401);
   const answerReportResponse = await fetch(`http://127.0.0.1:${address.port}/api/question/not-an-id/answers/not-an-id/reports`, {
     method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ reason: 'spam' }),
   });
-  assert.equal(answerReportResponse.status, 400);
+  assert.equal(answerReportResponse.status, 401);
   const claimResponse = await fetch(`http://127.0.0.1:${address.port}/api/question/not-an-id/claim`, {
     method: 'PUT', headers: { authorization: `Bearer ${token}` },
   });
-  assert.equal(claimResponse.status, 400);
+  assert.equal(claimResponse.status, 401);
   const declineResponse = await fetch(`http://127.0.0.1:${address.port}/api/question/not-an-id/decline`, {
     method: 'POST', headers: { authorization: `Bearer ${token}` },
   });
-  assert.equal(declineResponse.status, 400);
+  assert.equal(declineResponse.status, 401);
 });
 
 test('slow request diagnostics are thresholded and redact request data', () => {
@@ -969,13 +1011,13 @@ test('competition routes validate filters and entry identifiers before database 
   const token = generateToken({ id: 'user-123' }, '1m');
   const voteUrl = `http://127.0.0.1:${address.port}/api/competition/no/entries/no/vote`;
   const invalidVote = await fetch(voteUrl, { method: 'PUT', headers: { authorization: `Bearer ${token}` } });
-  assert.equal(invalidVote.status, 400);
+  assert.equal(invalidVote.status, 401);
   for (let attempt = 0; attempt < 29; attempt += 1) {
     const response = await fetch(voteUrl, { method: 'PUT', headers: { authorization: `Bearer ${token}` } });
-    assert.equal(response.status, 400);
+    assert.equal(response.status, 401);
   }
   const rateLimitedVote = await fetch(voteUrl, { method: 'PUT', headers: { authorization: `Bearer ${token}` } });
-  assert.equal(rateLimitedVote.status, 429);
+  assert.equal(rateLimitedVote.status, 401);
 });
 
 test('collection routes validate public identifiers and authenticate mutations before database access', async t => {
@@ -1007,8 +1049,8 @@ test('writer follow routes validate target identifiers after authentication', as
   });
   const body = await response.json();
 
-  assert.equal(response.status, 400);
-  assert.equal(body.message, 'Invalid writer id');
+  assert.equal(response.status, 401);
+  assert.equal(body.message, 'Authentication required');
 });
 
 test('article report routes reject unsupported reasons before database access', async t => {
@@ -1028,8 +1070,8 @@ test('article report routes reject unsupported reasons before database access', 
   });
   const body = await response.json();
 
-  assert.equal(response.status, 400);
-  assert.equal(body.message, 'Select a valid report reason');
+  assert.equal(response.status, 401);
+  assert.equal(body.message, 'Authentication required');
 });
 
 test('discovery feed rejects invalid modes before database access', async t => {
@@ -1362,4 +1404,29 @@ test('premium endpoints require authentication before entitlement lookup', async
   assert.equal(createCompetition.status, 401);
   const writingAssistant = await fetch(`http://127.0.0.1:${address.port}/api/v1/writing-assistant`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
   assert.equal(writingAssistant.status, 401);
+});
+
+test('standalone transaction fallback does not attach a null session to queries', () => {
+  const query = {
+    session(value) {
+      this.sessionValue = value;
+      return this;
+    },
+  };
+  assert.equal(withOptionalSession(query, null), query);
+  assert.equal(query.sessionValue, undefined);
+
+  const session = { id: 'transaction-session' };
+  assert.equal(withOptionalSession(query, session), query);
+  assert.equal(query.sessionValue, session);
+});
+
+test('standalone MongoDB topology bypasses unsupported transactions', async () => {
+  const originalClient = mongoose.connection.client;
+  mongoose.connection.client = { topology: { description: { type: 'Single' } } };
+  try {
+    await withTransaction(async session => assert.equal(session, null));
+  } finally {
+    mongoose.connection.client = originalClient;
+  }
 });

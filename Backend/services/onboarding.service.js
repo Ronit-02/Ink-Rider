@@ -1,7 +1,7 @@
 const Follow = require('../schemas/follow.schema');
 const User = require('../schemas/user.schema');
 const UserInterest = require('../schemas/user-interest.schema');
-const { withTransaction } = require('../utils/transaction');
+const { withTransaction, withOptionalSession } = require('../utils/transaction');
 
 const saveOnboardingSelection = async ({ userId, topics, writers, completed }) => withTransaction(async session => {
   const options = session ? { session } : undefined;
@@ -27,7 +27,10 @@ const saveOnboardingSelection = async ({ userId, topics, writers, completed }) =
   })), options) : { upsertedCount: 0, upsertedIds: {} };
   const addedIds = Object.values(followResult.upsertedIds || {});
   if (addedIds.length) {
-    const addedRelationships = await Follow.find({ _id: { $in: addedIds } }).select('followingId').session(session);
+    const addedRelationships = await withOptionalSession(
+      Follow.find({ _id: { $in: addedIds } }).select('followingId'),
+      session,
+    );
     await User.updateOne({ _id: userId }, { $inc: { followingCount: addedRelationships.length } }, options);
     await Promise.all(addedRelationships.map(follow => User.updateOne(
       { _id: follow.followingId }, { $inc: { followersCount: 1 } }, options,

@@ -130,5 +130,6 @@ See the [progress tracker](context/progress-tracker.md) for the current evidence
 - [Development and deployment guide](DEVELOPMENT.md)
 - [Development fixtures and demo accounts](context/test-fixtures.md)
 - [Architecture](context/architecture.md)
+- [Security audit and remediation](context/security-audit.md)
 - [Build plan](context/build-plan.md)
 - [Moderation policy](context/moderation-policy.md)

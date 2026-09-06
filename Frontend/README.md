@@ -5,9 +5,11 @@ Editorial platform UI built with React + Vite.
 ## Quick Start
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
+
+Use Node.js 22 or newer. After a production build, run `npm run security:artifacts` to verify that no source maps are present.
 
 Open [http://localhost:3000](http://localhost:3000).
 
@@ -80,7 +82,7 @@ src/
 ## Tech Stack
 
 - **React 18** with hooks
-- **React Router v6** for client-side routing
+- **React Router v7** for client-side routing
 - **Vite** for bundling
 - **Inline styles** with a centralized token system (no CSS-in-JS library needed)
 - Google Fonts: Libre Baskerville + DM Sans

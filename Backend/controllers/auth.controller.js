@@ -1,6 +1,6 @@
-const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { verifyPassword, hashPassword, generateToken, generateRandom, generateOTP, getOTPHTML } = require('../utils/helper');
+const { OAuth2Client } = require('google-auth-library');
+const { verifyPassword, hashPassword, generateToken, verifyToken, generateRandom, generateOTP, getOTPHTML } = require('../utils/helper');
 const { Avatars } = require('../assets/data');
 const { sendEmail } = require('../services/email.service.js');
 const User = require('../schemas/user.schema');
@@ -13,8 +13,37 @@ const refreshCookieOptions = {
     httpOnly: true,
     secure: config.COOKIE_SECURE,
     sameSite: config.COOKIE_SAME_SITE,
-    path: '/',
+    path: '/api/auth',
     maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+const SESSION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
+const googleClient = config.GOOGLE_CLIENT_ID ? new OAuth2Client(config.GOOGLE_CLIENT_ID) : null;
+const dummyPasswordHash = hashPassword(crypto.randomBytes(32).toString('hex'));
+const isValidEmailInput = value => typeof value === 'string'
+    && value.length <= 254
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+const withProviderTimeout = promise => {
+    let timer;
+    const timeout = new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('Provider timeout')), config.PROVIDER_TIMEOUT_MS);
+        timer.unref();
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
+
+const createSessionTokens = async (user, req) => {
+    const sessionId = crypto.randomUUID();
+    const accessToken = generateToken({ id: user._id }, '10m', 'access');
+    const refreshToken = generateToken({ id: user._id, sessionId }, '7d', 'refresh');
+    await Session.create({
+        user: user._id,
+        sessionId,
+        ip: req.ip,
+        userAgent: String(req.get('User-Agent') || 'unknown').slice(0, 512),
+        expiresAt: new Date(Date.now() + SESSION_LIFETIME_MS),
+    });
+    return { accessToken, refreshToken };
 };
 
 const clearRefreshCookie = (res) => {
@@ -40,25 +69,22 @@ const verifyGoogleCredential = async credential => {
         error.code = 'GOOGLE_NOT_CONFIGURED';
         throw error;
     }
-    const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
-    if (!response.ok) {
+    try {
+        const ticket = await withProviderTimeout(googleClient.verifyIdToken({ idToken: credential, audience: config.GOOGLE_CLIENT_ID }));
+        const claims = ticket.getPayload();
+        if (!claims || !claims.email_verified || !claims.sub || !claims.email) throw new Error('Invalid claims');
+        return claims;
+    } catch {
         const error = new Error('Invalid Google credential');
         error.code = 'GOOGLE_CREDENTIAL_INVALID';
         throw error;
     }
-    const claims = await response.json();
-    if (claims.aud !== config.GOOGLE_CLIENT_ID || claims.iss !== 'https://accounts.google.com' || claims.email_verified !== 'true' || !claims.sub || !claims.email) {
-        const error = new Error('Invalid Google credential');
-        error.code = 'GOOGLE_CREDENTIAL_INVALID';
-        throw error;
-    }
-    return claims;
 };
 
 const googleLogin = async (req, res) => {
     try {
         const credential = String(req.body?.credential || '').trim();
-        if (!credential) return res.status(400).json({ success: false, message: 'Google credential is required' });
+        if (!credential || credential.length > 10_000) return res.status(400).json({ success: false, message: 'Google credential is required' });
         const claims = await verifyGoogleCredential(credential);
         const email = claims.email.trim().toLowerCase();
         let user = await User.findOne({ googleId: claims.sub });
@@ -70,14 +96,14 @@ const googleLogin = async (req, res) => {
                     return res.status(409).json({
                         success: false,
                         code: 'GOOGLE_IDENTITY_CONFLICT',
-                        message: 'This email is linked to a different Google account',
+                        message: 'Unable to sign in with Google',
                     });
                 }
                 if (!emailUser.googleId) {
                     return res.status(409).json({
                         success: false,
                         code: 'GOOGLE_ACCOUNT_COLLISION',
-                        message: 'An account already exists with this email. Sign in with your password instead.',
+                        message: 'Unable to sign in with Google',
                     });
                 }
                 user = emailUser;
@@ -85,6 +111,7 @@ const googleLogin = async (req, res) => {
         }
 
         if (user) {
+            if (user.accountStatus === 'suspended') return res.status(403).json({ success: false, message: 'Unable to sign in' });
             user.googleId = claims.sub;
             user.verified = true;
             if (claims.picture && !user.picture) user.picture = claims.picture;
@@ -94,10 +121,7 @@ const googleLogin = async (req, res) => {
             await createProfileForUser({ userId: user._id, username: user.username, picture: user.picture });
         }
 
-        const sessionId = crypto.randomUUID();
-        const accessToken = generateToken({ email, id: user._id }, '10m');
-        const refreshToken = generateToken({ email, id: user._id, sessionId }, '7d');
-        await Session.create({ user: user._id, sessionId, ip: req.ip, userAgent: req.get('User-Agent') || 'unknown' });
+        const { accessToken, refreshToken } = await createSessionTokens(user, req);
         res.cookie('refreshToken', refreshToken, refreshCookieOptions);
         return res.status(200).json({ success: true, message: 'Google login successful', token: accessToken, username: user.username, avatarUrl: user.picture || null, email, role: user.role });
     } catch (err) {
@@ -113,19 +137,20 @@ const login = async (req, res) => {
     try{
         // login data is sent in request body
         const { email, password } = req.body;
-        if (!email?.trim() || !password) {
+        if (!isValidEmailInput(email) || typeof password !== 'string' || !password || Buffer.byteLength(password, 'utf8') > 72) {
             return res.status(400).json({ success: false, message: 'Email and password are required' });
         }
 
         const normalizedEmail = email.trim().toLowerCase();
 
         const user = await User.findOne({email: normalizedEmail});
-        // check if google logged-in
-        if(user && user.googleId)
-            return res.status(400).json({message: 'Account is Google logged-in'});
+        const passwordMatches = await verifyPassword(password, user?.password || await dummyPasswordHash);
+        if (!user || user.googleId || user.accountStatus === 'suspended' || !passwordMatches) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
 
         // check if email is verified, if not generate OTP and send to email for verification
-        if(user && !user.verified){
+        if(!user.verified){
             
             // Generating OTP and saving in database
             const otp = generateOTP();
@@ -154,27 +179,10 @@ const login = async (req, res) => {
         }
 
         // verifying password
-        if(user && await verifyPassword(password, user.password)){
+        if(passwordMatches){
                 
                 // Issuing a JWT
-                const sessionId = crypto.randomUUID();
-                const accessToken = generateToken(
-                    { email: normalizedEmail, id: user._id }, 
-                    '10m'
-                );
-                const refreshToken = generateToken(
-                    { email: normalizedEmail, id: user._id, sessionId }, 
-                    '7d'
-                );
-
-                // Saving session in database
-                const session = new Session({
-                    user: user._id,
-                    sessionId,
-                    ip: req.ip,
-                    userAgent: req.get('User-Agent') || 'unknown'
-                })
-                await session.save();
+                const { accessToken, refreshToken } = await createSessionTokens(user, req);
 
                 // Setting refresh token in cookie
                 res.cookie('refreshToken', refreshToken, refreshCookieOptions);
@@ -211,11 +219,11 @@ const signup = async (req, res) => {
     try{
         // signup data is sent in request body
         const { username, email, password } = req.body;
-        if (!username?.trim() || !email?.trim() || !password) {
+        if (typeof username !== 'string' || !/^[\p{L}\p{N}][\p{L}\p{N} _.-]{0,29}$/u.test(username.trim()) || !isValidEmailInput(email) || typeof password !== 'string' || !password) {
             return res.status(400).json({ success: false, message: 'Username, email, and password are required' });
         }
-        if (password.length < 8) {
-            return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+        if (password.length < 8 || Buffer.byteLength(password, 'utf8') > 72) {
+            return res.status(400).json({ success: false, message: 'Password must be between 8 and 72 bytes' });
         }
 
         const normalizedUsername = username.trim();
@@ -233,9 +241,7 @@ const signup = async (req, res) => {
         if(existingEmailUser){
             return res.status(409).json({
                 success: false,
-                message: existingEmailUser.googleId
-                    ? 'Email linked with Google account'
-                    : 'Email linked with another account'
+                message: 'Email or username already in use'
             });
         } 
         if(await User.findOne({username: normalizedUsername})){
@@ -308,26 +314,23 @@ const signup = async (req, res) => {
 const verifyEmail = async (req, res) =>{
     try{
         const { email, otp } = req.body;
-        if (!email?.trim() || !/^\d{6}$/.test(otp || '')) {
+        if (!isValidEmailInput(email) || typeof otp !== 'string' || !/^\d{6}$/.test(otp)) {
             return res.status(400).json({ success: false, message: 'Email and a 6-digit OTP are required' });
         }
         const normalizedEmail = email.trim().toLowerCase();
 
-        const otpRecord = await OTP.findOne({email: normalizedEmail});
+        const otpRecord = await OTP.findOneAndUpdate(
+            { email: normalizedEmail, expiresAt: { $gt: new Date() }, failedAttempts: { $lt: 5 } },
+            { $inc: { failedAttempts: 1 } },
+            { new: true }
+        );
         if(!otpRecord)
             return res.status(400).json({
                 success: false,
-                code: "OTP_NOT_FOUND",
-                message: 'OTP not found, request for new one'
+                code: "OTP_INVALID",
+                message: 'Unable to verify email'
             });
 
-        if(otpRecord.expiresAt < new Date())
-            return res.status(400).json({
-                success: false,
-                code: "OTP_EXPIRED",
-                message: 'OTP expired, request for new one'
-            });
-        
         if(await verifyPassword(otp, otpRecord.otpHash)){
 
             // Marking user as verified
@@ -341,24 +344,11 @@ const verifyEmail = async (req, res) =>{
 
             // Issuing JWT
             const user = await User.findOne({email: normalizedEmail});
-            const sessionId = crypto.randomUUID();
-            const accessToken = generateToken(
-                { email: normalizedEmail, id: user._id }, 
-                '10m'
-            );
-            const refreshToken = generateToken(
-                { email: normalizedEmail, id: user._id, sessionId },
-                '7d'
-            );
-            
-            // Saving session in database
-            const session = new Session({
-                user: user._id,
-                sessionId,
-                ip: req.ip,
-                userAgent: req.get('User-Agent') || 'unknown'
-            })
-            await session.save();
+            if (!user || user.accountStatus === 'suspended') {
+                await OTP.deleteMany({ email: normalizedEmail });
+                return res.status(400).json({ success: false, message: 'Unable to verify email' });
+            }
+            const { accessToken, refreshToken } = await createSessionTokens(user, req);
 
             // Setting refresh token in httpOnly cookie
             res.cookie('refreshToken', refreshToken, refreshCookieOptions);
@@ -374,9 +364,12 @@ const verifyEmail = async (req, res) =>{
             });
         }
         else{
+            if (otpRecord.failedAttempts >= 5) {
+                await OTP.deleteOne({ _id: otpRecord._id });
+            }
             return res.status(400).json({
                 success: false,
-                message: 'Invalid OTP'
+                message: 'Unable to verify email'
             });
         }
     } 
@@ -399,10 +392,10 @@ const logout = async (req, res) => {
         }
 
         // Find and Update session to revoke refresh token
-        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+        const decoded = verifyToken(refreshToken, 'refresh');
         await Session.findOneAndUpdate(
             { sessionId: decoded.sessionId, revoked: false },
-            { revoked: true }
+            { revoked: true, revokedAt: new Date() }
         );
 
         // Clearing refresh token cookie
@@ -432,12 +425,12 @@ const logoutAll = async (req, res) => {
         }
 
         // verifying refresh token to get user id
-        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+        const decoded = verifyToken(refreshToken, 'refresh');
 
         // revoking all refresh tokens of the user
         await Session.updateMany(
             { user: decoded.id, revoked: false },
-            { revoked: true }
+            { revoked: true, revokedAt: new Date() }
         );
 
         // clearing refresh token cookie
@@ -460,15 +453,13 @@ const logoutAll = async (req, res) => {
 const resendOtp = async (req, res) => {
     try{
         const { email } = req.body;
-        if (!email?.trim()) return res.status(400).json({ message: 'Email is required' });
+        if (!isValidEmailInput(email)) return res.status(400).json({ message: 'A valid email is required' });
         const normalizedEmail = email.trim().toLowerCase();
 
         // Check if user exists and not verified
         const user = await User.findOne({email: normalizedEmail});
-        if(!user)
-            return res.status(404).json({message: 'User not found'});
-        if(user.verified)
-            return res.status(400).json({message: 'Email already verified'});
+        if(!user || user.verified || user.accountStatus === 'suspended')
+            return res.status(200).json({ success: true, message: 'If the account is eligible, a verification code will be sent' });
 
         // delete old OTPs
         await OTP.deleteMany({email: normalizedEmail});
@@ -494,7 +485,7 @@ const resendOtp = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: 'OTP resent successfully'
+            message: 'If the account is eligible, a verification code will be sent'
         });
     }
     catch(err){
@@ -518,9 +509,11 @@ const refreshToken = async (req, res) => {
         }
         
         // verifying refresh token and finding if its revoked or not
-        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+        const decoded = verifyToken(refreshToken, 'refresh');
         const session = await Session.findOne({
             sessionId: decoded.sessionId,
+            user: decoded.id,
+            expiresAt: { $gt: new Date() },
             revoked: false
         })
         if(!session){
@@ -532,41 +525,21 @@ const refreshToken = async (req, res) => {
         
         // finding user
         const user = await User.findById(decoded.id);
-        if(!user){
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
+        if(!user || user.accountStatus === 'suspended' || !user.verified){
+            await Session.updateMany({ user: decoded.id, revoked: false }, { revoked: true, revokedAt: new Date() });
+            clearRefreshCookie(res);
+            return res.status(401).json({ success: false, message: 'Authentication required' });
         }
 
         // generating new access token
-        const newAccessToken = generateToken(
-            { email: user.email, id: user._id }, 
-            '10m'
-        );
-
-        // checking if we should rotate refresh token or not
-        const currentTime = Math.floor(Date.now() / 1000);
-        const timeLeft = decoded.exp - currentTime;
-        const shouldRotate = timeLeft < (24 * 60 * 60); // Rotate if less than 1 day left
-
-        // rotating refresh token if needed
-        if(shouldRotate){
-
-            // revoking old session id and saving new one in database
-            const newSessionId = crypto.randomUUID();
-            session.sessionId = newSessionId;
-            await session.save();
-            
-            // generating new tokens
-            const newRefreshToken = generateToken(
-                { email: user.email, id: user._id, sessionId: newSessionId }, 
-                '7d'
-            );
-            
-            // Setting new refresh token in httpOnly cookie
-            res.cookie('refreshToken', newRefreshToken, refreshCookieOptions);
-        }
+        const newSessionId = crypto.randomUUID();
+        const newAccessToken = generateToken({ id: user._id }, '10m', 'access');
+        const newRefreshToken = generateToken({ id: user._id, sessionId: newSessionId }, '7d', 'refresh');
+        session.sessionId = newSessionId;
+        session.lastUsedAt = new Date();
+        session.expiresAt = new Date(Date.now() + SESSION_LIFETIME_MS);
+        await session.save();
+        res.cookie('refreshToken', newRefreshToken, refreshCookieOptions);
 
         return res.status(200).json({
             success: true,

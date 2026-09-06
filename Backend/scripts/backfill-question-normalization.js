@@ -38,7 +38,7 @@ const run = async () => {
 
 run()
   .catch(error => {
-    console.error('Question normalization backfill failed', error);
+    console.error('Question normalization backfill failed');
     process.exitCode = 1;
   })
   .finally(() => mongoose.disconnect());

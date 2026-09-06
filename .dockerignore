@@ -1,3 +1,14 @@
 dist
 node_modules
 .env
+**/.env
+**/.env.*
+**/.env.local
+**/.env.*.local
+**/*.pem
+**/*.key
+.git
+**/node_modules
+**/dist
+**/playwright-report
+**/test-results

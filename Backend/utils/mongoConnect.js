@@ -4,7 +4,7 @@ const { createMongoQueryDiagnostics } = require('../services/observability.servi
 
 const username = encodeURIComponent(config.MONGO_USERNAME || '')
 const password = encodeURIComponent(config.MONGO_PASSWORD || '')
-const mongoUri = config.MONGO_URI || `mongodb+srv://${username}:${password}@cluster0.67xcpyv.mongodb.net/${config.DB_NAME}?appName=Cluster0`
+const mongoUri = config.MONGO_URI || `mongodb+srv://${username}:${password}@${config.MONGO_HOST}/${encodeURIComponent(config.DB_NAME)}?retryWrites=true&w=majority`
 
 const connectToMongoDB = async () => {
     try {
@@ -13,7 +13,6 @@ const connectToMongoDB = async () => {
         console.log("Successfully connected to MongoDB")
     } catch (err) {
         console.error('Unable to connect to MongoDB');
-        console.log(err);
         throw err;
     }
 }

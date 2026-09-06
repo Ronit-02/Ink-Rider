@@ -1,21 +1,25 @@
 # Build the Frontend [dist folder]
 
-FROM node:20-alpine AS frontend-builder
-COPY ./Frontend /app
+FROM node:22-alpine AS frontend-builder
 WORKDIR /app
-RUN npm install
+COPY ./Frontend/package*.json ./
+RUN npm ci
+COPY ./Frontend ./
 RUN npm run build
 
 # Build the Backend
 
-FROM node:20-alpine AS backend-builder
-COPY ./Backend /app
+FROM node:22-alpine AS backend-builder
 WORKDIR /app
-RUN npm install
+COPY ./Backend/package*.json ./
+RUN npm ci --omit=dev
+COPY ./Backend ./
 
 # Copy the built frontend from the previous stage to the backend's public directory
 
 COPY --from=frontend-builder /app/dist /app/public
+RUN mkdir -p /app/public/temp && chown -R node:node /app
+USER node
 
 # Create the runtime image
 

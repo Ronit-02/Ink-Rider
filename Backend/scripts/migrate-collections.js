@@ -25,7 +25,7 @@ const run = async () => {
 
 run()
   .catch(error => {
-    console.error('Collection migration failed', error);
+    console.error('Collection migration failed');
     process.exitCode = 1;
   })
   .finally(() => mongoose.disconnect());
