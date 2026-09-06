@@ -123,7 +123,7 @@ The repository has two root Dockerfiles and no Compose file.
 
 This is a multi-stage image definition. It builds the Vite frontend, installs the backend, copies `Frontend/dist` to `/app/public`, and starts `node server.js`.
 
-It is not currently a complete frontend-plus-backend deployment. Express has static serving disabled and has no single-page-app fallback, so the copied frontend files are not served. It also uses Node 20 and `npm install`, while local development and CI use Node 22 and lockfile-based `npm ci`. Treat this file as unfinished deployment work, not the recommended way to run the whole product.
+It is not currently a complete frontend-plus-backend deployment. Express has static serving disabled and has no single-page-app fallback, so the copied frontend files are not served. The image now matches local/CI Node 22, uses lockfile-based installs, installs production-only backend dependencies, and runs as a non-root user. Treat the combined frontend-serving shape as unfinished deployment work, not the recommended way to run the whole product.
 
 ### `dockerfile.worker`
 

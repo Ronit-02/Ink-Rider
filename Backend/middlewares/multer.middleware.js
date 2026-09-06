@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const multer = require('multer');
+const sharp = require('sharp');
 
 const uploadPath = path.join(__dirname, "../public/temp");
 
@@ -76,10 +77,21 @@ const validateImageFile = async (req, res, next) => {
                 message: 'Uploaded cover image content is invalid',
             });
         }
+        await handle.close();
+        handle = null;
+        const validatedPath = `${req.file.path}.validated`;
+        const outputFormat = detectedMime.split('/')[1];
+        await sharp(req.file.path, { limitInputPixels: 40_000_000, failOn: 'warning', animated: false })
+            .rotate()
+            .toFormat(outputFormat)
+            .toFile(validatedPath);
+        await fs.promises.unlink(req.file.path);
+        await fs.promises.rename(validatedPath, req.file.path);
         return next();
     } catch {
         if (handle) await handle.close().catch(() => {});
         await fs.promises.unlink(req.file.path).catch(() => {});
+        await fs.promises.unlink(`${req.file.path}.validated`).catch(() => {});
         return res.status(400).json({
             success: false,
             code: 'INVALID_IMAGE_FILE',

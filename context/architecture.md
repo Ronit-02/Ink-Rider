@@ -250,13 +250,16 @@ Authentication identity and public profile evolve independently. Public endpoint
 ### Session
 
 - `userId`
-- `sessionId` — unique
-- `refreshTokenHash` or rotation identifier
-- `ipMetadata`
+- `sessionId` — unique, rotated on every refresh
+- `ip`
 - `userAgent`
 - `expiresAt`
+- `lastUsedAt`
 - `revokedAt`
+- `revoked`
 - timestamps
+
+Access and refresh JWTs use purpose-specific derived keys, audiences, and verification rules. Authenticated API access also loads the current user so deleted, unverified, or suspended accounts cannot continue with an otherwise valid token. Production rate-limit counters are atomic MongoDB TTL records; development may use bounded in-memory counters.
 
 ### Follow
 

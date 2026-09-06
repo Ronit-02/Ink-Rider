@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => {
   const apiUrl = process.env.VITE_API_URL || env.VITE_API_URL || 'http://127.0.0.1:8000'
   const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || env.VITE_GOOGLE_CLIENT_ID || ''
   return {
+    build: {
+      sourcemap: false,
+    },
     plugins: [react(), tailwindcss()],
     define: {
       'import.meta.env.VITE_API_URL': JSON.stringify(apiUrl),
@@ -15,7 +18,7 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
+        '@': path.resolve(import.meta.dirname, './src'),
       },
     },
     server: {

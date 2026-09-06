@@ -18,20 +18,25 @@ const validateToken = async (req, res, next) => {
         if (!token) {
             return res.status(401).json({
                 success: false,
-                message: 'Login first'
+                message: 'Authentication required'
             });
         }
         
         const decoded = verifyToken(token);
 
-        req.auth = Object.freeze({ userId: decoded.id });
+        const user = await User.findById(decoded.id).select('_id role accountStatus verified').lean();
+        if (!user || user.accountStatus === 'suspended' || !user.verified) {
+            return res.status(401).json({ success: false, message: 'Authentication required' });
+        }
+
+        req.auth = Object.freeze({ userId: String(user._id), role: user.role });
 
         next();
     }
     catch(err){
         return res.status(401).json({
             success: false,
-            message: 'Invalid or Expired token'
+            message: 'Authentication required'
         });
     }
 }
@@ -46,7 +51,13 @@ const optionalAuth = async (req, res, next) => {
         
         const decoded = verifyToken(token);
         
-        req.auth = Object.freeze({ userId: decoded.id });
+        const user = await User.findById(decoded.id).select('_id role accountStatus verified').lean();
+        if (!user || user.accountStatus === 'suspended' || !user.verified) {
+            req.auth = null;
+            return next();
+        }
+
+        req.auth = Object.freeze({ userId: String(user._id), role: user.role });
         
         next();
     }
@@ -54,7 +65,7 @@ const optionalAuth = async (req, res, next) => {
         if(err.name === 'TokenExpiredError' || err.name === 'JsonWebTokenError'){
             return res.status(401).json({
                 success: false,
-                message: 'Invalid or Expired token'
+                message: 'Authentication required'
             });
         }
         else{

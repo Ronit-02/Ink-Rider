@@ -1,5 +1,6 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const config = require('../config/config.js')
 
 const verifyPassword = async (pass1, pass2) => {
@@ -12,24 +13,40 @@ const hashPassword = async (pass, salt=10) => {
     return hashedPass;
 }
 
-const generateToken = (payload, time) => {
-    const token = jwt.sign(payload, config.JWT_SECRET, {expiresIn: time || '10m'});
+const tokenConfig = tokenUse => ({
+    secret: tokenUse === 'refresh' ? config.REFRESH_TOKEN_SECRET : config.ACCESS_TOKEN_SECRET,
+    audience: tokenUse === 'refresh' ? config.JWT_REFRESH_AUDIENCE : config.JWT_ACCESS_AUDIENCE,
+});
+
+const generateToken = (payload, time, tokenUse = 'access') => {
+    const { secret, audience } = tokenConfig(tokenUse);
+    const token = jwt.sign({ ...payload, tokenUse }, secret, {
+        algorithm: 'HS256',
+        expiresIn: time || (tokenUse === 'refresh' ? '7d' : '10m'),
+        issuer: config.JWT_ISSUER,
+        audience,
+    });
     return token;
 }
 
-const verifyToken = (token) => {
-    const data = jwt.verify(token, config.JWT_SECRET);
+const verifyToken = (token, tokenUse = 'access') => {
+    const { secret, audience } = tokenConfig(tokenUse);
+    const data = jwt.verify(token, secret, {
+        algorithms: ['HS256'],
+        issuer: config.JWT_ISSUER,
+        audience,
+    });
+    if (data.tokenUse !== tokenUse) throw new jwt.JsonWebTokenError('Invalid token purpose');
     return data;
 }
 
 // both included
 const generateRandom = (start, end) => {
-    const no = Math.floor(Math.random() * end) + start;
-    return no;
+    return crypto.randomInt(start, end + 1);
 }
 
 const generateOTP = () => {
-    const otp = Math.floor(100000 + Math.random() * 900000);
+    const otp = crypto.randomInt(100000, 1000000);
     return otp.toString();
 }
 

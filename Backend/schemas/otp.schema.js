@@ -20,6 +20,17 @@ const otpSchema = new mongoose.Schema({
         required: true,
         // index: { expires: 0 }, // This will automatically delete the document after 'expiresAt' time
     },
+    failedAttempts: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
+    maxAttempts: {
+        type: Number,
+        default: 5,
+        min: 1,
+        max: 10,
+    },
 }, {
     timestamps: true,
 });

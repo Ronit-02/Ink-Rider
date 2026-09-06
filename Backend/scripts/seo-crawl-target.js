@@ -6,7 +6,7 @@ const { publicPostClause } = require('../services/post-access.service');
 const run = async () => {
   const username = encodeURIComponent(config.MONGO_USERNAME || '');
   const password = encodeURIComponent(config.MONGO_PASSWORD || '');
-  const mongoUri = config.MONGO_URI || `mongodb+srv://${username}:${password}@cluster0.67xcpyv.mongodb.net/${config.DB_NAME}?appName=Cluster0`;
+  const mongoUri = config.MONGO_URI || `mongodb+srv://${username}:${password}@${config.MONGO_HOST}/${encodeURIComponent(config.DB_NAME)}?retryWrites=true&w=majority`;
   await mongoose.connect(mongoUri);
   try {
     const post = await Post.findOne(publicPostClause()).sort({ publicAt: -1, _id: 1 }).select('_id').lean();
@@ -17,7 +17,7 @@ const run = async () => {
   }
 };
 
-run().catch(error => {
-  console.error(error.message);
+run().catch(() => {
+  console.error('Unable to select a public article for the SEO crawl');
   process.exitCode = 1;
 });

@@ -423,7 +423,7 @@ async function run() {
   await seedModerationAndNotifications(users, posts, questions, competitions);
   const counts = await verifySeed();
   console.log('Comprehensive development fixtures are ready:', counts);
-  console.log('All demo accounts use password:', seedPassword);
+  console.log('Demo account credentials are configured through SEED_PASSWORD and are not printed.');
 }
 
-run().catch(error => { console.error(error); process.exitCode = 1 }).finally(() => mongoose.disconnect());
+run().catch(() => { console.error('Development seed failed. Check the database and configuration.'); process.exitCode = 1 }).finally(() => mongoose.disconnect());

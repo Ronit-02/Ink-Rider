@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Profile = require('../schemas/profile.schema');
 const Workshop = require('../schemas/workshop.schema');
 const WorkshopAttendance = require('../schemas/workshop-attendance.schema');
+const { isSafeHttpUrl } = require('../utils/safe-url');
 const CreatorUpdate = require('../schemas/creator-update.schema');
 const CreatorRequest = require('../schemas/creator-request.schema');
 const CreatorSupport = require('../schemas/creator-support.schema');
@@ -32,7 +33,7 @@ const createWorkshop = async (req, res) => {
     const startsAt = new Date(req.body.startsAt);
     const endsAt = new Date(req.body.endsAt);
     const capacity = Number(req.body.capacity || 100);
-    if (!title || title.length > 140 || !description || description.length > 3000 || !/^https?:\/\//i.test(meetingUrl)) return res.status(400).json({ message: 'Invalid workshop details' });
+    if (!title || title.length > 140 || !description || description.length > 3000 || !isSafeHttpUrl(meetingUrl)) return res.status(400).json({ message: 'Invalid workshop details' });
     if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || startsAt <= new Date() || endsAt <= startsAt || endsAt - startsAt > 8 * 60 * 60 * 1000) return res.status(400).json({ message: 'Workshop timing is invalid' });
     if (!Number.isInteger(capacity) || capacity < 1 || capacity > 10000) return res.status(400).json({ message: 'Workshop capacity is invalid' });
     const workshop = await Workshop.create({ hostId: req.auth.userId, title, description, startsAt, endsAt, capacity, meetingUrl, status: 'published' });
