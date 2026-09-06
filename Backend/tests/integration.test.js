@@ -62,6 +62,9 @@ if (!integrationEnabled) {
 
   test.before(async () => {
     await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5_000 });
+    // Text-search routes require the schema's text index. Await model
+    // initialization so a fresh CI database cannot race index creation.
+    await Post.init();
     owner = await User.create({
       username: `${prefix}-owner`,
       email: `${prefix}-owner@example.test`,
