@@ -1,6 +1,6 @@
 # Ink-Rider code standards
 
-Last updated: 2026-08-18
+Last updated: 2026-09-08
 
 ## Engineering mindset
 
@@ -194,21 +194,16 @@ Rules:
 - Central middleware maps application errors to HTTP responses.
 - User-facing messages explain what can be done next without leaking internals.
 - Logs include request ID, error code, route, and safe context.
-- Do not log entire request bodies, cookies, tokens, OTPs, passwords, or provider secrets.
+- Log only privacy-safe diagnostic context.
 - Frontend errors use inline or page-level states; do not use `window.alert()`.
 - Error boundaries protect route groups and preserve a recovery action.
 
 ## Validation and security
 
-- Validate all external input, including database IDs, webhook payloads, media metadata, and environment values.
-- Normalize email, handles, tags, and URLs before uniqueness checks.
-- Authorization checks occur after authentication and before mutation.
-- Rate-limit authentication, voting, reporting, search, and AI endpoints according to abuse risk.
-- Sanitize rich content and allowlist embed providers.
-- Restrict upload type, detected MIME, dimensions, and byte size.
-- Use secure cookie settings by environment and rotate refresh sessions.
-- Use CSRF protection when the authentication/cookie topology requires it.
-- Keep dependencies patched and review install scripts before adding packages.
+- Validate and normalize external input before it affects application state.
+- Enforce authorization before any mutation.
+- Build privacy, safe rendering, abuse resistance, and dependency review into every feature.
+- Protected controls and implementation constraints belong in `sensitive context/code-standards.local.md` when available.
 
 ## Testing standards
 
