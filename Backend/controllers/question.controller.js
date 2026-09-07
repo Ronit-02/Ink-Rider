@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const Post = require('../schemas/post.schema');
 const Profile = require('../schemas/profile.schema');
-const User = require('../schemas/user.schema');
 const Question = require('../schemas/question.schema');
 const Report = require('../schemas/report.schema');
 const { reportReasons } = Report;

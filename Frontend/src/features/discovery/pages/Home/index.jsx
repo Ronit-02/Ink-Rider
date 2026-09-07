@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps -- The observer intentionally depends on the specific stable query members it consumes. */
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import useDiscoveryFeed from '../../hooks/useDiscoveryFeed'

@@ -100,7 +100,7 @@ app.use((req, res) => {
     });
 })
 
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   const isUploadError = err?.name === 'MulterError';
   const isInvalidJson = err instanceof SyntaxError && err?.type === 'entity.parse.failed';
   const status = isUploadError || isInvalidJson ? 400 : 500;

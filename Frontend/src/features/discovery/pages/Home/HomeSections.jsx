@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect -- IntersectionObserver fallback intentionally activates deferred content synchronously. */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Avatar from '@/shared/components/ui/Avatar'

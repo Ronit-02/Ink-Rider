@@ -20,7 +20,7 @@ export default function usePostLike(postId) {
       }))
       return { previousCaches }
     },
-    onSuccess: (data, isLiked) => {
+    onSuccess: (data, _isLiked) => {
       const nextIsLiked = typeof data.isLiked === 'boolean' ? data.isLiked : data.liked
       updatePostCaches(queryClient, postId, post => ({
         ...post,

@@ -1,5 +1,3 @@
-import React from 'react';
-
 /**
  * Floating formatting menu for text selection
  */

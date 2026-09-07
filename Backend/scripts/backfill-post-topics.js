@@ -32,7 +32,7 @@ const run = async () => {
 };
 
 run()
-  .catch(error => {
+  .catch(_error => {
     console.error('Post topic backfill failed');
     process.exitCode = 1;
   })

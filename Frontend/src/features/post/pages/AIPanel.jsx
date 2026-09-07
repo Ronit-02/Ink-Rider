@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { fetchPostSummary, startMembershipCheckout } from '@/features/membership/api/membership'
 
@@ -91,15 +91,15 @@ export function ReadAloudPanel({ text }) {
   const words = useMemo(() => text.trim().split(/\s+/).filter(Boolean).length, [text])
   const estimatedSeconds = Math.max(1, Math.round(words / 2.5))
 
-  const stop = () => {
+  const stop = useCallback(() => {
     if (supported) window.speechSynthesis.cancel()
     if (timerRef.current) window.clearInterval(timerRef.current)
     timerRef.current = null
     utteranceRef.current = null
     setPlaying(false)
-  }
+  }, [supported])
 
-  useEffect(() => stop, [])
+  useEffect(() => stop, [stop])
 
   const play = () => {
     if (!supported || !text.trim()) return

@@ -10,7 +10,6 @@ import useWriterFollow from '../../hooks/useWriterFollow'
 import useEntitlements from '@/features/membership/hooks/useEntitlements'
 import { sendCreatorRequest, supportCreator } from '@/features/membership/api/memberExperience'
 import { ListSkeleton, Skeleton } from '@/shared/components/ui/Skeleton'
-import PageFrame from '@/shared/components/layout/PageFrame'
 
 const formatJoinedDate = value => new Intl.DateTimeFormat('en', {
   month: 'long',

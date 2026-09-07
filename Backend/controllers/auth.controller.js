@@ -47,7 +47,8 @@ const createSessionTokens = async (user, req) => {
 };
 
 const clearRefreshCookie = (res) => {
-    const { maxAge, ...clearOptions } = refreshCookieOptions;
+    const clearOptions = { ...refreshCookieOptions };
+    delete clearOptions.maxAge;
     res.clearCookie('refreshToken', clearOptions);
 };
 

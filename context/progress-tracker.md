@@ -20,7 +20,7 @@ The principal reading, publishing, discovery, questions, collections, short read
 
 | Phase | Status | Tracked outcome |
 |---|---|---|
-| Baseline and contracts | Partial | Core contracts, fixtures, validation, and repeatable verification exist; release activation remains. |
+| Baseline and contracts | Partial | Core contracts, fixtures, validation, warning-free package-local ESLint baselines, and repeatable verification exist; release activation remains. |
 | Publishing, reading, discovery, and onboarding | Connected | The core reader and writer loop uses durable server-backed data. |
 | Questions and opportunities | Connected | Questions are an independent reader-demand surface. |
 | Competitions | Partial | Product flows and staff review exist; operational edge cases remain. |

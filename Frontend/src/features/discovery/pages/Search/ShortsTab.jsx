@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/no-static-element-interactions -- Backdrop dismissal is guarded to the backdrop itself. */
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import Button from '@/shared/components/ui/Button'

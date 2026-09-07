@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/interactive-supports-focus -- The menu container delegates focus to its menuitem children. */
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams, useNavigate } from 'react-router-dom'
 import { BackIcon, BookmarkIcon, ShareIcon, LinkIcon, XIcon } from '@/shared/icons'

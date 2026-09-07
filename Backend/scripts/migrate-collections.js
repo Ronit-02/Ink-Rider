@@ -24,7 +24,7 @@ const run = async () => {
 };
 
 run()
-  .catch(error => {
+  .catch(_error => {
     console.error('Collection migration failed');
     process.exitCode = 1;
   })

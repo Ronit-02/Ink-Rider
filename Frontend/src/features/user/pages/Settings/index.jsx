@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect -- Server-saved interests intentionally initialize the editable settings draft. */
 import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import Button from '@/shared/components/ui/Button'

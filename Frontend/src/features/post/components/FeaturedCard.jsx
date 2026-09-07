@@ -18,8 +18,13 @@ export default function FeaturedCard({ article }) {
 
   return (
     <div
+      role="link"
+      tabIndex={0}
       className="hover-lift cursor-pointer bg-[var(--color-surface)] rounded-sm overflow-hidden group relative"
       onClick={() => navigate(`/post/${article.id}`)}
+      onKeyDown={event => {
+        if (event.currentTarget === event.target && event.key === 'Enter') navigate(`/post/${article.id}`)
+      }}
     >
       <ImageBox src={article.image} alt={article.title} height={220} radius="0" />
 

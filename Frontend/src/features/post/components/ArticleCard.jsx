@@ -18,8 +18,13 @@ export default function ArticleCard({ article }) {
 
   return (
     <div
+      role="link"
+      tabIndex={0}
       className="hover-lift cursor-pointer overflow-hidden rounded-sm group relative"
       onClick={() => navigate(`/post/${article.id}`)}
+      onKeyDown={event => {
+        if (event.currentTarget === event.target && event.key === 'Enter') navigate(`/post/${article.id}`)
+      }}
     >
       {/* Cover image */}
       <ImageBox src={article.image} alt={article.title} height={180} radius="0" />

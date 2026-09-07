@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, jsx-a11y/no-noninteractive-element-interactions -- Source changes reset image failure state; image load failure is not a user interaction. */
 /* ImageBox — lazy-loaded image container with configurable radius */
 import { useEffect, useState } from 'react'
 

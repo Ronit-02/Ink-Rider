@@ -9,7 +9,7 @@ import { signupUser } from '../api/signup'
 import { resendOtp } from '../api/resendOtp'
 import { verifyEmail } from '../api/verifyEmail'
 import { loginFailure, loginStart, loginSuccess } from '../store/authSlice'
-import { googleLogin } from '../api/googleLogin'
+import { googleLogin as requestGoogleLogin } from '../api/googleLogin'
 import useToast from '@/shared/hooks/useToast'
 
 export default function Login({ signUp = false }) {
@@ -51,11 +51,7 @@ export default function Login({ signUp = false }) {
       setIsEmailVerified(false)
     },
     
-    onError: (error) => {
-      const code = error?.response?.data?.code;
-      const message = error?.response?.data?.message;
-      // displayNotification(message || 'Signup failed', 'error')
-    } 
+    onError: error => notify(error?.response?.data?.message || 'Account creation failed.', { tone: 'error' }),
   })
 
   const verifyEmailMutation = useMutation({
@@ -68,11 +64,7 @@ export default function Login({ signUp = false }) {
       navigate('/onboarding') 
     },
 
-    onError: (error) => {
-      const code = error?.response?.data?.code;
-      const message = error?.response?.data?.message;
-      // displayNotification(message || 'Verification failed', 'error')
-    }
+    onError: error => notify(error?.response?.data?.message || 'Email verification failed.', { tone: 'error' }),
   })
 
   const resendOtpMutation = useMutation({
@@ -84,13 +76,15 @@ export default function Login({ signUp = false }) {
   })
 
   const googleMutation = useMutation({
-    mutationFn: googleLogin,
+    mutationFn: requestGoogleLogin,
     onSuccess: data => {
       dispatch(loginSuccess(data))
       notify('Welcome to Ink Rider.')
       navigate('/')
     },
   })
+
+  const triggerGoogleLogin = googleMutation.mutate
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
@@ -102,7 +96,7 @@ export default function Login({ signUp = false }) {
         client_id: clientId,
         callback: response => {
           dispatch(loginStart())
-          googleMutation.mutate(response.credential)
+          triggerGoogleLogin(response.credential)
         },
       })
       window.google.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'large', width: 320, text: 'continue_with' })
@@ -120,7 +114,7 @@ export default function Login({ signUp = false }) {
     if (!existingScript) document.head.appendChild(script)
     script.addEventListener('load', renderButton)
     return () => script.removeEventListener('load', renderButton)
-  }, [dispatch, isEmailVerified, mode])
+  }, [dispatch, triggerGoogleLogin, isEmailVerified, mode])
 
   const handleSubmit = e => {
     e.preventDefault()

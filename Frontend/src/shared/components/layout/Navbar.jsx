@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect -- URL navigation and changing suggestions intentionally synchronize transient search state. */
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import useAuth from '@/features/auth/hooks/useAuth'
@@ -191,7 +192,7 @@ export default function Navbar() {
             className="w-10 h-10 md:w-8 md:h-8 rounded-full border border-[var(--color-border)] bg-[var(--color-accent)] text-[var(--color-text-inverted)] font-semibold text-[12px] uppercase">
             <Avatar src={avatarUrl} name={user} size={32} />
           </button>
-          {openMenu && <div ref={accountMenuRef} id="account-menu" role="menu" aria-label="Account" onKeyDown={handleAccountMenuKeyDown} className="absolute top-[calc(100%+6px)] right-0 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[10px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] p-1 flex flex-col gap-0.5 min-w-[170px] z-[200]">
+          {openMenu && <div ref={accountMenuRef} id="account-menu" role="menu" tabIndex={-1} aria-label="Account" onKeyDown={handleAccountMenuKeyDown} className="absolute top-[calc(100%+6px)] right-0 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[10px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] p-1 flex flex-col gap-0.5 min-w-[170px] z-[200]">
             {[{ label: 'View Profile', path: '/profile' }, { label: 'Saved', path: '/saved' }, { label: 'Settings', path: '/settings' }].map(item =>
               <Link key={item.label} role="menuitem" to={item.path} onClick={() => setOpenMenu(false)} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus:bg-[var(--color-bg-alt)] focus:outline-none">{item.label}</Link>)}
             <div className="h-px bg-[var(--color-border)] my-1" />

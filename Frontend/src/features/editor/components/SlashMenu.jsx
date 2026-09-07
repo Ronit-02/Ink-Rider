@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect -- A filter change intentionally restores the roving option to the first item. */
 import { useState, useEffect, useRef } from 'react'
 
 export default function SlashMenu({

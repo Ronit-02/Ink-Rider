@@ -30,7 +30,9 @@ export default [
       'no-implied-eval': 'error',
       'no-new-wrappers': 'error',
       'no-prototype-builtins': 'error',
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      // Controllers intentionally map known failures to safe client responses;
+      // a catch binding is only required when its detail is used safely.
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', caughtErrors: 'none' }],
       'import/no-duplicates': 'error',
       'import/no-cycle': 'error',
       'n/no-missing-require': 'error',

@@ -10,3 +10,4 @@
 AGENTS.local.md
 *.local.md
 /sensitive context/
+/.tooling/
