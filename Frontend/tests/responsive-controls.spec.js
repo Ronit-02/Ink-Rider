@@ -165,6 +165,7 @@ test('shared filters expose phone-sized controls without changing desktop sizing
   expect((await dialog.getByRole('button', { name: 'Close filters' }).boundingBox())?.height).toBeGreaterThanOrEqual(40)
 
   await dialog.getByRole('button', { name: 'Science', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: 'Reset filters' })).toBeEnabled()
   await dialog.getByRole('button', { name: 'Close filters' }).press('Shift+Tab')
   await expect(dialog.getByRole('button', { name: 'Reset filters' })).toBeFocused()
   await dialog.getByRole('button', { name: 'Reset filters' }).press('Tab')
