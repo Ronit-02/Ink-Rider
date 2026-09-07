@@ -23,7 +23,7 @@ const run = async () => {
 };
 
 run()
-  .catch(error => {
+  .catch(_error => {
     console.error('Competition fraud analysis failed');
     process.exitCode = 1;
   })

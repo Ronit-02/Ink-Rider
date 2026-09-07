@@ -1,6 +1,6 @@
 # Ink-Rider project overview
 
-Last updated: 2026-08-24
+Last updated: 2026-09-08
 
 ## Product definition
 
@@ -184,7 +184,7 @@ The system owns four categories of data:
 - **Community:** comments, reactions, saves, reports, competition entries, subscriptions.
 - **Discovery:** impressions, reads, completion, hides, topic affinities, rankings, experiments.
 
-MongoDB is the current transactional datastore. Media is stored through Cloudinary. The frontend consumes the backend through versioned JSON APIs. Derived counters may be cached, but source event or relationship records remain authoritative.
+The frontend consumes the backend through versioned JSON APIs. Derived counters may be cached, but source event or relationship records remain authoritative. Storage, media-provider, private-account, and protected operational implementation details are maintained in `sensitive context/project-overview.local.md` when available.
 
 See [architecture.md](architecture.md) for system boundaries, schemas, data flow, and invariants.
 

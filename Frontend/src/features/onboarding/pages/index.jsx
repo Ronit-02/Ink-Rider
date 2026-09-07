@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect -- Server-saved choices intentionally initialize the editable onboarding draft. */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '@/shared/components/ui/Button'

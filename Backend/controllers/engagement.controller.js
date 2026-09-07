@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const Comment = require('../schemas/comment.schema');
-const Like = require('../schemas/like.schema');
 const Post = require('../schemas/post.schema');
 const Save = require('../schemas/save.schema');
 const Report = require('../schemas/report.schema');

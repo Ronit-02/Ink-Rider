@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect -- The URL query intentionally seeds the editable search input after navigation. */
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Avatar from '@/shared/components/ui/Avatar'

@@ -38,7 +38,6 @@ if (!integrationEnabled) {
   let otherUser;
   let post;
   let shortPost;
-  let shortPost2;
   let shortPost3;
   let shortPost4;
   let topic;
@@ -104,10 +103,6 @@ if (!integrationEnabled) {
     });
     shortPost = await Post.create({
       title: `${prefix} short`, format: 'short', body: validBody(`${prefix} short`), author: owner._id,
-      tags: ['integration'], publicAt: new Date(), currentRevision: 1,
-    });
-    shortPost2 = await Post.create({
-      title: `${prefix} short two`, format: 'short', body: validBody(`${prefix} short two`), author: owner._id,
       tags: ['integration'], publicAt: new Date(), currentRevision: 1,
     });
     shortPost3 = await Post.create({

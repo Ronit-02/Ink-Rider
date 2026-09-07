@@ -3,3 +3,11 @@
 !**/.env.example
 **/*.pem
 **/*.key
+.env
+.env.*
+!.env.example
+*.local
+AGENTS.local.md
+*.local.md
+/sensitive context/
+/.tooling/

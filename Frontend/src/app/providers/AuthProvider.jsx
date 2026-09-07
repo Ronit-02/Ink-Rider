@@ -30,7 +30,7 @@ function AuthProvider({children}) {
                     }));
                 }
             }
-            catch(err){
+            catch{
                 // An expired or absent refresh cookie is an ordinary signed-out state.
                 const authState = store.getState().auth;
                 // A refresh 401 may arrive while an explicit login or signup
@@ -51,7 +51,7 @@ function AuthProvider({children}) {
         return () => {
             cancelled = true;
         }
-    }, [])
+    }, [dispatch])
 
     if(loading){        
         // The full-screen app loader is intentionally disabled for now.

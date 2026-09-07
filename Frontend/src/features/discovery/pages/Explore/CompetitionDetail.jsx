@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/heading-has-content -- The modal backdrop is guarded and entry titles have a conditional accessible fallback. */
 import { useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import Button from '@/shared/components/ui/Button'

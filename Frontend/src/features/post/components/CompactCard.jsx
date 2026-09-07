@@ -5,7 +5,12 @@ export default function CompactCard({ article }) {
 
   return (
     <div
+      role="link"
+      tabIndex={0}
       onClick={() => navigate(`/post/${article.id}`)}
+      onKeyDown={event => {
+        if (event.currentTarget === event.target && event.key === 'Enter') navigate(`/post/${article.id}`)
+      }}
       className="flex gap-3 py-3 cursor-pointer border-b border-[var(--color-border-light)]
         transition-opacity duration-150 hover:opacity-70"
     >

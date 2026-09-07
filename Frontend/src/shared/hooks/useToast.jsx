@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- This module deliberately exports the provider and its paired consumer hook. */
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 
 const ToastContext = createContext(null)

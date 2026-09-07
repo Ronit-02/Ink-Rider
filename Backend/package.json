@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "lint": "eslint .",
+    "lint:fix": "npm run lint -- --fix",
     "test": "node --test tests/foundation-contracts.test.js",
     "test:integration": "node --test tests/integration.test.js",
     "recommendations:offline": "node scripts/evaluate-recommendations.js",
@@ -45,6 +47,11 @@
     "sharp": "^0.35.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-n": "^18.3.0",
+    "globals": "^17.12.0",
     "nodemon": "^3.1.14"
   }
 }

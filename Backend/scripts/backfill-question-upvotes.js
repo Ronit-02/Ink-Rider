@@ -20,7 +20,7 @@ const run = async () => {
 };
 
 run()
-  .catch(error => {
+  .catch(_error => {
     console.error('Question upvote backfill failed');
     process.exitCode = 1;
   })

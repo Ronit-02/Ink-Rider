@@ -1,6 +1,6 @@
 # Ink-Rider UI tokens
 
-Last updated: 2026-08-18
+Last reviewed: 2026-09-08
 
 ## Token principles
 

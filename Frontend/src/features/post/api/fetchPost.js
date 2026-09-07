@@ -2,7 +2,7 @@ import api from "@/app/api";
 
 const fetchPost = async ({queryKey}) => {
 
-    const [_, postId] = queryKey;
+    const [, postId] = queryKey;
 
     const response = await api.get(
         `/api/post/${postId}`,

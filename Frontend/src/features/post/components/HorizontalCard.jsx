@@ -18,9 +18,14 @@ export default function HorizontalCard({ article }) {
 
   return (
     <div
+      role="link"
+      tabIndex={0}
       className="flex gap-4 py-5 border-b border-[var(--color-border)] cursor-pointer rounded transition-all duration-150
         hover:bg-[var(--color-surface-hover)] group"
       onClick={() => navigate(`/post/${article.id}`)}
+      onKeyDown={event => {
+        if (event.currentTarget === event.target && event.key === 'Enter') navigate(`/post/${article.id}`)
+      }}
     >
       {/* Left: text */}
       <div className="flex-1 min-w-0">

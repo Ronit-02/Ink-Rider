@@ -66,7 +66,13 @@ export default function WritePage() {
   const [autosaveStatus, setAutosaveStatus] = useState(initialDraftId ? 'loading' : 'idle')
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [assistantAction, setAssistantAction] = useState('improve_clarity')
-  const [menuPosition, setMenuPosition] = useState(null);
+  const [scheduleBounds] = useState(() => {
+    const now = new Date()
+    return {
+      min: now.toISOString().slice(0, 16),
+      max: new Date(now.getTime() + 30 * 86400000).toISOString().slice(0, 16),
+    }
+  })
   const fileRef   = useRef()
   const blockRefs  = useRef({})
   const editorRef = useRef()
@@ -142,7 +148,7 @@ export default function WritePage() {
       }
     }, 1500)
     return () => window.clearTimeout(timer)
-  }, [title, format, blocks, tags, publicAt, draftQuery.isError])
+  }, [title, format, blocks, tags, publicAt, draftQuery.isError, searchParams, setSearchParams])
 
   // Creating Post
   const { mutate, isPending, isError, error } = useMutation({
@@ -257,10 +263,6 @@ export default function WritePage() {
   const changeType = (id, type) => {
     setBlocks(b => b.map(bl => bl.id === id ? { ...bl, type } : bl))
   }
-  const addDivider = () => {
-    setBlocks(b => [...b, newBlock('divider'), newBlock()])
-  }
-
   // Slash menu handlers
   const openSlashMenu = (blockId, filter = '') => {
     const blockEl = blockRefs.current[blockId];
@@ -314,17 +316,17 @@ export default function WritePage() {
 
   const mergeToPrevBlock = (id, content) => {
     const idx = blocks.findIndex(b => b.id === id);
-    if(idx == 0) return;
+    if (idx === 0) return;
 
     const blk = blocks[idx];
     const prevBlk = blocks[idx - 1];
     
-    if(blk.type == 'image' || prevBlk.type == 'image') return;
+    if (blk.type === 'image' || prevBlk.type === 'image') return;
     
     setBlocks(prev => 
       prev
-      .map((b, i) => (i == idx - 1) ? {...b, content: b.content + content} : b)
-      .filter(b => b.id != blk.id)
+       .map((b, i) => (i === idx - 1) ? {...b, content: b.content + content} : b)
+       .filter(b => b.id !== blk.id)
     );
     
     setTimeout(() => {
@@ -334,52 +336,6 @@ export default function WritePage() {
       textarea.setSelectionRange(cursorPos, cursorPos);
     }, 0)
   }
-
-  const handleTextSelection = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-      setMenuPosition(null);
-      return;
-    }
-
-    const selectedText = selection.toString().trim();
-    if (!selectedText) {
-      setMenuPosition(null);
-      return;
-    }
-
-    const editor = editorRef.current;
-    if(!editor) return;
-
-    const isInsideEditor = editor.contains(selection.anchorNode) && editor.contains(selection.focusNode);
-    if(!isInsideEditor){
-      setMenuPosition(null);
-      return;
-    }
-
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-
-    setMenuPosition({ 
-      x: rect.left + rect.width / 2 + window.scrollX, 
-      y: rect.top + window.scrollY - 40 
-    });
-  };
-
-  const applyFormatting = (format) => {
-    const selection = window.getSelection();
-    if(!selection || selection.rangeCount === 0) return;
-
-    if (format === 'link') {
-      const url = window.prompt('Enter URL');
-      if (url) {
-        // document.execCommand('createLink', false, url);
-      }
-    } else {
-      // document.execCommand(format, false, null);
-    }
-    setMenuPosition(null);
-  };
 
   const placeCaretAtEnd = (el) => {
     if (!el) return;
@@ -474,7 +430,7 @@ export default function WritePage() {
       </div>
 
       {format === 'short' && <div className="mb-7"><label htmlFor="depth-parent" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Deeper article <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><select id="depth-parent" value={depthParentId} onChange={event => setDepthParentId(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]"><option value="">This short stands alone</option>{depthOptions.data?.map(post => <option key={post.id} value={post.id}>{post.title}</option>)}</select><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Readers will be able to move between this quick explanation and the full article.</p></div>}
-      {canScheduleEarlyAccess && <div className="mb-7"><label htmlFor="public-at" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Public release <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><input id="public-at" type="datetime-local" value={publicAt} min={new Date().toISOString().slice(0, 16)} max={new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 16)} onChange={event => setPublicAt(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]" /><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Members can read immediately; everyone else gets access at this time.</p></div>}
+      {canScheduleEarlyAccess && <div className="mb-7"><label htmlFor="public-at" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Public release <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><input id="public-at" type="datetime-local" value={publicAt} min={scheduleBounds.min} max={scheduleBounds.max} onChange={event => setPublicAt(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]" /><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Members can read immediately; everyone else gets access at this time.</p></div>}
       <section className="mb-7 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-4"><div className="flex items-center justify-between gap-4"><div><h2 className="text-[13px] font-semibold text-[var(--color-text)]">Writing assistant</h2><p className="mt-1 text-[11px] text-[var(--color-text-muted)]">Suggestions never replace your draft automatically.</p></div><Button variant="secondary" onClick={() => setAssistantOpen(value => !value)}>{assistantOpen ? 'Close' : 'Open assistant'}</Button></div>{assistantOpen && (!canUseWritingAssistant ? <p className="mt-4 text-[12px] text-[var(--color-text-secondary)]">AI writing assistance is available with membership.</p> : <div className="mt-4"><div className="flex gap-2"><select value={assistantAction} onChange={event => setAssistantAction(event.target.value)} className="flex-1 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px]"><option value="improve_clarity">Improve clarity</option><option value="tighten">Tighten prose</option><option value="create_outline">Create outline</option><option value="suggest_titles">Suggest titles</option><option value="find_gaps">Find reasoning gaps</option></select><Button disabled={assistant.isPending || blocks.map(block => block.content).join(' ').trim().length < 20} onClick={() => assistant.mutate({ action: assistantAction, text: blocks.map(block => block.content).join('\n').slice(0, 12000) })}>{assistant.isPending ? 'Thinking…' : 'Generate'}</Button></div>{assistant.isError && <p role="alert" className="mt-3 text-[11px] text-[var(--color-danger)]">{assistant.error?.response?.data?.message || 'The assistant is unavailable.'}</p>}{assistant.data && <div className="mt-4 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"><p className="whitespace-pre-wrap text-[13px] leading-[1.7] text-[var(--color-text-secondary)]">{assistant.data.data.suggestion}</p><div className="mt-4 flex items-center justify-between gap-3"><p className="text-[10px] text-[var(--color-text-muted)]">{assistant.data.data.disclosure}</p><Button variant="secondary" onClick={() => addAfter(blocks.at(-1).id, assistant.data.data.suggestion)}>Add as new block</Button></div></div>}</div>)}</section>
       {isError && <p role="alert" className="mb-5 text-[12px] text-[var(--color-danger)]">{error?.response?.data?.message || 'The post could not be published.'}</p>}
 
@@ -525,7 +481,7 @@ export default function WritePage() {
 
       {/* ── Block editor ── */}
       <div className="flex flex-col gap-2 mb-8 relative" ref={editorRef}>
-        {blocks.map((bl, idx) => (
+        {blocks.map(bl => (
           <Block
             key={bl.id}
             block={bl}
@@ -608,7 +564,7 @@ export default function WritePage() {
 // Single editable block
 const Block = forwardRef(
   function Block(
-    { block, onChange, onAltChange, onDelete, onAdd, onTypeChange, openSlashMenu, closeSlashMenu, isSlashMenuOpen, moveFocus, mergeToPrevBlock, copyPasteContent },
+    { block, onChange, onAltChange, onDelete, onAdd, openSlashMenu, closeSlashMenu, isSlashMenuOpen, moveFocus, mergeToPrevBlock, copyPasteContent },
     ref
   ) {
 
@@ -723,7 +679,6 @@ const Block = forwardRef(
               ref={ref}
               aria-label={`${block.type === 'text' ? 'Paragraph' : block.type} block`}
               aria-controls={isSlashMenuOpen ? 'editor-slash-menu' : undefined}
-              aria-expanded={isSlashMenuOpen}
               value={block.content}
               onChange={e => handleChange(e.target.value)}
               onKeyDown={handleKey}
@@ -750,18 +705,3 @@ const Block = forwardRef(
   }
 );
 
-const HoveringMenu = ({ position, onFormat }) => {
-  if (!position) return null;
-
-  return (
-    <div
-      className="absolute bg-white shadow-md rounded-md p-2 flex gap-2 z-50"
-      style={{ top: position.y, left: position.x }}
-    >
-      <button type="button" aria-label="Bold" onMouseDown={(e) => e.preventDefault()} onClick={() => onFormat('bold')} className="hover:bg-gray-200 p-1 rounded font-bold">B</button>
-      <button type="button" aria-label="Italic" onMouseDown={(e) => e.preventDefault()} onClick={() => onFormat('italic')} className="hover:bg-gray-200 p-1 rounded italic">I</button>
-      <button type="button" aria-label="Underline" onMouseDown={(e) => e.preventDefault()} onClick={() => onFormat('underline')} className="hover:bg-gray-200 p-1 rounded underline">U</button>
-      <button type="button" aria-label="Add link" onMouseDown={(e) => e.preventDefault()} onClick={() => onFormat('link')} className="hover:bg-gray-200 p-1 rounded">🔗</button>
-    </div>
-  );
-}

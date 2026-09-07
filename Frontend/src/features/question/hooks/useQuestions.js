@@ -107,7 +107,7 @@ export function useQuestionFollow(questionId) {
   })
 }
 
-export function useQuestionReport(questionId) {
+export function useQuestionReport() {
   const { notify } = useToast()
   return useMutation({ mutationFn: reportQuestion, onSuccess: data => notify(data.alreadyReported ? 'You already reported this question.' : 'Question report submitted.'), onError: error => notify(error?.response?.data?.message || 'The question report could not be submitted.', { tone: 'error' }) })
 }

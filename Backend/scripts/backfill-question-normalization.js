@@ -37,7 +37,7 @@ const run = async () => {
 };
 
 run()
-  .catch(error => {
+  .catch(_error => {
     console.error('Question normalization backfill failed');
     process.exitCode = 1;
   })

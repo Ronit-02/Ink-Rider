@@ -1,6 +1,6 @@
 # Ink-Rider UI rules
 
-Last updated: 2026-08-24
+Last reviewed: 2026-09-08
 
 This document governs how tokens become reusable interface patterns. See [ui-tokens.md](ui-tokens.md) for raw design values and [ui-registry.md](ui-registry.md) for component ownership.
 

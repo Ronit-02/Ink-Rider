@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/no-noninteractive-element-interactions -- Image load failure is an error event, not a user interaction. */
 import { useState } from 'react'
 
 const isSafeImageUrl = value => {
