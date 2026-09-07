@@ -38,6 +38,10 @@ Primary articles remain publicly readable. Discovery and reader demand precede m
 - Verify monitoring, background processing, recovery, and deployment behavior in the target environment.
 - Run the relevant automated checks after feature changes and record only dated, reproducible outcomes.
 
+## Recent verification
+
+- 2026-09-08: Article-detail queries now wait for refresh-cookie session restoration before loading reader-specific save and appreciation state, preventing a reload from settling on an anonymous representation. `Frontend`: `npm run lint` and `npm run build` passed. The focused Playwright critical-flow check could not start locally because its backend requires configured isolated MongoDB settings.
+
 ## Update protocol
 
 Update this file only after a verified change to implementation progress. Put detailed security, provider, deployment, test-run, and operational evidence in the corresponding ignored local companion rather than session narration here.
