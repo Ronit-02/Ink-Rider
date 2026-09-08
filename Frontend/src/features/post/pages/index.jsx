@@ -149,7 +149,10 @@ export default function PostPage() {
   }
 
   // Conditional Rendering
-  if (fetchPostIsLoading) return <PostDetailSkeleton />;
+  // Session restoration temporarily disables the reader-specific detail query.
+  // Keep the existing skeleton visible until a post response is available so a
+  // reload cannot dereference an absent response and blank the page.
+  if (fetchPostIsLoading || (!postData && !isError)) return <PostDetailSkeleton />;
   if (isError) return <PostErrorState notFound={error?.response?.status === 404} onRetry={refetch} />;
   const postBlocks = parsePostBlocks(postData.body)
   if (!postBlocks) return <PostErrorState onRetry={() => navigate('/')} invalidContent />
