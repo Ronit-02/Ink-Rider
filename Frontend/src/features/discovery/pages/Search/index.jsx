@@ -138,7 +138,7 @@ export default function SearchPage() {
           <div className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 transition-colors focus-within:border-[var(--color-focus)] focus-within:ring-2 focus-within:ring-[var(--color-focus)]/15">
             <SearchIcon />
             <input id="discovery-search" value={input} onChange={event => setInput(event.target.value)} placeholder="Search articles, writers, or topics"
-              className="min-w-0 flex-1 border-none bg-transparent text-[14px] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-muted)]" />
+              className="search-input min-w-0 flex-1 border-none bg-transparent text-[14px] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-muted)]" />
           </div>
           <button type="submit" disabled={input.trim().length < 1}
             className="h-12 w-full shrink-0 rounded-[14px] bg-[var(--color-accent)] px-5 text-[13px] font-semibold text-[var(--color-text-inverted)] transition-transform hover:opacity-90 active:translate-y-px disabled:opacity-40 sm:w-auto">Search</button>

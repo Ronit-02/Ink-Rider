@@ -10,7 +10,7 @@ export default function NotificationsPage() {
   const navigate = useNavigate()
   const { notify } = useToast()
   const queryClient = useQueryClient()
-  const notifications = useQuery({ queryKey: ['notifications'], queryFn: fetchNotifications, refetchInterval: 60000 })
+  const notifications = useQuery({ queryKey: ['notifications'], queryFn: fetchNotifications, refetchInterval: 60000, retry: false })
   const markOne = useMutation({ mutationFn: markNotificationRead, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }), onError: () => notify('The notification could not be marked as read.', { tone: 'error' }) })
   const markAll = useMutation({ mutationFn: markAllNotificationsRead, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['notifications'] }); notify('All notifications marked as read.') }, onError: () => notify('Notifications could not be marked as read.', { tone: 'error' }) })
   const openNotification = async (event, item) => {

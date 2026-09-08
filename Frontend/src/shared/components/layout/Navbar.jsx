@@ -26,7 +26,7 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchType, setSearchType] = useState('all')
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
-  const notifications = useQuery({ queryKey: ['notifications'], queryFn: fetchNotifications, enabled: loggedIn, staleTime: 30000, refetchInterval: 60000 })
+  const notifications = useQuery({ queryKey: ['notifications'], queryFn: fetchNotifications, enabled: loggedIn, staleTime: 30000, refetchInterval: 60000, retry: false })
   const menuRef = useRef()
   const accountButtonRef = useRef()
   const accountMenuRef = useRef()
