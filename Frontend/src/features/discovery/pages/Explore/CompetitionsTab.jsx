@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import Button from '@/shared/components/ui/Button'
 import { useCompetition, useCompetitions } from '@/features/competition/hooks/useCompetitions'
 import { ListSkeleton } from '@/shared/components/ui/Skeleton'
@@ -27,6 +27,7 @@ export default function CompetitionsTab() {
 }
 
 function CompetitionContent({ active, past }) {
+  const location = useLocation()
   const [params, setParams] = useSearchParams()
   const tab = ['active', 'inactive'].includes(params.get('competitionTab')) ? params.get('competitionTab') : 'active'
   const competitionType = ['all', 'theme', 'timed', 'collaborative', 'reader_choice'].includes(params.get('competitionType')) ? params.get('competitionType') : 'all'
@@ -46,7 +47,7 @@ function CompetitionContent({ active, past }) {
   }
   return <div>
     <PageHeader eyebrow="Explore" title="Competitions" description="Recurring prompts for writers and readers to discover something new." />
-    {winner?.post && <section className="mb-12"><Link to={`/post/${winner.post._id}`} className="group grid w-full gap-5 rounded-[18px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-4 text-left sm:grid-cols-[180px_minmax(0,1fr)] sm:p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2"><ImageBox src={winner.post.coverImage} alt="" height={150} radius="12px" /><span className="flex min-w-0 flex-col justify-center"><span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Recent winner</span><span className="mt-2 text-[22px] font-bold leading-[1.2] text-[var(--color-text)] group-hover:text-[var(--color-accent)]" style={{ fontFamily: 'var(--font-display)' }}>{winner.post.title}</span><span className="mt-3 text-[12px] text-[var(--color-text-secondary)]">{winner.author?.username || 'Ink Rider writer'} · {winner.likesCount} reader votes</span></span></Link></section>}
+    {winner?.post && <section className="mb-12"><Link to={`/post/${winner.post._id}`} state={{ from: location.pathname }} className="group grid w-full gap-5 rounded-[18px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-4 text-left sm:grid-cols-[180px_minmax(0,1fr)] sm:p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2"><ImageBox src={winner.post.coverImage} alt="" height={150} radius="12px" /><span className="flex min-w-0 flex-col justify-center"><span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Recent winner</span><span className="mt-2 text-[22px] font-bold leading-[1.2] text-[var(--color-text)] group-hover:text-[var(--color-accent)]" style={{ fontFamily: 'var(--font-display)' }}>{winner.post.title}</span><span className="mt-3 text-[12px] text-[var(--color-text-secondary)]">{winner.author?.username || 'Ink Rider writer'} · {winner.likesCount} reader votes</span></span></Link></section>}
     <div className="mb-6 flex items-center justify-between gap-4">
       <div className="flex gap-2"><Pill label={`Active (${filteredActive.length})`} active={tab === 'active'} onClick={() => updateFilter('competitionTab', 'active', 'active')} /><Pill label={`Inactive (${filteredPast.length})`} active={tab === 'inactive'} onClick={() => updateFilter('competitionTab', 'inactive', 'active')} /></div>
       <FilterBar label="Competition type" value={competitionType} onChange={value => updateFilter('competitionType', value, 'all')} options={[{ id: 'all', label: 'All' }, { id: 'theme', label: 'Theme' }, { id: 'timed', label: 'Timed' }, { id: 'collaborative', label: 'Collaborative' }, { id: 'reader_choice', label: 'Reader choice' }]} />

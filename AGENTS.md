@@ -61,6 +61,6 @@ Every completed task must leave the context accurate. If a task changes architec
 Treat each context file as the owner of one topic. Before adding information, decide whether it belongs there; relocate it to the owning file instead of duplicating it. Preserve useful detail, but remove stale session narration, unsupported speculation, and bloated conversational prose.
 
 - Keep necessary non-sensitive project knowledge in the appropriate tracked file under `context/`.
-- Put necessary sensitive implementation, security, provider, infrastructure, operational, and incident information in the matching ignored `sensitive context/*.local.md` companion.
+- Put necessary sensitive implementation, security, provider, infrastructure, operational, and incident information in the matching ignored local companion.
 - Never record live credential values, tokens, passwords, private keys, or connection strings in either tracked or local documentation. Record only their purpose and existence when needed.
 - Update `context/progress-tracker.md` only for verified changes in project progress; point-in-time test results must be dated and scoped.

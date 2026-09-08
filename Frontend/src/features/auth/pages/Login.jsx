@@ -11,11 +11,13 @@ import { verifyEmail } from '../api/verifyEmail'
 import { loginFailure, loginStart, loginSuccess } from '../store/authSlice'
 import { googleLogin as requestGoogleLogin } from '../api/googleLogin'
 import useToast from '@/shared/hooks/useToast'
+import { useTheme } from '@/shared/hooks/useTheme'
 
 export default function Login({ signUp = false }) {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const { notify } = useToast()
+  const { dark } = useTheme()
   const AUTH_TABS = ['login', 'signup']
   const [ mode, setMode ] = useState(signUp ? 'signup' : 'login')
   const [ isEmailVerified, setIsEmailVerified ] = useState(true)
@@ -99,7 +101,7 @@ export default function Login({ signUp = false }) {
           triggerGoogleLogin(response.credential)
         },
       })
-      window.google.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'large', width: 320, text: 'continue_with' })
+      window.google.accounts.id.renderButton(googleButtonRef.current, { theme: dark ? 'filled_black' : 'outline', size: 'large', width: 320, text: 'continue_with' })
     }
     if (window.google?.accounts?.id) {
       renderButton()
@@ -114,7 +116,7 @@ export default function Login({ signUp = false }) {
     if (!existingScript) document.head.appendChild(script)
     script.addEventListener('load', renderButton)
     return () => script.removeEventListener('load', renderButton)
-  }, [dispatch, triggerGoogleLogin, isEmailVerified, mode])
+  }, [dark, dispatch, triggerGoogleLogin, isEmailVerified, mode])
 
   const handleSubmit = e => {
     e.preventDefault()
@@ -147,7 +149,7 @@ export default function Login({ signUp = false }) {
   const passwordsDiffer = mode === 'signup' && creds.confirmPassword && creds.password !== creds.confirmPassword
 
   return (
-    <main className="flex h-screen">
+    <main className="flex h-[100dvh] overflow-y-auto bg-[var(--color-bg)] text-[var(--color-text)]">
 
       {/* Left image (hidden on mobile) */}
       <div className="hidden md:block flex-1 overflow-hidden">
@@ -166,18 +168,19 @@ export default function Login({ signUp = false }) {
           boxInputRefs={boxInputRefs}
         />
         :
-        <div className="flex-1 flex items-center justify-center px-6 bg-white">
-          <form id="auth-form" onSubmit={handleSubmit} className="w-full max-w-95 flex flex-col py-10 px-8 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+        <div className="flex min-h-full flex-1 items-center justify-center bg-[var(--color-bg)] px-6 py-6">
+          <form id="auth-form" onSubmit={handleSubmit} className="w-full max-w-95 flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-8 py-10 shadow-[0_14px_36px_rgba(0,0,0,0.12)]">
 
             {/* Logo */}
             <Link to="/" 
               aria-label="Return to Ink-Rider home"
-              className="w-9 h-9 rounded-[10px] flex items-center justify-center bg-(--color-accent) mx-auto mb-5 no-underline">
-              <LogoIcon />
+              className="mx-auto mb-5 inline-flex items-center gap-2 rounded-[10px] no-underline text-[var(--color-text)]">
+              <span className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-accent)]"><LogoIcon /></span>
+              <span className="text-[17px] font-bold">Ink Rider</span>
             </Link>
 
             {/* Authentication Tabs */}
-            <div role="tablist" aria-label="Authentication mode" className="flex mb-5 bg-[#f0f0f0] rounded-lg p-1">
+            <div role="tablist" aria-label="Authentication mode" className="mb-5 flex rounded-lg border border-[var(--color-border-light)] bg-[var(--color-bg)] p-1">
               {AUTH_TABS.map(m => (
                 <button 
                   type="button"
@@ -190,7 +193,7 @@ export default function Login({ signUp = false }) {
                   key={m} 
                   onClick={() => setMode(m)}
                   className={`flex-1 py-2.5 rounded-md border-none text-[14px] font-medium cursor-pointer transition-all duration-150
-                    ${mode === m ? 'bg-white shadow-[0_2px_6px_rgba(0,0,0,0.1)] text-black' : 'bg-transparent text-[#555]'}`}>
+                    ${mode === m ? 'border border-[var(--color-border)] bg-[var(--color-surface-hover)] shadow-[0_2px_6px_rgba(0,0,0,0.12)] text-[var(--color-text)]' : 'border border-transparent bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}`}>
                   {m === 'login' ? 'Login' : 'Sign Up'}
                 </button>
               ))}
@@ -198,10 +201,10 @@ export default function Login({ signUp = false }) {
 
             <div id="auth-form-fields" role="tabpanel" aria-labelledby={`auth-tab-${mode}`}>
             {/* Greetings */}
-            <h2 className="text-[24px] font-bold mb-1.5 text-[#111]">
+            <h2 className="mb-1.5 text-[24px] font-bold text-[var(--color-text)]">
               {mode === 'login' ? 'Welcome Back' : 'Create Account'}
             </h2>
-            <p className="text-[14px] text-[#777] mb-6">
+            <p className="mb-6 text-[14px] text-[var(--color-text-secondary)]">
               {mode === 'login' ? 'Login to continue your journey' : 'Join and start writing today'}
             </p>
 
@@ -247,14 +250,14 @@ export default function Login({ signUp = false }) {
               />
             )}
 
-            {(passwordsDiffer || authError) && <p role="alert" className="mb-2 text-[12px] text-red-600">{passwordsDiffer ? 'Passwords do not match.' : authError}</p>}
+            {(passwordsDiffer || authError) && <p role="alert" className="mb-2 text-[12px] text-[var(--color-danger)]">{passwordsDiffer ? 'Passwords do not match.' : authError}</p>}
 
             {/* Submit */}
             <button type="submit" disabled={loginMutation.isPending || signupMutation.isPending || passwordsDiffer}
-              className="w-full py-3 mt-2.5 bg-[#111] text-white border-none rounded-lg text-[15px] font-medium cursor-pointer hover:bg-[#333] transition-colors disabled:opacity-60">
+              className="mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-60">
               {loginMutation.isPending || signupMutation.isPending ? 'Please wait…' : mode === 'login' ? 'Login' : 'Sign Up'}
             </button>
-            {import.meta.env.VITE_GOOGLE_CLIENT_ID && <><div className="my-5 flex items-center gap-3 text-[11px] text-[#999]"><span className="h-px flex-1 bg-[#ddd]" />or<span className="h-px flex-1 bg-[#ddd]" /></div><div ref={googleButtonRef} className="flex min-h-10 justify-center" />{googleMutation.error && <p role="alert" className="mt-2 text-center text-[12px] text-red-600">{googleMutation.error?.response?.data?.message || 'Google sign-in failed.'}</p>}</>}
+            {import.meta.env.VITE_GOOGLE_CLIENT_ID && <><div className="my-5 flex items-center gap-3 text-[11px] text-[var(--color-text-muted)]"><span className="h-px flex-1 bg-[var(--color-border)]" />or<span className="h-px flex-1 bg-[var(--color-border)]" /></div><div ref={googleButtonRef} className="flex min-h-10 justify-center" />{googleMutation.error && <p role="alert" className="mt-2 text-center text-[12px] text-[var(--color-danger)]">{googleMutation.error?.response?.data?.message || 'Google sign-in failed.'}</p>}</>}
             </div>
           </form>
         </div>
@@ -284,14 +287,15 @@ function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResend
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center px-6 bg-white">
-      <div className="w-full max-w-95 flex flex-col gap-4 items-center py-10 px-8 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+    <div className="flex min-h-full flex-1 items-center justify-center bg-[var(--color-bg)] px-6 py-6">
+      <div className="w-full max-w-95 flex flex-col items-center gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-8 py-10 shadow-[0_14px_36px_rgba(0,0,0,0.12)]">
 
         {/* Logo */}
         <Link to="/" 
           aria-label="Return to Ink-Rider home"
-          className="w-9 h-9 rounded-[10px] flex items-center justify-center bg-(--color-accent) mx-auto mb-5 no-underline">
-          <LogoIcon />
+          className="mx-auto mb-5 inline-flex items-center gap-2 rounded-[10px] no-underline text-[var(--color-text)]">
+          <span className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-accent)]"><LogoIcon /></span>
+          <span className="text-[17px] font-bold">Ink Rider</span>
         </Link>
 
         <h2 className="text-[24px] font-bold mb-1.5 text-(--color-text-primary)">
@@ -325,7 +329,7 @@ function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResend
 
           {/* Submit */}
         <button type="button" onClick={handleVerifyEmail}
-          className="w-full py-3 mt-2.5 bg-[#111] text-white border-none rounded-lg text-[15px] font-medium cursor-pointer hover:bg-[#333] transition-colors">
+          className="mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)]">
           Verify Email
         </button>
       </div>
@@ -342,7 +346,7 @@ function FormField({type, name, autoComplete, placeholder, value, onChange, requ
       required={required}
       aria-label={placeholder}
       placeholder={placeholder}
-      className={`w-full px-3 py-3 mb-3.5 rounded-lg border border-[#ddd] text-[14px] outline-none focus:border-(--color-accent) transition-colors bg-white text-[#111]`}
+      className="mb-3.5 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-alt)] px-3 py-3 text-[14px] text-[var(--color-text)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]"
       value={value}
       onChange={onChange} />
   )
@@ -360,7 +364,7 @@ const BoxField = forwardRef(
         inputMode="numeric"
         aria-label={label}
         placeholder={placeholder}
-        className="w-12 h-12 text-center border border-[#ddd] rounded-lg focus:border-(--color-accent) transition-colors"
+        className="h-12 w-12 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-center text-[var(--color-text)] transition-colors focus:border-[var(--color-accent)]"
         value={value}
         onChange={onChange}
         ref={ref}

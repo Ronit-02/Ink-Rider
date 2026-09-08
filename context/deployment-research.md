@@ -15,8 +15,6 @@ Deployment choices must support the application’s reliability, privacy, securi
 
 ## Release boundary
 
-Provider comparisons, historical prices, infrastructure topology, readiness findings, and unresolved operational checks are confidential local context in `sensitive context/deployment-research.local.md` when available.
-
 ## Decision process
 
 Before any deployment implementation, agree on provider, region, domain, budget, availability, recovery, and launch-scope expectations. Then validate the bounded application and infrastructure changes in the target environment. No research note is itself a deployment approval or production-readiness certification.

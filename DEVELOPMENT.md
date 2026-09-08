@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This guide describes the tracked development workflow. Read `AGENTS.md`, all tracked `context/` files, and available `sensitive context/` companions before changing the application.
+This guide describes the tracked development workflow. Read `AGENTS.md`, all tracked `context/` files, and available local confidential companions before changing the application.
 
 ## Requirements
 
@@ -25,4 +25,4 @@ Production and provider setup is environment-specific and must be verified in th
 - [Architecture](context/architecture.md)
 - [Build plan](context/build-plan.md)
 - [Progress tracker](context/progress-tracker.md)
-- Local operational detail: `sensitive context/` when available
+- Local operational detail: available confidential companions

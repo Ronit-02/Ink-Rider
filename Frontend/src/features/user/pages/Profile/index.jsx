@@ -13,6 +13,7 @@ import { fetchDrafts } from '@/features/editor/api/drafts'
 import useReadingHistory from '@/features/discovery/hooks/useReadingHistory'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import useToast from '@/shared/hooks/useToast'
+import Avatar from '@/shared/components/ui/Avatar'
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -134,7 +135,7 @@ export default function ProfilePage() {
   return (
     <PageFrame>
       <header className="flex gap-5 mb-8 items-start flex-wrap">
-        {me.avatarUrl ? <img src={me.avatarUrl} alt="" className="w-20 h-20 rounded-full object-cover border-[3px] border-[var(--color-border)]" /> : <div className="w-20 h-20 rounded-full bg-[var(--color-bg-alt)] border-[3px] border-[var(--color-border)] flex items-center justify-center text-[24px] font-bold">{me.displayName?.[0]?.toUpperCase()}</div>}
+        <Avatar src={me.avatarUrl} name={me.displayName} size={80} />
         <div className="flex-1 min-w-[240px]">
           {editing ? (
             <form id="profile-edit-form" className="flex flex-col gap-2" onSubmit={submitProfile}>

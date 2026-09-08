@@ -1,5 +1,5 @@
 import { useState, useRef, forwardRef, useEffect } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { v4 as uuid } from 'uuid'
 import Button from '@/shared/components/ui/Button'
@@ -404,10 +404,10 @@ export default function WritePage() {
       
       {/* ── Top bar ── */}
       <div className="flex items-center justify-between mb-8 gap-4">
-        <Link to="/profile"
+        <button type="button" onClick={() => navigate(-1)}
           className="inline-flex items-center gap-1.5 bg-(--color-bg-alt) border border-(--color-border) text-(--color-text-secondary) text-[13px] cursor-pointer px-3.5 py-1.5 rounded-full transition-all hover:bg-(--color-border) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">
           ← Back
-        </Link>
+        </button>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={handleSave}>
             {autosaveStatus === 'saving' ? 'Saving…' : autosaveStatus === 'conflict' ? 'Draft conflict' : autosaveStatus === 'error' ? 'Save failed' : autosaveStatus === 'saved' ? '✓ Saved' : saved ? '✓ Saved' : 'Save draft'}
@@ -470,7 +470,7 @@ export default function WritePage() {
         onChange={(e) => setTitle(e.target.value)}
         placeholder={format === 'short' ? 'A focused idea…' : 'Title…'}
         maxLength={format === 'short' ? 120 : 180}
-        className="w-full bg-transparent border-none outline-none resize-none font-bold text-[clamp(24px,4vw,36px)] leading-[1.3] tracking-[-0.5px] mb-8 text-(--color-text) placeholder:text-(--color-text-muted)"
+        className="editor-writing-field w-full bg-transparent border-none outline-none resize-none font-bold text-[clamp(24px,4vw,36px)] leading-[1.3] tracking-[-0.5px] mb-8 text-(--color-text) placeholder:text-(--color-text-muted)"
         style={{ fontFamily: "var(--font-display)", minHeight: "1.3em" }}
         rows={1}
         onInput={(e) => {
@@ -687,7 +687,7 @@ const Block = forwardRef(
                 quote: 'A thought worth quoting…', code: '// code here', image: 'Paste image URL…',
               }[block.type]}
               rows={1}
-              className={`w-full outline-none resize-none overflow-hidden placeholder:text-(--color-text-muted) ${cls[block.type] || cls.text}`}
+              className={`editor-writing-field w-full outline-none resize-none overflow-hidden placeholder:text-(--color-text-muted) ${cls[block.type] || cls.text}`}
               style={{ minHeight: '1.6em' }}
               onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
             />

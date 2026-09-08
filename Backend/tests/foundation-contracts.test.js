@@ -81,7 +81,7 @@ const { getVoteSignals, getVoteRisk, analyzeVoteSignals, MAX_NETWORK_VOTES_PER_W
 const { publicPostClause, canAccessPost } = require('../services/post-access.service');
 const { createRateLimiter } = require('../middlewares/rate-limit.middleware');
 const { createRequestTimingMiddleware, createMongoQueryDiagnostics, createErrorMonitor, getResponseBudgetMs } = require('../services/observability.service');
-const { parsePostBody, isSafeImageUrl } = require('../controllers/post.controller');
+const { parsePostBody, isSafeImageUrl, parseLegacyPostListQuery } = require('../controllers/post.controller');
 const { googleLogin, signup } = require('../controllers/auth.controller');
 const { detectImageMime, validateImageFile } = require('../middlewares/multer.middleware');
 const { MAX_ATTEMPTS, calculateRetryAt } = require('../services/notification-delivery.service');
@@ -693,6 +693,23 @@ test('unknown routes return a normalized error and request id', async t => {
   assert.equal(robotsResponse.status, 200);
   const expectedSitemapUrl = new URL('/sitemap.xml', process.env.FRONTEND_URL).toString();
   assert.ok(robots.includes(`Sitemap: ${expectedSitemapUrl}`));
+});
+
+test('legacy post listing bounds pages and validates sort-aware cursors', () => {
+  assert.deepEqual(parseLegacyPostListQuery({}), {
+    sort: 'date',
+    sortField: 'createdAt',
+    limit: 24,
+    cursor: null,
+  });
+  assert.equal(parseLegacyPostListQuery({ limit: '1000' }).limit, 100);
+  assert.equal(parseLegacyPostListQuery({ sort: 'unknown' }), null);
+  assert.equal(parseLegacyPostListQuery({ cursor: 'invalid' }), null);
+
+  const cursor = encodeCursor({ id: '507f1f77bcf86cd799439011', value: '2026-08-18T12:00:00.000Z' });
+  const parsed = parseLegacyPostListQuery({ cursor });
+  assert.equal(parsed.sort, 'date');
+  assert.ok(parsed.cursor.value instanceof Date);
 });
 
 test('validateToken rejects suspended accounts even with a valid access token', async () => {

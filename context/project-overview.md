@@ -184,7 +184,7 @@ The system owns four categories of data:
 - **Community:** comments, reactions, saves, reports, competition entries, subscriptions.
 - **Discovery:** impressions, reads, completion, hides, topic affinities, rankings, experiments.
 
-The frontend consumes the backend through versioned JSON APIs. Derived counters may be cached, but source event or relationship records remain authoritative. Storage, media-provider, private-account, and protected operational implementation details are maintained in `sensitive context/project-overview.local.md` when available.
+The frontend consumes the backend through versioned JSON APIs. Derived counters may be cached, but source event or relationship records remain authoritative.
 
 See [architecture.md](architecture.md) for system boundaries, schemas, data flow, and invariants.
 

@@ -21,9 +21,9 @@ const presentDiscoveryPosts = async (posts, viewerId = null) => {
   const authorIds = posts.map(post => post.author?._id).filter(Boolean);
   const postIds = posts.map(post => post._id).filter(Boolean);
   const [profiles, likes, saves] = await Promise.all([
-    Profile.find({ userId: { $in: authorIds } }).select('userId handle displayName avatarUrl'),
-    viewerId ? Like.find({ userId: viewerId, postId: { $in: postIds } }).select('postId') : [],
-    viewerId ? Save.find({ userId: viewerId, postId: { $in: postIds } }).select('postId') : [],
+    Profile.find({ userId: { $in: authorIds } }).select('userId handle displayName avatarUrl').lean(),
+    viewerId ? Like.find({ userId: viewerId, postId: { $in: postIds } }).select('postId').lean() : [],
+    viewerId ? Save.find({ userId: viewerId, postId: { $in: postIds } }).select('postId').lean() : [],
   ]);
   const profilesByUser = new Map(
     profiles.map(profile => [profile.userId.toString(), profile])

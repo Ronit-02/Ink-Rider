@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/heading-has-content -- The modal backdrop is guarded and entry titles have a conditional accessible fallback. */
 import { useRef, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import Button from '@/shared/components/ui/Button'
 import Avatar from '@/shared/components/ui/Avatar'
 import ImageBox from '@/shared/components/ui/ImageBox'
@@ -32,6 +32,7 @@ function EnterModal({ competitionId, onClose }) {
 export default function CompetitionDetail() {
   const { id } = useParams()
   const location = useLocation()
+  const navigate = useNavigate()
   const { loggedIn, signIn } = useAuth()
   const query = useCompetition(id)
   const vote = useEntryVote(id)
@@ -41,7 +42,7 @@ export default function CompetitionDetail() {
   const competition = query.data
   const canEnter = competition.status === 'open' && !competition.isEntered
   return <PageFrame>
-    <Link to="/explore/competitions" className="mb-7 inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-3 py-1.5 text-[12px] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">← Competitions</Link>
+    <button type="button" onClick={() => navigate(-1)} className="mb-7 inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-3 py-1.5 text-[12px] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">← Competitions</button>
     <div className="mb-7"><CompetitionImage src={competition.coverImage} title={competition.title} status={competition.status} height="clamp(180px, 30vw, 300px)" radius="20px" /></div>
     <div className="flex flex-wrap gap-2 text-[11px] text-[var(--color-text-secondary)]"><span className="rounded-full bg-[var(--color-bg-alt)] px-2.5 py-1 font-semibold uppercase">{competition.status}</span><span className="rounded-full bg-[var(--color-bg-alt)] px-2.5 py-1">Closes {date(competition.closeDate)}</span><span className="rounded-full bg-[var(--color-bg-alt)] px-2.5 py-1">{competition.entriesCount} entries</span></div>
     <div className="mt-5 flex flex-wrap items-center justify-between gap-6"><h1 className="text-[clamp(30px,5vw,48px)] font-bold leading-[1.05] tracking-[-0.045em] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{competition.title}</h1><div className="flex flex-col items-end gap-2"><Button variant={canEnter ? 'primary' : 'secondary'} disabled={!canEnter} onClick={() => loggedIn ? setShowEntry(true) : signIn()}>{competition.isEntered ? 'Entry submitted' : competition.status === 'open' ? 'Add your entry' : 'Entries closed'}</Button>{competition.isEntered && <span className="text-right text-[12px] text-[var(--color-text-secondary)]">You have already added an entry for this competition.</span>}</div></div>

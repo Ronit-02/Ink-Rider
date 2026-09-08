@@ -53,10 +53,8 @@ Recommendation learning distinguishes viewed content from intentional interactio
 - Map internal persistence objects to audience-appropriate public data-transfer objects.
 - Support retry safety where a user action can be repeated.
 
+Discovery lists use bounded cursor pages and compact presentation DTOs. Personalized ranking reads a bounded candidate projection, then loads only the selected page's display fields; it must not hydrate or parse full article bodies for every ranking candidate.
+
 ## Product data principles
 
 Ink-Rider maintains identity, content, community, discovery, and optional member-experience records. Published content preserves its historical representation; drafts remain private to authorized people. Relationship and event records remain authoritative over derived counters, and private activity is not exposed through public discovery.
-
-## Local companion
-
-Protected implementation detail—runtime topology, internal routes, schemas, authorization/session mechanics, provider behavior, media handling, recovery procedures, and production-readiness gaps—is maintained in `sensitive context/architecture.local.md` when available. It is not loaded automatically.

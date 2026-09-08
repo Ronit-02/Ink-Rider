@@ -144,7 +144,7 @@ export default function Navbar() {
       style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
       <Link to="/" className="flex items-center gap-2 shrink-0">
         <span className="text-[18px] font-bold text-[var(--color-text)]">Ink Rider</span>
-        <div className="w-9 h-9 rounded-[10px] flex items-center justify-center bg-[var(--color-accent)]"><LogoIcon /></div>
+        <div className="w-9 h-9 rounded-[10px] flex items-center justify-center border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-accent)]"><LogoIcon /></div>
       </Link>
 
       {!isSearchPage && <form ref={searchRef} onSubmit={runSearch} className="flex-1 max-w-[660px] relative hidden md:block">
@@ -189,8 +189,8 @@ export default function Navbar() {
         {loggedIn && <Link to="/notifications" aria-label={`${notifications.data?.meta.unreadCount || 0} unread notifications`} className="relative w-10 h-10 md:w-8 md:h-8 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-text-secondary)] flex items-center justify-center"><span aria-hidden="true">♢</span>{notifications.data?.meta.unreadCount > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[var(--color-accent)] text-[9px] text-white flex items-center justify-center">{Math.min(99, notifications.data.meta.unreadCount)}</span>}</Link>}
         {loggedIn ? <div ref={menuRef} className="relative">
           <button type="button" ref={accountButtonRef} onClick={() => setOpenMenu(value => !value)} aria-label="Open account menu" aria-haspopup="menu" aria-expanded={openMenu} aria-controls="account-menu"
-            className="w-10 h-10 md:w-8 md:h-8 rounded-full border border-[var(--color-border)] bg-[var(--color-accent)] text-[var(--color-text-inverted)] font-semibold text-[12px] uppercase">
-            <Avatar src={avatarUrl} name={user} size={32} />
+            className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-transparent p-0 text-[var(--color-text-inverted)] font-semibold text-[12px] uppercase [&>img]:border-0 md:h-8 md:w-8">
+            <Avatar src={avatarUrl} name={user} size={28} />
           </button>
           {openMenu && <div ref={accountMenuRef} id="account-menu" role="menu" tabIndex={-1} aria-label="Account" onKeyDown={handleAccountMenuKeyDown} className="absolute top-[calc(100%+6px)] right-0 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[10px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] p-1 flex flex-col gap-0.5 min-w-[170px] z-[200]">
             {[{ label: 'View Profile', path: '/profile' }, { label: 'Saved', path: '/saved' }, { label: 'Settings', path: '/settings' }].map(item =>

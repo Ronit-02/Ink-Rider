@@ -83,7 +83,7 @@ export default function QuestionDetail() {
   const submitAnswer = event => { event.preventDefault(); answer.mutate({ questionId: id, text }, { onSuccess: () => { setText(''); answerRef.current?.focus() } }) }
   return <PageFrame>
     <div>
-      <Link to="/explore/questions" className="inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-4 text-[12px] font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">← Questions</Link>
+      <button type="button" onClick={() => navigate(-1)} className="inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-4 text-[12px] font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">← Questions</button>
       <article className="mt-8">
         <AuthorMeta author={item.author} date={item.createdAt} size="sm" />
         <h1 className="mt-4 max-w-[760px] text-[clamp(1.7rem,4vw,2.7rem)] leading-[1.12] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{item.text}</h1>
