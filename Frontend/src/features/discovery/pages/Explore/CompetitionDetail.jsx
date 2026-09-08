@@ -8,6 +8,8 @@ import CompetitionImage from '@/features/competition/components/CompetitionImage
 import useAuth from '@/features/auth/hooks/useAuth'
 import { useCompetition, useEligiblePosts, useEntryVote, useSubmitEntry } from '@/features/competition/hooks/useCompetitions'
 import { ListSkeleton, Skeleton } from '@/shared/components/ui/Skeleton'
+import MissingResourceState from '@/shared/components/ui/MissingResourceState'
+import isMissingResourceError from '@/shared/errors/isMissingResourceError'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import useDialogFocus from '@/shared/hooks/useDialogFocus'
 
@@ -38,6 +40,7 @@ export default function CompetitionDetail() {
   const vote = useEntryVote(id)
   const [showEntry, setShowEntry] = useState(false)
   if (query.isPending) return <PageFrame><div role="status" aria-label="Loading competition"><Skeleton className="h-8 w-20 rounded-full" /><Skeleton className="mt-7 h-[clamp(180px,30vw,300px)] w-full rounded-[20px]" /><Skeleton className="mt-7 h-10 w-3/5" /><Skeleton className="mt-4 h-4 w-full max-w-2xl" /><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
+  if (query.isError && isMissingResourceError(query.error)) return <MissingResourceState eyebrow="Competition unavailable" title="This competition is no longer available" detail="It may have been removed or the link may be incorrect. Explore current competitions instead." recoveryTo="/explore/competitions" recoveryLabel="Explore competitions" />
   if (query.isError) return <PageFrame><div role="alert"><p className="text-[13px] text-[var(--color-danger)]">Competition could not be loaded.</p><Button className="mt-4" onClick={() => query.refetch()}>Try again</Button></div></PageFrame>
   const competition = query.data
   const canEnter = competition.status === 'open' && !competition.isEntered

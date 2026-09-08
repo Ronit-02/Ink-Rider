@@ -9,6 +9,9 @@ test('client-side route changes move focus to the new app content region', async
     if (url.pathname === '/api/post/feed') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
     }
+    if (url.pathname === '/api/question' || url.pathname === '/api/competition') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+    }
     return route.abort('blockedbyclient')
   })
 

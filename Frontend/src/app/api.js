@@ -1,13 +1,14 @@
 import axios from "axios";
 import store from "./store";
 import { setAccessToken, logout } from "@/features/auth/store/authSlice";
+import refreshToken from "@/features/auth/api/refreshToken";
+import { markServerUnavailable } from "./serverAvailability";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,    // include cookies in requests (for refresh token)
+  timeout: 12000,
 });
-
-let refreshPromise = null;
 
 // Request Interceptor (attach token to headers)
 api.interceptors.request.use(
@@ -31,6 +32,11 @@ api.interceptors.response.use(
   },
 
   async (error) => {
+    const status = error.response?.status;
+    const isConnectionFailure = !error.response && error.code !== 'ERR_CANCELED';
+    const isGatewayFailure = [502, 503, 504].includes(status);
+    if (isConnectionFailure || isGatewayFailure) markServerUnavailable();
+
     // Check if originalRequest exists to avoid issues with non-HTTP errors
     const originalRequest = error.config;
     if (!originalRequest) {
@@ -50,20 +56,10 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        // Share one refresh request across simultaneous 401 responses.
-        if (!refreshPromise) {
-          refreshPromise = axios.post(
-            `${import.meta.env.VITE_API_URL}/api/auth/refresh-token`,
-            {},
-            { withCredentials: true }
-          ).finally(() => {
-            refreshPromise = null;
-          });
-        }
-        const response = await refreshPromise;
+        const response = await refreshToken();
 
         // Save new access token
-        const newAccessToken = response.data.accessToken;
+        const newAccessToken = response.accessToken;
         store.dispatch(setAccessToken({ token: newAccessToken }));
         
         // Update and Retry original request

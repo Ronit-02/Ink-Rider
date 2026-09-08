@@ -3,9 +3,12 @@ import { Outlet, useLocation } from 'react-router-dom'
 import Navbar from './Navbar'
 import Sidebar from './Sidebar'
 import BottomBar from './BottomBar'
+import ServerUnavailable from './ServerUnavailable'
+import { useServerUnavailable } from '@/app/serverAvailability'
 
 export default function AppLayout() {
   const location = useLocation()
+  const isServerUnavailable = useServerUnavailable()
   const previousPathname = useRef(location.pathname)
 
   useEffect(() => {
@@ -25,6 +28,8 @@ export default function AppLayout() {
     event.preventDefault()
     document.getElementById('main-content')?.focus()
   }
+
+  if (isServerUnavailable) return <ServerUnavailable />
 
   return (
     <div className="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-[var(--color-bg)]">

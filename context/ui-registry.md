@@ -69,7 +69,7 @@ A feature component may use patterns and primitives. A primitive must never impo
 | Competition card | local to Competitions page | Missing shared pattern | Extract after competition contract is stable |
 | Collection card | local to Collections page | Missing shared pattern | Extract after collection API is connected |
 | Empty state | scattered text | Missing | Create composed reusable pattern |
-| Error state | scattered/raw messages | Missing | Create inline and page variants |
+| Error state | `Frontend/src/shared/components/layout/ServerUnavailable.jsx`, `Frontend/src/shared/components/ui/MissingResourceState.jsx`, plus feature-local states | Candidate | The shared server-unavailable variant replaces the application shell with a centered, chrome-free recovery page only when the API cannot be reached or a gateway reports it unavailable. The missing-resource variant gives dynamic content routes a specific unavailable message and parent-discovery link for invalid or missing route identifiers; other feature-level failures remain retryable and inline. |
 | Skeleton | absent | Missing | Create text, card, list, and article primitives |
 | Dialog | duplicated local modals | Missing | Create accessible dialog primitive or approve a vetted library |
 | Drawer | absent | Missing | Needed for mobile filters and article tools |

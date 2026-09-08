@@ -153,6 +153,9 @@ test('signed-in comment composer exposes field guidance and form semantics', asy
     if (url.pathname === '/api/v1/notifications') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { unreadCount: 0 } }) })
     }
+    if (url.pathname === '/api/v1/me/entitlements') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { capabilities: [] } }) })
+    }
     if (url.pathname === `/api/post/${postId}` && request.method() === 'GET') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ postData }) })
     }

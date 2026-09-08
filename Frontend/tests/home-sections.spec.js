@@ -32,3 +32,17 @@ test('Home deferred collections expose a retryable failure state', async ({ page
   await expect(page.getByRole('alert')).toContainText('Collections could not be loaded.')
   await expect(page.getByRole('alert').getByRole('button', { name: 'Try again' })).toBeVisible()
 })
+
+test('Home replaces loading sections when the API server cannot be reached', async ({ page }) => {
+  await page.route(url => url.pathname.startsWith('/api/'), async route => {
+    if (new URL(route.request().url()).pathname === '/api/post/feed') return route.abort('connectionrefused')
+    return route.abort('blockedbyclient')
+  })
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+
+  await expect(page.getByRole('heading', { name: 'Ink Rider is temporarily unavailable.' })).toBeVisible()
+  await expect(page.getByRole('alert')).toContainText('We can’t reach the server right now.')
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Global navigation' })).toHaveCount(0)
+})

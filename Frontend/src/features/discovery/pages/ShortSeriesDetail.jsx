@@ -4,6 +4,8 @@ import Button from '@/shared/components/ui/Button'
 import { useShortSeriesDetail, useUpdateShortSeries } from '../hooks/useShortSeries'
 import ShortReadModal from '../components/ShortReadModal'
 import { ListSkeleton } from '@/shared/components/ui/Skeleton'
+import MissingResourceState from '@/shared/components/ui/MissingResourceState'
+import isMissingResourceError from '@/shared/errors/isMissingResourceError'
 import PageFrame from '@/shared/components/layout/PageFrame'
 
 export default function ShortSeriesDetail() {
@@ -14,6 +16,7 @@ export default function ShortSeriesDetail() {
   const [entryOverrides, setEntries] = useState([])
   const [shortReadId, setShortReadId] = useState(null)
   if (query.isPending) return <PageFrame><ListSkeleton count={4} label="Loading short series" /></PageFrame>
+  if (query.isError && isMissingResourceError(query.error)) return <MissingResourceState eyebrow="Short series unavailable" title="This short series is no longer available" detail="It may have been removed, made private, or the link may be incorrect. Explore other short reads instead." recoveryTo="/shorts" recoveryLabel="Explore short reads" />
   if (query.isError) return <PageFrame><div><p role="alert" className="text-[13px] text-[var(--color-danger)]">This series could not be loaded.</p><Button variant="secondary" className="mt-4" onClick={() => query.refetch()}>Try again</Button></div></PageFrame>
   const series = query.data
   const entries = entryOverrides.length ? entryOverrides : series.entries

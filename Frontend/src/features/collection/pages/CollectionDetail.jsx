@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import Avatar from '@/shared/components/ui/Avatar'
 import Button from '@/shared/components/ui/Button'
 import DiscoveryPostCard from '@/features/discovery/components/DiscoveryPostCard'
 import useAuth from '@/features/auth/hooks/useAuth'
 import { useCollection, useCollectionFollow, useCollectionSave, useUpdateCollection } from '../hooks/useCollections'
 import { ListSkeleton, Skeleton } from '@/shared/components/ui/Skeleton'
+import MissingResourceState from '@/shared/components/ui/MissingResourceState'
+import isMissingResourceError from '@/shared/errors/isMissingResourceError'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import ImageBox from '@/shared/components/ui/ImageBox'
 import useToast from '@/shared/hooks/useToast'
@@ -22,7 +24,8 @@ export default function CollectionDetail() {
   const [shareStatus, setShareStatus] = useState('')
   const [orderedPostOverrides, setOrderedPosts] = useState([])
   if (query.isPending) return <PageFrame><div role="status" aria-label="Loading collection"><Skeleton className="h-8 w-24 rounded-full" /><Skeleton className="mt-7 h-[clamp(180px,32vw,300px)] w-full rounded-[20px]" /><Skeleton className="mt-7 h-10 w-3/5" /><Skeleton className="mt-4 h-4 w-full max-w-2xl" /><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
-  if (query.isError) return <PageFrame><div role="alert"><p className="text-[13px] text-[var(--color-danger)]">{query.error?.response?.status === 404 ? 'This collection is private or no longer exists.' : 'Collection could not be loaded.'}</p><Link to="/collections" className="mt-4 inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-4 py-2 text-[12px] font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Back to collections</Link></div></PageFrame>
+  if (query.isError && isMissingResourceError(query.error)) return <MissingResourceState eyebrow="Collection unavailable" title="This collection is no longer available" detail="It may have been removed, made private, or the link may be incorrect. Explore other collections instead." recoveryTo="/collections" recoveryLabel="Explore collections" />
+  if (query.isError) return <PageFrame><div role="alert"><p className="text-[13px] text-[var(--color-danger)]">Collection could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => query.refetch()}>Try again</Button></div></PageFrame>
   const collection = query.data
   const toggleSave = () => loggedIn ? save.mutate(!collection.isSaved) : signIn()
   const orderedPosts = orderedPostOverrides.length ? orderedPostOverrides : collection.posts

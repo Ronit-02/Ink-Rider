@@ -6,6 +6,8 @@ import AuthorMeta from '@/shared/components/ui/AuthorMeta'
 import Button from '@/shared/components/ui/Button'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import { ListSkeleton } from '@/shared/components/ui/Skeleton'
+import MissingResourceState from '@/shared/components/ui/MissingResourceState'
+import isMissingResourceError from '@/shared/errors/isMissingResourceError'
 
 const REPORT_REASONS = [
   ['spam', 'Spam'],
@@ -78,7 +80,8 @@ export default function QuestionDetail() {
   const answerRef = useRef(null)
 
   if (question.isPending) return <PageFrame><ListSkeleton count={4} label="Loading question" /></PageFrame>
-  if (question.isError) return <PageFrame><div><p role="alert" className="text-[13px] text-[var(--color-danger)]">This question could not be loaded.</p><Button variant="secondary" className="mt-4" onClick={() => navigate('/explore/questions')}>Back to questions</Button></div></PageFrame>
+  if (question.isError && isMissingResourceError(question.error)) return <MissingResourceState eyebrow="Question unavailable" title="This question is no longer available" detail="It may have been removed or the link may be incorrect. Explore current reader questions instead." recoveryTo="/explore/questions" recoveryLabel="Explore questions" />
+  if (question.isError) return <PageFrame><div><p role="alert" className="text-[13px] text-[var(--color-danger)]">This question could not be loaded.</p><Button variant="secondary" className="mt-4" onClick={() => question.refetch()}>Try again</Button></div></PageFrame>
   const item = question.data
   const submitAnswer = event => { event.preventDefault(); answer.mutate({ questionId: id, text }, { onSuccess: () => { setText(''); answerRef.current?.focus() } }) }
   return <PageFrame>
