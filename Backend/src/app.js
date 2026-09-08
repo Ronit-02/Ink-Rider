@@ -83,6 +83,7 @@ app.use('/api', (req, res, next) => {
 
 
 // Routes
+app.get('/', healthController.health);
 app.get('/robots.txt', seo.robots);
 app.get('/sitemap.xml', seo.sitemap);
 app.get('/health', healthController.health);

@@ -734,10 +734,13 @@ test('health and readiness endpoints separate liveness from database availabilit
   await new Promise(resolve => server.once('listening', resolve));
 
   const address = server.address();
+  const rootResponse = await fetch(`http://127.0.0.1:${address.port}/`);
   const healthResponse = await fetch(`http://127.0.0.1:${address.port}/health`);
   const readinessResponse = await fetch(`http://127.0.0.1:${address.port}/readiness`);
   const readiness = await readinessResponse.json();
 
+  assert.equal(rootResponse.status, 200);
+  assert.deepEqual(await rootResponse.json(), { status: 'ok' });
   assert.equal(healthResponse.status, 200);
   assert.deepEqual(await healthResponse.json(), { status: 'ok' });
   assert.equal(readinessResponse.status, 503);

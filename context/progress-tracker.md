@@ -40,6 +40,8 @@ Primary articles remain publicly readable. Discovery and reader demand precede m
 
 ## Recent verification
 
+- 2026-09-08: The API root (`GET /`) now provides the same lightweight unauthenticated liveness response as `/health`, while unknown routes continue to return the normalized 404 payload. `Backend`: `npm run lint` and `npm test` passed (83 tests).
+- 2026-09-08: Restored a restrained search focus cue (a subtle input underline alongside the existing container state) and retained competition history-back behavior on a semantic, phone-sized link. `Frontend`: `npm run lint` and `npm run build` passed. Focused Playwright checks could not run locally because the configured Chromium headless-shell executable is absent; the initial retry was also prevented from starting its managed server because port 8000 is already in use.
 - 2026-09-08: The navbar account control now uses a transparent, clipped hit target and removes the avatar-only inherited border there, so the profile photo is the sole visible circle at compact and mobile sizes. `Frontend`: `npm run lint` and `npm run build` passed.
 - 2026-09-08: The writer’s title and content fields reserve a small left inset, keeping their text clear of the editor-only left-edge focus marker. `Frontend`: `npm run lint` and `npm run build` passed.
 - 2026-09-08: Article detail, search, and category results now prefer the current public profile’s Cloudinary avatar, display name, handle, and biography over stale post snapshots. All remaining user-avatar surfaces use the shared image-error-safe avatar component, so unavailable image URLs resolve to initials instead of a broken image. `Backend`: `npm run lint` and `npm test` passed (83 tests). `Frontend`: `npm run lint` and `npm run build` passed.
