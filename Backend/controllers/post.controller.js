@@ -18,6 +18,12 @@ const { rankCandidates } = require('../services/recommendation.service');
 const { hasCapability } = require('../services/entitlement.service');
 const { notify } = require('../services/notification.service');
 
+const MAX_LEGACY_POST_LIST_LIMIT = 100;
+const DEFAULT_LEGACY_POST_LIST_LIMIT = 24;
+const MAX_PERSONALIZED_CANDIDATES = 120;
+const discoveryPostFields = 'coverImage title format body author tags likesCount commentsCount createdAt';
+const personalizedCandidateFields = 'author topics createdAt likesCount';
+
 const publicAccessClause = (now = new Date()) => ({
     publicationStatus: { $ne: 'unpublished' },
     $or: [{ publicAt: { $lte: now } }, { publicAt: null }, { publicAt: { $exists: false } }],
@@ -75,21 +81,62 @@ const parsePostBody = (body) => {
     return isValid ? blocks : null;
 };
 
-const attachAuthorHandles = async posts => {
-    const authorIds = posts
-        .map(post => post.author?._id)
+const parseLegacyPostListQuery = query => {
+    const sort = String(query.sort || 'date').toLowerCase();
+    const sortFields = { views: 'metadata.views', likes: 'likesCount', date: 'createdAt' };
+    if (!sortFields[sort]) return null;
+
+    const requestedLimit = Number.parseInt(query.limit, 10);
+    const limit = Number.isFinite(requestedLimit)
+        ? Math.min(Math.max(requestedLimit, 1), MAX_LEGACY_POST_LIST_LIMIT)
+        : DEFAULT_LEGACY_POST_LIST_LIMIT;
+    const cursor = query.cursor ? decodeCursor(query.cursor) : null;
+    if (query.cursor && !cursor) return null;
+
+    if (cursor) {
+        if (!mongoose.isValidObjectId(cursor.id)) return null;
+        if (sort === 'date') {
+            const createdAt = new Date(cursor.value);
+            if (Number.isNaN(createdAt.getTime())) return null;
+            cursor.value = createdAt;
+        } else if (!Number.isFinite(cursor.value) || cursor.value < 0) {
+            return null;
+        }
+    }
+
+    return { sort, sortField: sortFields[sort], limit, cursor };
+};
+
+const loadDiscoveryPostPage = async (postIds, viewerId) => {
+    if (!postIds.length) return [];
+    const documents = await Post.find({ _id: { $in: postIds } })
+        .select(discoveryPostFields)
+        .populate({ path: 'author', select: 'picture username' })
+        .lean();
+    const documentsById = new Map(documents.map(document => [document._id.toString(), document]));
+    const orderedDocuments = postIds
+        .map(postId => documentsById.get(postId.toString()))
         .filter(Boolean);
-    const profiles = await Profile.find({ userId: { $in: authorIds } })
-        .select('userId handle');
-    const handlesByUser = new Map(
-        profiles.map(profile => [profile.userId.toString(), profile.handle])
-    );
+    return presentDiscoveryPosts(orderedDocuments, viewerId);
+};
+
+const applyAuthorProfile = (author, profile) => {
+    if (!author) return author;
+    author.handle = profile?.handle || null;
+    author.picture = profile?.avatarUrl || author.picture || null;
+    author.username = profile?.displayName || author.username || 'Unknown writer';
+    author.bio = profile?.bio || author.bio || '';
+    return author;
+};
+
+const attachAuthorHandles = async posts => {
+    const authorIds = posts.map(post => post.author?._id).filter(Boolean);
+    const profiles = await Profile.find({ userId: { $in: authorIds } }).select('userId handle displayName avatarUrl bio');
+    const profilesByUser = new Map(profiles.map(profile => [profile.userId.toString(), profile]));
 
     return posts.map(post => {
         const data = post.toObject();
-        if (data.author?._id) {
-            data.author.handle = handlesByUser.get(data.author._id.toString()) || null;
-        }
+        if (data.author?._id) applyAuthorProfile(data.author, profilesByUser.get(data.author._id.toString()));
         return data;
     });
 };
@@ -282,8 +329,8 @@ const getPost = async (req, res) => {
         postData.isBookmarked = isBookmarked;
         postData.isLiked = isLiked;
         if (post.author?._id) {
-            const authorProfile = await Profile.findOne({ userId: post.author._id }).select('handle');
-            postData.author.handle = authorProfile?.handle || null;
+            const authorProfile = await Profile.findOne({ userId: post.author._id }).select('handle displayName avatarUrl bio');
+            applyAuthorProfile(postData.author, authorProfile);
         }
         if (post.format === 'short') {
             const visibilityFilter = req.auth
@@ -332,40 +379,44 @@ const getPost = async (req, res) => {
 const getAllPosts = async (req, res) => {
 
     try {
-        // views -> most viewed on top
-        // likes -> most liked on top
-        // date -> latest on top
-        const { sort } = req.query;
-
-        const sortFields = {
-            views: 'metadata.views',
-            likes: 'likesCount',
-            date: 'createdAt',
-        };
-        if(sort && !sortFields[sort]) {
+        const pageQuery = parseLegacyPostListQuery(req.query);
+        if (!pageQuery) {
             return res.status(400).json({ success: false, message: 'Invalid sort option' });
         }
-        const sortOptions = { [sortFields[sort] || 'createdAt']: -1 };
 
-        // populating related post-author-data
-        const posts = await Post.find(publicAccessClause())
-            .populate({
-                path: 'author', 
-                select: 'picture username bio'
-            })
-            .sort(sortOptions);
-
-        if(!posts){
-            return res.status(403).json({
-                success: false,
-                message: 'No posts yet'
-            });
+        const filter = { $and: [publicAccessClause()] };
+        if (pageQuery.cursor) {
+            filter.$or = [
+                { [pageQuery.sortField]: { $lt: pageQuery.cursor.value } },
+                { [pageQuery.sortField]: pageQuery.cursor.value, _id: { $lt: pageQuery.cursor.id } },
+            ];
         }
 
-        const postData = await attachAuthorHandles(posts);
+        const documents = await Post.find(filter)
+            .select(discoveryPostFields)
+            .populate({ path: 'author', select: 'picture username' })
+            .sort({ [pageQuery.sortField]: -1, _id: -1 })
+            .limit(pageQuery.limit + 1)
+            .lean();
+        const hasMore = documents.length > pageQuery.limit;
+        const page = hasMore ? documents.slice(0, pageQuery.limit) : documents;
+        const posts = await presentDiscoveryPosts(page, req.auth?.userId);
+        const lastPost = page.at(-1);
+        const nextCursor = hasMore && lastPost
+            ? encodeCursor({
+                id: lastPost._id.toString(),
+                value: pageQuery.sort === 'date'
+                    ? lastPost.createdAt.toISOString()
+                    : pageQuery.sort === 'views'
+                        ? lastPost.metadata?.views || 0
+                        : lastPost.likesCount || 0,
+            })
+            : null;
         return res.status(200).json({
             success: true,
-            posts: postData
+            message: 'Posts fetched successfully',
+            posts,
+            meta: { sort: pageQuery.sort, nextCursor },
         });
     }
     catch (error) {
@@ -414,9 +465,11 @@ const getDiscoveryFeed = async (req, res) => {
                         $gte: new Date(asOf.getTime() - 90 * 24 * 60 * 60 * 1000),
                     },
                 })
+                    .select(personalizedCandidateFields)
                     .populate({ path: 'author', select: 'picture username' })
                     .sort({ createdAt: -1, _id: -1 })
-                    .limit(300),
+                    .limit(MAX_PERSONALIZED_CANDIDATES)
+                    .lean(),
                 UserInterest.find({ userId: req.auth.userId, explicitWeight: { $gt: 0 } }).select('topicId'),
                 Follow.find({ followerId: req.auth.userId }).select('followingId'),
             ]);
@@ -426,7 +479,7 @@ const getDiscoveryFeed = async (req, res) => {
                 asOf,
             });
             const rankedPage = ranked.slice(offset, offset + limit);
-            const data = await presentDiscoveryPosts(rankedPage.map(item => item.post), req.auth?.userId);
+            const data = await loadDiscoveryPostPage(rankedPage.map(item => item.post._id), req.auth?.userId);
             const rankByPost = new Map(rankedPage.map(item => [item.post._id.toString(), item]));
             const recommendationRequestId = crypto.randomUUID();
             const rankedData = data.map(post => ({
@@ -479,9 +532,11 @@ const getDiscoveryFeed = async (req, res) => {
             ? { likesCount: -1, _id: -1 }
             : { createdAt: -1, _id: -1 };
         const posts = await Post.find(filter)
+            .select(discoveryPostFields)
             .populate({ path: 'author', select: 'picture username' })
             .sort(databaseSort)
-            .limit(limit + 1);
+            .limit(limit + 1)
+            .lean();
         const hasMore = posts.length > limit;
         const page = hasMore ? posts.slice(0, limit) : posts;
         const data = await presentDiscoveryPosts(page, req.auth?.userId);
@@ -536,9 +591,11 @@ const getShortFeed = async (req, res) => {
             }
         }
         const documents = await Post.find(filter)
+            .select(discoveryPostFields)
             .populate({ path: 'author', select: 'picture username' })
             .sort(sort === 'popular' ? { likesCount: -1, _id: -1 } : { createdAt: -1, _id: -1 })
-            .limit(limit + 1);
+            .limit(limit + 1)
+            .lean();
         const hasMore = documents.length > limit;
         const page = hasMore ? documents.slice(0, limit) : documents;
         const data = await presentDiscoveryPosts(page, req.auth?.userId);
@@ -690,6 +747,7 @@ const searchCategory = async (req, res) => {
 module.exports = {
     parsePostBody,
     isSafeImageUrl,
+    parseLegacyPostListQuery,
     createPost,
     getAllPosts,
     getPost,

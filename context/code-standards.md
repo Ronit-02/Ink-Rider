@@ -203,7 +203,6 @@ Rules:
 - Validate and normalize external input before it affects application state.
 - Enforce authorization before any mutation.
 - Build privacy, safe rendering, abuse resistance, and dependency review into every feature.
-- Protected controls and implementation constraints belong in `sensitive context/code-standards.local.md` when available.
 
 ## Testing standards
 

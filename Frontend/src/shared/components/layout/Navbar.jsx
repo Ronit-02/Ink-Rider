@@ -26,7 +26,7 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchType, setSearchType] = useState('all')
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
-  const notifications = useQuery({ queryKey: ['notifications'], queryFn: fetchNotifications, enabled: loggedIn, staleTime: 30000, refetchInterval: 60000 })
+  const notifications = useQuery({ queryKey: ['notifications'], queryFn: fetchNotifications, enabled: loggedIn, staleTime: 30000, refetchInterval: 60000, retry: false })
   const menuRef = useRef()
   const accountButtonRef = useRef()
   const accountMenuRef = useRef()
@@ -144,14 +144,14 @@ export default function Navbar() {
       style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
       <Link to="/" className="flex items-center gap-2 shrink-0">
         <span className="text-[18px] font-bold text-[var(--color-text)]">Ink Rider</span>
-        <div className="w-9 h-9 rounded-[10px] flex items-center justify-center bg-[var(--color-accent)]"><LogoIcon /></div>
+        <div className="w-9 h-9 rounded-[10px] flex items-center justify-center border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-accent)]"><LogoIcon /></div>
       </Link>
 
       {!isSearchPage && <form ref={searchRef} onSubmit={runSearch} className="flex-1 max-w-[660px] relative hidden md:block">
         <div className={`flex items-center gap-[10px] bg-[var(--color-surface)] border rounded-full px-[14px] min-h-[38px] focus-within:border-[var(--color-accent)] ${searchOpen ? 'border-[var(--color-accent)]' : 'border-[var(--color-border)]'}`}>
           <SearchIcon />
           <input value={searchValue} onFocus={() => setSearchOpen(true)} onChange={event => { setSearchValue(event.target.value); setSearchOpen(true); setActiveSuggestionIndex(-1) }} onKeyDown={handleSearchKeyDown} placeholder="Search posts and writers…"
-            role="combobox" aria-label="Search posts and writers" aria-autocomplete="list" aria-expanded={suggestionsVisible} aria-controls="search-suggestions" aria-activedescendant={activeSuggestionIndex >= 0 ? `search-suggestion-${activeSuggestionIndex}` : undefined} className="min-w-0 flex-1 border-none bg-transparent py-[9px] text-[13px] text-[var(--color-text)] outline-none" />
+            role="combobox" aria-label="Search posts and writers" aria-autocomplete="list" aria-expanded={suggestionsVisible} aria-controls="search-suggestions" aria-activedescendant={activeSuggestionIndex >= 0 ? `search-suggestion-${activeSuggestionIndex}` : undefined} className="search-input min-w-0 flex-1 border-none bg-transparent py-[9px] text-[13px] text-[var(--color-text)] outline-none" />
           {searchOpen && <div role="group" className="flex shrink-0 items-center gap-1" aria-label="Search result type">
             {filters.map(filter => <button key={filter.id} type="button" onMouseDown={event => event.preventDefault()} onClick={() => { setSearchType(filter.id); setActiveSuggestionIndex(-1) }} aria-pressed={searchType === filter.id}
               className={`rounded-full border px-2 py-1 text-[10px] transition-colors ${searchType === filter.id ? 'border-[var(--color-text)] bg-[var(--color-text)] text-[var(--color-text-inverted)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-secondary)]'}`}>{filter.label}</button>)}
@@ -189,8 +189,8 @@ export default function Navbar() {
         {loggedIn && <Link to="/notifications" aria-label={`${notifications.data?.meta.unreadCount || 0} unread notifications`} className="relative w-10 h-10 md:w-8 md:h-8 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-text-secondary)] flex items-center justify-center"><span aria-hidden="true">♢</span>{notifications.data?.meta.unreadCount > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[var(--color-accent)] text-[9px] text-white flex items-center justify-center">{Math.min(99, notifications.data.meta.unreadCount)}</span>}</Link>}
         {loggedIn ? <div ref={menuRef} className="relative">
           <button type="button" ref={accountButtonRef} onClick={() => setOpenMenu(value => !value)} aria-label="Open account menu" aria-haspopup="menu" aria-expanded={openMenu} aria-controls="account-menu"
-            className="w-10 h-10 md:w-8 md:h-8 rounded-full border border-[var(--color-border)] bg-[var(--color-accent)] text-[var(--color-text-inverted)] font-semibold text-[12px] uppercase">
-            <Avatar src={avatarUrl} name={user} size={32} />
+            className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-transparent p-0 text-[var(--color-text-inverted)] font-semibold text-[12px] uppercase [&>img]:border-0 md:h-8 md:w-8">
+            <Avatar src={avatarUrl} name={user} size={28} />
           </button>
           {openMenu && <div ref={accountMenuRef} id="account-menu" role="menu" tabIndex={-1} aria-label="Account" onKeyDown={handleAccountMenuKeyDown} className="absolute top-[calc(100%+6px)] right-0 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[10px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] p-1 flex flex-col gap-0.5 min-w-[170px] z-[200]">
             {[{ label: 'View Profile', path: '/profile' }, { label: 'Saved', path: '/saved' }, { label: 'Settings', path: '/settings' }].map(item =>

@@ -100,7 +100,3 @@ Exit: primary articles remain public; premium behavior is explicit, accessible, 
 ## Continuous workstreams and definition of done
 
 Every phase includes accessibility, responsive behavior, privacy and moderation review, performance, documentation, realistic fixtures, and proportionate security/quality review. A feature is complete when its behavior, persistence, permission states, accessible feedback states, verification, privacy implications, operational diagnostics, and relevant context are updated.
-
-## Local companion
-
-Protected implementation milestones, release gates, provider and payment work, anti-abuse controls, internal observability, and historical verification detail are maintained in `sensitive context/build-plan.local.md` when available. It is not loaded automatically.

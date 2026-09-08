@@ -21,4 +21,4 @@ Moderation decisions remain reviewable and any correction preserves the decision
 
 ## Implementation boundary
 
-The current staff experience records reviews and recommendations. Destructive enforcement remains inactive until its full lifecycle is verified. Protected workflow, retention, authority, and audit details are in `sensitive context/moderation-policy.local.md` when available.
+The current staff experience records reviews and recommendations. Destructive enforcement remains inactive until its full lifecycle is verified.

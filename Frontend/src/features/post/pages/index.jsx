@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/interactive-supports-focus -- The menu container delegates focus to its menuitem children. */
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { BackIcon, BookmarkIcon, ShareIcon, LinkIcon, XIcon } from '@/shared/icons'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
 import Tag from '@/shared/components/ui/Tag'
@@ -49,7 +49,6 @@ const parsePostBlocks = body => {
 
 export default function PostPage() {
   const navigate  = useNavigate()
-  const location = useLocation()
   const { id: postId } = useParams();
   const { loggedIn, signIn } = useAuth()
   const entitlements = useEntitlements(loggedIn)
@@ -150,7 +149,10 @@ export default function PostPage() {
   }
 
   // Conditional Rendering
-  if (fetchPostIsLoading) return <PostDetailSkeleton />;
+  // Session restoration temporarily disables the reader-specific detail query.
+  // Keep the existing skeleton visible until a post response is available so a
+  // reload cannot dereference an absent response and blank the page.
+  if (fetchPostIsLoading || (!postData && !isError)) return <PostDetailSkeleton />;
   if (isError) return <PostErrorState notFound={error?.response?.status === 404} onRetry={refetch} />;
   const postBlocks = parsePostBlocks(postData.body)
   if (!postBlocks) return <PostErrorState onRetry={() => navigate('/')} invalidContent />
@@ -188,11 +190,11 @@ export default function PostPage() {
         <div className={`order-2 min-w-0 w-full flex-1 lg:order-none ${hasSidePanel ? '' : 'max-w-[760px]'}`}>
 
           {/* Back button */}
-          <Link to={location.state?.from || "/"}
+          <button type="button" onClick={() => navigate(-1)}
             className="inline-flex items-center gap-1.5 bg-(--color-bg-alt) border border-(--color-border) text-(--color-text-secondary) text-[13px] cursor-pointer mb-7 px-3.5 py-1.5 rounded-full transition-all hover:bg-(--color-border) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">
             <BackIcon /> 
             Back
-          </Link>
+          </button>
 
           {/* Tags */}
           {postData.tags?.length > 0 && (

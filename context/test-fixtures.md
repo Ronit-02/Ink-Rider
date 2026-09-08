@@ -25,7 +25,3 @@ Fixtures support product verification without creating real charges or fabricati
 ## Intentional boundaries
 
 Fixtures do not activate provider behavior. Live payment, AI, email, and media actions require separate authorized configuration and fresh verification. Staff fixtures exercise review and recommendations only; destructive moderation enforcement remains unavailable until its verified lifecycle is active.
-
-## Local companion
-
-Local seed commands, accounts, fixture credentials, exact totals, database requirements, and provider-specific setup are maintained in `sensitive context/test-fixtures.local.md` when available. It is not loaded automatically.

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import Avatar from '@/shared/components/ui/Avatar'
 
 export default function AuthorBio({ author }) {
   const name = author?.username || 'Unknown writer'
@@ -6,15 +7,7 @@ export default function AuthorBio({ author }) {
   const handle = author?.handle || fallbackHandle
   return (
       <div className="flex gap-4 p-6 bg-[var(--color-bg-alt)] rounded-[20px]">
-        {author?.picture ? (
-          <img src={author.picture} alt={name}
-            className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
-        ) : (
-          <div aria-hidden="true" className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0
-            bg-[var(--color-surface)] border border-[var(--color-border)] text-[18px] font-semibold text-[var(--color-text)]">
-            {name.slice(0, 1).toUpperCase()}
-          </div>
-        )}
+        <Avatar src={author?.picture} name={name} size={56} />
         <div>
           <p className="font-bold text-[14px] mb-1 text-[var(--color-text)]">{name}</p>
           <p className="text-[13px] text-[var(--color-text-secondary)] leading-[1.6]">

@@ -91,19 +91,21 @@ select:focus-visible {
   outline: none;
 }
 
-/* Inputs and textareas that use a custom border treatment still need a
-   high-contrast keyboard indicator. Keep the existing neutral focus token and
-   let the ring follow rounded controls without changing their layout. */
-input.outline-none:focus-visible,
-textarea.outline-none:focus-visible,
-select.outline-none:focus-visible {
-  box-shadow: 0 0 0 2px var(--color-focus);
+/* Writing fields are intentionally borderless. A left-edge indicator preserves
+   keyboard focus without making prose look like a collection of utility boxes. */
+textarea.editor-writing-field {
+  padding-left: 0.75rem;
 }
 
-/* The comment composer deliberately exposes one rounded focus-within ring on
-   its container, so do not stack a second ring on the transparent textarea. */
-[data-comment-composer] textarea.outline-none:focus-visible {
-  box-shadow: none;
+textarea.outline-none.editor-writing-field:focus-visible {
+  outline: none;
+  box-shadow: inset 2px 0 0 var(--color-focus);
+}
+
+/* The container already changes border on focus. Keep the field-level cue
+   deliberately quiet so it does not create a second, heavy rectangle. */
+.search-input:focus {
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--color-focus) 28%, transparent);
 }
 
 /* Keep anonymous authentication actions usable on the smallest supported width.

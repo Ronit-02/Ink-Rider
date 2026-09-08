@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import Avatar from '@/shared/components/ui/Avatar'
 
 export default function CompactCard({ article }) {
   const navigate = useNavigate()
@@ -19,11 +20,10 @@ export default function CompactCard({ article }) {
         onClick={e => { e.stopPropagation(); navigate('/author') }}
         className="p-0 border-none bg-transparent cursor-pointer flex-shrink-0"
       >
-        <img
-          src={article.author.avatar}
-          alt={article.author.name}
-          loading="lazy"
-          className="w-11 h-11 rounded-[10px] object-cover"
+        <Avatar
+          src={article.author?.avatar || article.author?.picture}
+          name={article.author?.name || article.author?.username}
+          size={44}
         />
       </button>
 
@@ -35,7 +35,7 @@ export default function CompactCard({ article }) {
             className="text-[12px] text-[var(--color-text-secondary)] font-medium bg-transparent border-none cursor-pointer p-0
               hover:text-[var(--color-text)] transition-colors"
           >
-            {article.author.name}
+            {article.author?.name || article.author?.username}
           </button>
           <span className="text-[12px] text-[var(--color-text-muted)] whitespace-nowrap">{article.readTime}</span>
         </div>

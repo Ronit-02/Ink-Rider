@@ -42,7 +42,3 @@ Provider adapters expose application concepts, not raw vendor response objects. 
 ## Upgrade and incident policy
 
 Automated update proposals still require tests and changelog review. Critical security updates may use expedited review; major upgrades require a dedicated change and migration notes. Provider outages are tracked independently from application defects, and unmaintained, vulnerable, or disproportionally costly libraries need a removal plan.
-
-## Local companion
-
-Protected provider behavior, credentials/configuration, transport and billing flows, AI handling, media/upload controls, sensitive event and logging rules, diagnostics, and incident procedures are maintained in `sensitive context/library-docs.local.md` when available. It is not loaded automatically.

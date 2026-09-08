@@ -17,4 +17,4 @@ Security is a continuous release requirement, not a one-time certification. Ink-
 
 ## Verification boundary
 
-Source-level tests and build checks provide useful but incomplete evidence. Production controls and prior remediation history are maintained in `sensitive context/security-audit.local.md` when available and must be verified in the target environment.
+Source-level tests and build checks provide useful but incomplete evidence.

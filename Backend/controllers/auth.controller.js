@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const { verifyPassword, hashPassword, generateToken, verifyToken, generateRandom, generateOTP, getOTPHTML } = require('../utils/helper');
 const { Avatars } = require('../assets/data');
+const Profile = require('../schemas/profile.schema');
 const { sendEmail } = require('../services/email.service.js');
 const User = require('../schemas/user.schema');
 const Session = require('../schemas/session.schema');
@@ -23,6 +24,7 @@ const dummyPasswordHash = hashPassword(crypto.randomBytes(32).toString('hex'));
 const isValidEmailInput = value => typeof value === 'string'
     && value.length <= 254
     && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+const randomAvatar = () => Avatars[generateRandom(0, Avatars.length - 1)];
 const withProviderTimeout = promise => {
     let timer;
     const timeout = new Promise((resolve, reject) => {
@@ -115,10 +117,16 @@ const googleLogin = async (req, res) => {
             if (user.accountStatus === 'suspended') return res.status(403).json({ success: false, message: 'Unable to sign in' });
             user.googleId = claims.sub;
             user.verified = true;
-            if (claims.picture && !user.picture) user.picture = claims.picture;
+            if (!user.picture) {
+                user.picture = claims.picture || randomAvatar();
+                await Profile.updateOne(
+                    { userId: user._id, avatarUrl: null },
+                    { $set: { avatarUrl: user.picture } },
+                );
+            }
             await user.save();
         } else {
-            user = await User.create({ username: await createGoogleUsername(claims.name, email), email, googleId: claims.sub, picture: claims.picture || null, verified: true });
+            user = await User.create({ username: await createGoogleUsername(claims.name, email), email, googleId: claims.sub, picture: claims.picture || randomAvatar(), verified: true });
             await createProfileForUser({ userId: user._id, username: user.username, picture: user.picture });
         }
 
