@@ -7,6 +7,8 @@ import Tag from '@/shared/components/ui/Tag'
 import Divider from '@/shared/components/ui/Divider'
 import Button from '@/shared/components/ui/Button'
 import { PostDetailSkeleton } from '@/shared/components/ui/Skeleton'
+import MissingResourceState from '@/shared/components/ui/MissingResourceState'
+import isMissingResourceError from '@/shared/errors/isMissingResourceError'
 import PostBody from './PostBody'
 import AuthorBio from './AuthorBio'
 import CommentsSection from './CommentsSection'
@@ -153,7 +155,8 @@ export default function PostPage() {
   // Keep the existing skeleton visible until a post response is available so a
   // reload cannot dereference an absent response and blank the page.
   if (fetchPostIsLoading || (!postData && !isError)) return <PostDetailSkeleton />;
-  if (isError) return <PostErrorState notFound={error?.response?.status === 404} onRetry={refetch} />;
+  if (isError && isMissingResourceError(error)) return <MissingResourceState eyebrow="Article unavailable" title="This article is no longer available" detail="It may have been removed, unpublished, or the link may be incorrect. Explore recent stories instead." recoveryTo="/" recoveryLabel="Explore stories" />;
+  if (isError) return <PostErrorState onRetry={refetch} />;
   const postBlocks = parsePostBlocks(postData.body)
   if (!postBlocks) return <PostErrorState onRetry={() => navigate('/')} invalidContent />
   const capabilities = new Set(entitlements.data?.capabilities || [])
@@ -322,8 +325,8 @@ export default function PostPage() {
   )
 }
 
-function PostErrorState({ notFound = false, invalidContent = false, onRetry }) {
-  const title = notFound ? 'This article is no longer available' : 'The article could not be loaded'
+function PostErrorState({ invalidContent = false, onRetry }) {
+  const title = 'The article could not be loaded'
   const detail = invalidContent
     ? 'The published content is not in a readable format. Please return to discovery and try another story.'
     : 'Something went wrong while loading this story. You can try again or return to discovery.'
@@ -335,8 +338,8 @@ function PostErrorState({ notFound = false, invalidContent = false, onRetry }) {
         <h1 className="mt-3 text-[clamp(28px,5vw,44px)] font-bold tracking-[-0.045em] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{title}</h1>
         <p className="mt-4 text-[14px] leading-7 text-[var(--color-text-secondary)]">{detail}</p>
         <div className="mt-7 flex flex-wrap gap-2">
-          {!invalidContent && !notFound && <Button variant="secondary" onClick={onRetry}>Try again</Button>}
-          <Link to="/" className="inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)] px-[18px] py-2 text-[13px] font-medium text-[var(--color-text-inverted)] transition-all duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Return home</Link>
+          {!invalidContent && <Button variant="secondary" onClick={onRetry}>Try again</Button>}
+          <Link to="/" className="inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-accent)] px-[18px] py-2 text-[13px] font-medium transition-all duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0" style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-text-inverted)' }}>Return home</Link>
         </div>
       </div>
     </PageFrame>

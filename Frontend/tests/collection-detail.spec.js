@@ -60,6 +60,22 @@ test('collection error state preserves the application main landmark', async ({ 
   })
 
   await page.goto(`/collections/${collectionId}`, { waitUntil: 'domcontentloaded' })
-  await expect(page.getByText('This collection is private or no longer exists.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'This collection is no longer available' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Explore collections' })).toHaveAttribute('href', '/collections')
   await expect(page.locator('main')).toHaveCount(1)
+})
+
+test('an invalid collection id uses the same recovery state as a missing collection', async ({ page }) => {
+  await page.route(url => url.pathname.startsWith('/api/'), async route => {
+    const url = new URL(route.request().url())
+    if (url.pathname === '/api/auth/refresh-token') return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
+    if (url.pathname === '/api/collection/not-an-id') return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ message: 'Invalid collection id' }) })
+    return route.abort('blockedbyclient')
+  })
+
+  await page.goto('/collections/not-an-id', { waitUntil: 'domcontentloaded' })
+
+  await expect(page.getByRole('heading', { name: 'This collection is no longer available' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Explore collections' })).toHaveAttribute('href', '/collections')
+  await expect(page.getByRole('button', { name: 'Try again' })).toHaveCount(0)
 })

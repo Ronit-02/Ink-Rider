@@ -7,6 +7,7 @@ test('staff vote review presents aggregate fraud signals without raw identifiers
     if (url.pathname === '/api/user/me') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { role: 'admin', username: 'Admin' } }) })
     if (url.pathname === '/api/staff/competition-fraud') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [{ competitionId: '507f1f77bcf86cd799439011', signalType: 'NETWORK', distinctVoterCount: 4, voteCount: 4, windowMs: 600000, reason: 'CROSS_ACCOUNT_SIGNAL' }], meta: { analyzedVoteCount: 9, windowMs: 600000 } }) })
     if (url.pathname === '/api/staff/competition-fraud/reviews') return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ data: { id: 'review-1', disposition: 'confirmed' } }) })
+    if (url.pathname === '/api/staff/reports') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) })
     if (url.pathname === '/api/v1/notifications') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { unreadCount: 0 } }) })
     return route.abort('blockedbyclient')
   })
@@ -28,7 +29,7 @@ test('staff vote review presents aggregate fraud signals without raw identifiers
   await expect(tabs.getByRole('tab', { name: 'Moderation' })).toHaveAttribute('aria-selected', 'true')
 })
 
-test('staff moderation failures expose a retryable alert instead of an empty queue', async ({ page }) => {
+test('a staff moderation service outage exposes the global server-unavailable recovery state', async ({ page }) => {
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const url = new URL(route.request().url())
     if (url.pathname === '/api/auth/refresh-token') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ accessToken: 'staff-test-token', user: 'Admin', email: 'admin@inkrider.local', role: 'admin' }) })
@@ -39,6 +40,7 @@ test('staff moderation failures expose a retryable alert instead of an empty que
   })
 
   await page.goto('/staff', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('alert')).toContainText('Moderation reports could not be loaded.')
+  await expect(page.getByRole('heading', { name: 'Ink Rider is temporarily unavailable.' })).toBeVisible()
+  await expect(page.getByRole('alert')).toContainText('We can’t reach the server right now.')
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
 })

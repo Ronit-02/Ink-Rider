@@ -152,6 +152,9 @@ test.describe('public writer profile discovery', () => {
       if (url.pathname === '/api/v1/me/entitlements') {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { capabilities: [] } }) })
       }
+      if (url.pathname === '/api/v1/notifications') {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { unreadCount: 0 } }) })
+      }
       if (url.pathname === '/api/v1/reading-history') {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { continueReading: [], history: [] } }) })
       }
@@ -188,6 +191,9 @@ test.describe('public writer profile discovery', () => {
       if (url.pathname === '/api/v1/me/entitlements') {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { capabilities: [] } }) })
       }
+      if (url.pathname === '/api/v1/notifications') {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { unreadCount: 0 } }) })
+      }
       if (url.pathname === '/api/v1/reading-history') {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { continueReading: [], history: [] } }) })
       }
@@ -218,6 +224,9 @@ test.describe('public writer profile discovery', () => {
       }
       if (url.pathname === '/api/v1/me/entitlements') {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { capabilities: [] } }) })
+      }
+      if (url.pathname === '/api/v1/notifications') {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { unreadCount: 0 } }) })
       }
       if (url.pathname === '/api/v1/reading-history') {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { continueReading: [], history: [] } }) })
@@ -251,6 +260,12 @@ test.describe('public writer profile discovery', () => {
       }
       if (url.pathname === '/api/v1/me/entitlements') {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { capabilities: [] } }) })
+      }
+      if (url.pathname === '/api/v1/notifications') {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { unreadCount: 0 } }) })
+      }
+      if (url.pathname === '/api/v1/reading-history') {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { continueReading: [], history: [] } }) })
       }
       return route.abort('blockedbyclient')
     })

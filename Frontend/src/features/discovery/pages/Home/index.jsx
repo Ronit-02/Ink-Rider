@@ -107,9 +107,9 @@ export default function HomePage() {
 
   return (
     <PageFrame>
-      <header className="max-w-[760px] mb-10">
+      <header className="max-w-[700px] mb-9">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">Discover writing worth your time</p>
-        <h1 className="mt-4 text-[clamp(34px,6vw,68px)] leading-[0.98] tracking-[-0.055em] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>
+        <h1 className="mt-4 text-[clamp(32px,4.5vw,56px)] leading-[1.02] tracking-[-0.045em] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>
           Ideas, stories, and answers from curious people.
         </h1>
         <p className="mt-5 text-[15px] leading-7 text-[var(--color-text-secondary)] max-w-[620px]">

@@ -40,6 +40,9 @@ test('Explore sections expose route navigation and the active destination on pho
     if (url.pathname === '/api/post/feed') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
     }
+    if (url.pathname === '/api/question' || url.pathname === '/api/competition') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+    }
     return route.abort('blockedbyclient')
   })
 
@@ -66,8 +69,14 @@ test('Saved library sections expose active tab state and shareable URL state on 
     if (url.pathname === '/api/auth/refresh-token') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ accessToken: 'saved-test-token', user: 'Priya Mehta', email: 'member@inkrider.local', role: 'regular' }) })
     }
-    if (url.pathname === '/api/user/me/bookmarks') {
+    if (url.pathname === '/api/user/bookmarks') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) })
+    }
+    if (url.pathname === '/api/collection') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+    }
+    if (url.pathname === '/api/v1/notifications') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { unreadCount: 0 } }) })
     }
     return route.abort('blockedbyclient')
   })
@@ -125,6 +134,9 @@ test('collection views expose tab semantics and keyboard navigation on phone', a
     if (url.pathname === '/api/collection') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
     }
+    if (url.pathname === '/api/v1/notifications') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { unreadCount: 0 } }) })
+    }
     return route.abort('blockedbyclient')
   })
 
@@ -146,6 +158,12 @@ test('shared filters expose phone-sized controls without changing desktop sizing
     const url = new URL(route.request().url())
     if (url.pathname === '/api/auth/refresh-token') {
       return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
+    }
+    if (url.pathname === '/api/post/feed') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+    }
+    if (url.pathname === '/api/collection') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
     }
     return route.abort('blockedbyclient')
   })
@@ -180,6 +198,9 @@ test('search filters expose phone-sized topic and select controls', async ({ pag
     if (url.pathname === '/api/auth/refresh-token') {
       return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
     }
+    if (url.pathname === '/api/search') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { posts: [], writers: [], shorts: [] }, meta: { query: 'city', type: 'all' } }) })
+    }
     return route.abort('blockedbyclient')
   })
 
@@ -202,6 +223,9 @@ test('search input keeps a visible keyboard focus indicator with custom outline 
     const url = new URL(route.request().url())
     if (url.pathname === '/api/auth/refresh-token') {
       return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
+    }
+    if (url.pathname === '/api/search') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { posts: [], writers: [], shorts: [] }, meta: { query: 'city', type: 'all' } }) })
     }
     return route.abort('blockedbyclient')
   })
@@ -243,6 +267,9 @@ test('reading history recovery is announced and retryable on phone', async ({ pa
     if (url.pathname === '/api/v1/reading-history') {
       return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'Unavailable' }) })
     }
+    if (url.pathname === '/api/v1/notifications') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { unreadCount: 0 } }) })
+    }
     return route.abort('blockedbyclient')
   })
 
@@ -260,6 +287,9 @@ test('short-read recovery is announced and retryable on phone', async ({ page })
     }
     if (url.pathname === '/api/post/shorts') {
       return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'Unavailable' }) })
+    }
+    if (url.pathname === '/api/short-series') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
     }
     return route.abort('blockedbyclient')
   })
@@ -319,6 +349,12 @@ test('desktop sidebar resize handle supports bounded keyboard controls', async (
     if (url.pathname === '/api/auth/refresh-token') {
       return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
     }
+    if (url.pathname === '/api/post/feed') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+    }
+    if (url.pathname === '/api/collection') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+    }
     return route.abort('blockedbyclient')
   })
 
@@ -345,6 +381,9 @@ test('desktop sidebar width persists across reloads', async ({ page }) => {
     if (url.pathname === '/api/auth/refresh-token') {
       return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
     }
+    if (url.pathname === '/api/post/feed') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+    }
     return route.abort('blockedbyclient')
   })
 
@@ -368,6 +407,12 @@ test('desktop sidebar expands without motion when reduced motion is requested', 
     const url = new URL(route.request().url())
     if (url.pathname === '/api/auth/refresh-token') {
       return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
+    }
+    if (url.pathname === '/api/post/feed') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+    }
+    if (url.pathname === '/api/collection') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
     }
     return route.abort('blockedbyclient')
   })
@@ -461,6 +506,9 @@ test('filter reset clears topic and sort state together and uses the topic label
     if (url.pathname === '/api/auth/refresh-token') {
       return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
     }
+    if (url.pathname === '/api/collection') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+    }
     return route.abort('blockedbyclient')
   })
 
@@ -523,6 +571,9 @@ test('Home category controls expose phone-sized targets after deferred loading',
     if (url.pathname === '/api/question') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
     }
+    if (url.pathname === '/api/collection') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+    }
     return route.abort('blockedbyclient')
   })
 
@@ -565,6 +616,12 @@ test('member hub loading exposes a named status region on phone', async ({ page 
       await new Promise(resolve => setTimeout(resolve, 600))
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { capabilities: [] } }) })
     }
+    if (url.pathname === '/api/v1/notifications') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { unreadCount: 0 } }) })
+    }
+    if (url.pathname === '/api/v1/workshops') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) })
+    }
     return route.abort('blockedbyclient')
   })
 
@@ -578,6 +635,12 @@ test('keyboard skip link moves focus to the application content region', async (
     const url = new URL(route.request().url())
     if (url.pathname === '/api/auth/refresh-token') {
       return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
+    }
+    if (url.pathname === '/api/post/feed') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+    }
+    if (url.pathname === '/api/collection') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
     }
     return route.abort('blockedbyclient')
   })

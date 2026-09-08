@@ -56,7 +56,14 @@ for (const route of shellRoutes) {
           body: JSON.stringify({ message: 'Signed out' }),
         })
       }
-      return request.abort('blockedbyclient')
+      // This audit validates the normal application shell. A 500 preserves
+      // route-level recovery states, whereas a refused connection correctly
+      // switches the entire app to the separate server-unavailable page.
+      return request.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Test server error' }),
+      })
     })
 
     await page.setViewportSize({ width: 320, height: 640 })
