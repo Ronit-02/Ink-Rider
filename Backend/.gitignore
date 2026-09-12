@@ -1,3 +1,8 @@
+# Installed dependencies
 node_modules
+
+# Local environment configuration
 .env
+
+# Runtime-generated public files (for example temporary uploads)
 public
