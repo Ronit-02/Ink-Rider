@@ -1,13 +1,21 @@
+# Environment files and key material (templates remain trackable)
 **/.env
 **/.env.*
 !**/.env.example
 **/*.pem
 **/*.key
+
+# Legacy root-level environment patterns retained for compatibility
 .env
 .env.*
 !.env.example
+
+# Local-only agent, tooling, and protected project context
 *.local
 AGENTS.local.md
 *.local.md
 /sensitive context/
 /.tooling/
+
+# Local planning artifacts
+*.roadmap.*
