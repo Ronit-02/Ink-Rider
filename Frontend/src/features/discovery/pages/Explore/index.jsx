@@ -13,7 +13,7 @@ export default function ExplorePage() {
 
   return (
     <PageFrame>
-      <nav aria-label="Explore sections" className="mb-8 overflow-x-auto border-b border-[var(--color-border)]">
+      <nav aria-label="Explore sections" className="mb-8 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-[var(--color-border)]">
         <div className="flex min-w-max gap-2">
           {exploreSections.map(section => {
             const isCurrent = pathname === section.path

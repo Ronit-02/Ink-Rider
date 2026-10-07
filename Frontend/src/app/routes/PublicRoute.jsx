@@ -1,7 +1,8 @@
 import { useSelector } from "react-redux"
-import { Navigate } from "react-router-dom"
+import { Navigate, useLocation } from "react-router-dom"
 
 export default function PublicRoute({children}) {
+    const location = useLocation()
     const user = useSelector((state) => state.auth.user)
     const isReady = useSelector((state) => state.auth.isReady)
 
@@ -10,7 +11,7 @@ export default function PublicRoute({children}) {
     }
 
     if (user) {
-        return <Navigate to="/" replace />
+        return <Navigate to={location.state?.returnTo === '/membership' ? '/membership' : '/'} replace />
     }
 
     return children

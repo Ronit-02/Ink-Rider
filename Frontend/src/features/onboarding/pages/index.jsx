@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '@/shared/components/ui/Button'
+import BackButton from '@/shared/components/ui/BackButton'
 import StepInterests from './StepInterests'
 import StepFollow from './StepFollow'
 import StepFeatures from './StepFeatures'
@@ -70,7 +71,7 @@ export default function OnboardingPage() {
 
         {save.isError && <p role="alert" className="mb-4 text-[12px] text-[var(--color-danger)]">Your choices could not be saved. Please try again.</p>}
         <div className="flex justify-between items-center gap-2">
-          {step > 1 ? <Button variant="secondary" onClick={() => setStep(value => value - 1)} disabled={save.isPending}>Back</Button> : <div />}
+          {step > 1 ? <BackButton ariaLabel="Back to previous step" onBack={() => setStep(value => value - 1)} disabled={save.isPending} /> : <div />}
           <Button variant="ghost" onClick={finish} disabled={save.isPending}>Skip</Button>
           <Button variant="primary" disabled={nextDisabled || save.isPending}
             onClick={() => step < STEPS.length ? setStep(value => value + 1) : finish()}>

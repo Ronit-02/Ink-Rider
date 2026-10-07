@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Competition = require('../schemas/competition.schema');
+const Profile = require('../schemas/profile.schema');
 const Post = require('../schemas/post.schema');
 const CompetitionAudit = require('../schemas/competition-audit.schema');
 const CompetitionAppeal = require('../schemas/competition-appeal.schema');
@@ -138,7 +139,15 @@ const getCompetitionById = async (req, res) => {
       .populate({ path: 'entries.author', select: 'picture username' })
       .populate({ path: 'entries.post', match: publicPostClause(), select: 'title coverImage createdAt body likesCount commentsCount' });
     if (!competition) return res.status(404).json({ message: 'Competition not found' });
-    return res.status(200).json({ data: presentCompetition(competition, req.auth?.userId, true) });
+    const data = presentCompetition(competition, req.auth?.userId, true);
+    const authorIds = [...new Set(data.entries.map(entry => entry.author?._id?.toString()).filter(Boolean))];
+    const profiles = authorIds.length ? await Profile.find({ userId: { $in: authorIds } }).select('userId handle').lean() : [];
+    const handlesByAuthor = new Map(profiles.map(profile => [profile.userId.toString(), profile.handle]));
+    data.entries = data.entries.map(entry => ({
+      ...entry,
+      author: entry.author ? { ...entry.author.toObject(), handle: handlesByAuthor.get(entry.author._id.toString()) || null } : null,
+    }));
+    return res.status(200).json({ data });
   } catch (error) {
     return res.status(500).json({ message: 'Unable to load competition' });
   }

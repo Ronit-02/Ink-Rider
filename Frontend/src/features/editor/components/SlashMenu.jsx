@@ -1,9 +1,10 @@
+import ViewportPopover from '@/shared/components/ui/ViewportPopover'
 /* eslint-disable react-hooks/set-state-in-effect -- A filter change intentionally restores the roving option to the first item. */
 import { useState, useEffect, useRef } from 'react'
 
 export default function SlashMenu({
   options = [],
-  position = { x: 0, y: 0 },
+  anchorRef,
   onSelect,
   onClose,
   filter = '',
@@ -73,16 +74,12 @@ export default function SlashMenu({
   if (!filtered.length) return null
 
   return (
-    <div
+    <ViewportPopover anchorRef={anchorRef} align="start" onAnchorHidden={onClose}
       ref={menuRef}
       id="editor-slash-menu"
       role="listbox"
       aria-label="Insert block"
       style={{
-        position: 'absolute',
-        left: position.x,
-        top: position.y,
-        zIndex: 1000,
         minWidth: 220,
         maxHeight: 200,
         height: 'auto',
@@ -123,6 +120,6 @@ export default function SlashMenu({
           {opt.label}
         </button>
       ))}
-    </div>
+    </ViewportPopover>
   )
 }

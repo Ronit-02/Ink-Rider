@@ -11,7 +11,9 @@ import ToastViewport from './shared/components/ui/ToastViewport.jsx'
 import './styles/global.css'
 
 const savedTheme = localStorage.getItem('ink-theme')
-const initialDark = savedTheme ? savedTheme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches
+const initialDark = savedTheme === 'dark' || savedTheme === 'light'
+  ? savedTheme === 'dark'
+  : window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true
 document.documentElement.classList.toggle('dark', initialDark)
 
 const queryClient = new QueryClient();

@@ -1,14 +1,32 @@
 /* eslint-disable react-hooks/set-state-in-effect -- Server-saved interests intentionally initialize the editable settings draft. */
 import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useSelector } from 'react-redux'
+import { Link, useOutletContext } from 'react-router-dom'
+import PageFrame from '@/shared/components/layout/PageFrame'
 import Button from '@/shared/components/ui/Button'
 import StepInterests from '@/features/onboarding/pages/StepInterests'
 import { useOnboardingOptions, useSaveOnboarding } from '@/features/onboarding/hooks/useOnboarding'
 import { resetInferredInterests } from '@/features/onboarding/api/onboarding'
 import { Skeleton } from '@/shared/components/ui/Skeleton'
 import useToast from '@/shared/hooks/useToast'
+import ProfileSettings from '../../components/ProfileSettings'
 
 export default function SettingsPage() {
+  const { dark, toggleTheme } = useOutletContext()
+  const isReady = useSelector(state => state.auth.isReady)
+  const loggedIn = useSelector(state => Boolean(state.auth.user))
+  return <PageFrame>
+    <header className="mb-10">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">Your app</p>
+      <h1 className="mt-3 text-[clamp(30px,5vw,48px)] font-bold tracking-[-0.05em] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>Settings</h1>
+    </header>
+    <ProfileSettings dark={dark} toggleTheme={toggleTheme} />
+    {!isReady ? <p role="status" className="py-7 text-[13px] text-[var(--color-text-secondary)]">Restoring your session…</p> : loggedIn ? <MemberSettings /> : <p className="py-7 text-[13px] text-[var(--color-text-secondary)]"><Link to="/login" className="font-semibold underline underline-offset-4">Sign In</Link> to manage your reading interests.</p>}
+  </PageFrame>
+}
+
+function MemberSettings() {
   const { notify } = useToast()
   const options = useOnboardingOptions()
   const save = useSaveOnboarding()
@@ -25,13 +43,8 @@ export default function SettingsPage() {
   const saveTopics = () => save.mutate({ topicSlugs: selected, writerIds: [], completed: true })
 
   return (
-    <main className="max-w-[820px] mx-auto px-5 md:px-8 pt-10 md:pt-12 pb-24">
-      <header className="mb-10">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">Your account</p>
-        <h1 className="mt-3 text-[clamp(30px,5vw,48px)] font-bold tracking-[-0.05em] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>Settings</h1>
-      </header>
-
-      <section className="py-7 border-y border-[var(--color-border)]">
+    <>
+      <section className="py-7 border-b border-[var(--color-border)]">
         <h2 className="text-[18px] font-semibold text-[var(--color-text)]">Reading interests</h2>
         <p className="mt-2 mb-6 text-[13px] leading-6 text-[var(--color-text-secondary)]">These explicit choices influence your For You feed. They are used for recommendations, not sold or used for advertising.</p>
         {options.isPending && <div className="grid gap-3 sm:grid-cols-2"><Skeleton className="h-12" /><Skeleton className="h-12" /><Skeleton className="h-12" /><Skeleton className="h-12" /></div>}
@@ -51,6 +64,6 @@ export default function SettingsPage() {
         {reset.isSuccess && <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">Inferred interests reset.</p>}
         {reset.isError && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">Could not reset inferred interests.</p>}
       </section>
-    </main>
+    </>
   )
 }

@@ -99,13 +99,15 @@ Status meanings:
 | Collections | `/collections` | Connected | Browse, save, create, and manage curated reading sets |
 | Collection detail | `/collections/:id` | Connected | Read, save, share, and manage a collection |
 | Saved library | `/saved` | Connected | Private saved stories and saved public/unlisted collections |
-| Writer/editor | `/write` and later `/write/:draftId` | Partial | Autosaved block editor, preview, validation, drafts, scheduling, and publication |
-| Personal profile | `/profile` | Connected | Account, posts, bookmarks, history, following, interests, and analytics |
+| Writer/editor | `/write` and later `/write/:draftId` | Partial | Centered guest sign-in prompt; signed-in autosaved block editor, preview, validation, drafts, scheduling, and publication |
+| Personal profile | `/profile` | Connected | Centered guest sign-in prompt; mobile account sheet links to the profile; signed-in account, posts, bookmarks, history, following, interests, and analytics |
 | Onboarding | `/onboarding` | Connected | Persist interests, initial follows, goals, and consent preferences |
 | Authentication | `/login`, `/signup` | Connected | Account creation, verification, recovery, and session management |
-| Settings | `/settings` | Connected | Account and appearance settings, with provider-dependent options isolated |
+| Settings | `/settings` | Connected | Public theme/language settings and member-only reading-interest controls, with provider-dependent options isolated |
+| Help | `/help` | Connected | Public product guide and links to existing reading, writing, community, membership, and settings routes |
 | Notifications | `/notifications` | Connected | Responses, requests, follows, competition events, and creator updates |
-| Membership | `/membership` | Connected | Platform membership and creator-support management |
+| Membership | `/membership` | Connected | Public Ink Rider Pro features and provisional ₹199/month price, guest sign-in return, checkout, and existing-member billing management; unconfigured billing stays inline and payment integration remains pending; creator support remains a separate writer-profile action |
+| Member Hub | `/members` | Connected | Signed-in early access, creator extras, workshops, and creator studio |
 | Moderation | Internal/admin | Planned | Reports, review queues, appeals, enforcement, and audit history |
 
 ## Navigation model
@@ -126,7 +128,7 @@ Status meanings:
 - Notifications
 - Profile menu
 
-Desktop may use a compact side rail plus a global top bar. Mobile uses a bottom bar for Home, Explore, Search, Write, and Profile, with secondary destinations available from menus.
+Desktop may use a compact side rail plus a global top bar. Mobile uses a consistent bottom bar for Home, Explore, Shorts, Collections, and an Account sheet button for guests and members across application pages. Write is available in the signed-in Account sheet. Global search remains in the top bar; Account opens an animated bottom sheet with guest authentication or signed-in My profile and Write links, Settings, Help, and temporary social homepage links. At 768 px and above, Help opens `/help` directly above Settings in the bottom sidebar group; Settings includes appearance controls.
 
 Every detail page must provide a stable parent path or back destination. Navigation must never depend solely on browser history.
 

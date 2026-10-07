@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import useAuth from '@/features/auth/hooks/useAuth'
 import Button from '@/shared/components/ui/Button'
 import Pill from '@/shared/components/ui/Pill'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
@@ -14,6 +16,7 @@ import useReadingHistory from '@/features/discovery/hooks/useReadingHistory'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import useToast from '@/shared/hooks/useToast'
 import Avatar from '@/shared/components/ui/Avatar'
+import SignInPrompt from '@/shared/components/ui/SignInPrompt'
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -65,6 +68,24 @@ function ProfileDataError({ message, onRetry }) {
 }
 
 export default function ProfilePage() {
+  const isReady = useSelector(state => state.auth.isReady)
+  const auth = useAuth()
+  if (!isReady) return <PageFrame><p role="status" className="text-[13px] text-[var(--color-text-muted)]">Restoring your session…</p></PageFrame>
+  const accountActions = <section aria-label="Account" className={`mb-8 border-b border-[var(--color-border)] pb-6 ${auth.loggedIn ? 'md:hidden' : ''}`}>
+    <h2 className="mb-3 text-[15px] font-semibold">Account</h2>
+    <div className="flex flex-wrap gap-2">
+        {[{ to: '/saved', label: 'Saved' }, { to: '/settings', label: 'Settings' }, { to: '/notifications', label: 'Notifications' }].map(link => <Link key={link.to} to={link.to} className="inline-flex min-h-11 items-center rounded-full border border-[var(--color-border)] px-4 text-[13px]">{link.label}</Link>)}
+        <Button variant="secondary" onClick={auth.signOut}>Sign Out</Button>
+        <Button variant="secondary" onClick={auth.signOutAllDevices}>Sign Out all Devices</Button>
+    </div>
+  </section>
+  if (!auth.loggedIn) return <PageFrame className="flex min-h-full flex-col !pb-6">
+    <SignInPrompt message="Sign in to view your profile." />
+  </PageFrame>
+  return <MemberProfile accountActions={accountActions} />
+}
+
+function MemberProfile({ accountActions }) {
   const queryClient = useQueryClient()
   const { notify } = useToast()
   const [params, setParams] = useSearchParams()
@@ -127,8 +148,8 @@ export default function ProfilePage() {
     setBio(profile.data.bio || '')
   }, [profile.data])
 
-  if (profile.isLoading || posts.isLoading) return <PageFrame><div role="status" aria-label="Loading profile"><div className="flex items-start gap-5"><Skeleton className="h-20 w-20 shrink-0 rounded-full" /><div className="flex-1"><Skeleton className="h-7 w-48" /><Skeleton className="mt-3 h-3 w-72" /><Skeleton className="mt-2 h-3 w-full max-w-xl" /></div></div><div className="mt-10 grid gap-[14px] sm:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-[14px] border border-[var(--color-border)] p-5"><Skeleton className="h-7 w-16" /><Skeleton className="mt-2 h-3 w-24" /></div>)}</div><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
-  if (profile.isError) return <PageFrame><div><p role="alert" className="text-[13px] text-[var(--color-danger)]">We couldn’t load your profile.</p><Button variant="secondary" className="mt-4" onClick={() => profile.refetch()}>Try again</Button></div></PageFrame>
+  if (profile.isLoading || posts.isLoading) return <PageFrame>{accountActions}<div role="status" aria-label="Loading profile"><div className="flex items-start gap-5"><Skeleton className="h-20 w-20 shrink-0 rounded-full" /><div className="flex-1"><Skeleton className="h-7 w-48" /><Skeleton className="mt-3 h-3 w-72" /><Skeleton className="mt-2 h-3 w-full max-w-xl" /></div></div><div className="mt-10 grid gap-[14px] sm:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-[14px] border border-[var(--color-border)] p-5"><Skeleton className="h-7 w-16" /><Skeleton className="mt-2 h-3 w-24" /></div>)}</div><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
+  if (profile.isError) return <PageFrame>{accountActions}<div><p role="alert" className="text-[13px] text-[var(--color-danger)]">We couldn’t load your profile.</p><Button variant="secondary" className="mt-4" onClick={() => profile.refetch()}>Try again</Button></div></PageFrame>
   const me = profile.data
   const recentPosts = posts.data?.slice(0, 4) || []
 
@@ -158,6 +179,7 @@ export default function ProfilePage() {
           {editing ? <><Button type="button" variant="secondary" onClick={() => setEditing(false)}>Cancel</Button><Button type="submit" form="profile-edit-form" disabled={!name.trim() || updateProfile.isPending}>{updateProfile.isPending ? 'Saving…' : 'Save'}</Button></> : <Button variant="secondary" onClick={() => setEditing(true)}>Edit profile</Button>}
         </div>
       </header>
+      {accountActions}
 
       {updateProfile.isError && <p role="alert" className="mb-5 text-[12px] text-[var(--color-danger)]">{updateProfile.error?.response?.data?.message || 'Profile update failed.'}</p>}
 

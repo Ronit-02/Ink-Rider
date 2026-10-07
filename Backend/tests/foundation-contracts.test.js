@@ -74,7 +74,7 @@ const { rankCandidate, rankCandidates } = require('../services/recommendation.se
 const recommendationFixtures = require('../data/recommendation-fixtures');
 const { evaluateRecommendationFixtures } = require('../services/recommendation.service');
 const { normalizeQuestionText } = require('../utils/question');
-const { effectiveStatus, isVotingOpen, canVoteEntry, competitionStatusCandidates, canScoreEntry, canPublishResults, publishResults, disqualifyEntry, decideAppeal } = require('../controllers/competition.controller');
+const { effectiveStatus, isVotingOpen, canVoteEntry, competitionStatusCandidates, canScoreEntry, canPublishResults, publishResults, disqualifyEntry, decideAppeal, getCompetitionById } = require('../controllers/competition.controller');
 const { createQuestion } = require('../controllers/question.controller');
 const { parseCompetitionFraudMinutes } = require('../controllers/moderation.controller');
 const { getVoteSignals, getVoteRisk, analyzeVoteSignals, MAX_NETWORK_VOTES_PER_WINDOW, MAX_DEVICE_VOTES_PER_WINDOW, MIN_CROSS_ACCOUNT_VOTES } = require('../services/competition-fraud.service');
@@ -346,6 +346,35 @@ test('offline recommendation fixtures report relevance and diversity metrics', (
   assert.ok(results.every(result => result.metrics.authorDiversity >= 0.75));
   assert.ok(results.every(result => result.metrics.topicDiversity >= 0.75));
   assert.ok(results.every(result => result.metrics.maxConsecutiveAuthor <= 2));
+});
+
+test('competition entries expose stored profile handles in one batch', async () => {
+  const originalCompetitionFind = Competition.findById;
+  const originalProfileFind = Profile.find;
+  const author = new User({ _id: '507f1f77bcf86cd799439013', username: 'Maya Sen' });
+  const competition = { _id: '507f1f77bcf86cd799439011', status: 'closed', entries: [{ _id: '507f1f77bcf86cd799439012', author, post: null, likes: [], judgeScores: [] }], winnerEntryIds: [] };
+  const query = { populate: () => query, then: resolve => Promise.resolve(competition).then(resolve) };
+  Competition.findById = () => query;
+  let profileReads = 0;
+  Profile.find = filter => {
+    profileReads += 1;
+    assert.deepEqual(filter, { userId: { $in: [author._id.toString()] } });
+    return { select: fields => {
+      assert.equal(fields, 'userId handle');
+      return { lean: async () => [{ userId: author._id, handle: 'maya-custom-handle' }] };
+    } };
+  };
+  try {
+    const response = createResponse();
+    await getCompetitionById({ params: { id: competition._id } }, response);
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.payload.data.entries[0].author.handle, 'maya-custom-handle');
+    assert.equal(response.payload.data.entries[0].author.username, 'Maya Sen');
+    assert.equal(profileReads, 1);
+  } finally {
+    Competition.findById = originalCompetitionFind;
+    Profile.find = originalProfileFind;
+  }
 });
 
 test('competition lifecycle derives deadline states without trusting stale labels', () => {

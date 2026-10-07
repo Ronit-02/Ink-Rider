@@ -27,7 +27,9 @@ const ShortsPage = lazy(() => import('@/features/discovery/pages/Search/ShortsTa
 const ShortSeriesDetail = lazy(() => import('@/features/discovery/pages/ShortSeriesDetail'))
 const ReadingHistoryPage = lazy(() => import('@/features/discovery/pages/ReadingHistory'))
 const MemberHub = lazy(() => import('@/features/membership/pages/MemberHub'))
+const MembershipPage = lazy(() => import('@/features/membership/pages/MembershipPage'))
 const NotFound = lazy(() => import('@/app/pages/NotFound'))
+const HelpPage = lazy(() => import('@/app/pages/HelpPage'))
 const NotificationsPage = lazy(() => import('@/features/notification/pages/NotificationsPage'))
 const StaffConsole = lazy(() => import('@/features/staff/pages/StaffConsole'))
 
@@ -69,13 +71,15 @@ export default function App() {
         <Route path="/shorts/series/:id" element={<ShortSeriesDetail />} />
         <Route path="/history"          element={<PrivateRoute><ReadingHistoryPage /></PrivateRoute>} />
         <Route path="/members"          element={<PrivateRoute><MemberHub /></PrivateRoute>} />
+        <Route path="/membership"       element={<MembershipPage />} />
         <Route path="/notifications"    element={<PrivateRoute><NotificationsPage /></PrivateRoute>} />
         <Route path="/staff"            element={<PrivateRoute><StaffConsole /></PrivateRoute>} />
 
-        {/* ── Private routes ── */}
-        <Route path="/write"           element={<PrivateRoute><WritePage /></PrivateRoute>} />
-        <Route path="/profile"         element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
-        <Route path="/settings"        element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
+        {/* ── Account and private routes ── */}
+        <Route path="/write"           element={<WritePage />} />
+        <Route path="/profile"         element={<ProfilePage />} />
+        <Route path="/settings"        element={<SettingsPage />} />
+        <Route path="/help"            element={<HelpPage />} />
 
         {/* Redirects */}
         <Route path="*"        element={<NotFound />} />

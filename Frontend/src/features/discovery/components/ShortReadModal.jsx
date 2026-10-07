@@ -1,3 +1,4 @@
+import ModalLayer from '@/shared/components/ui/ModalLayer'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Avatar from '@/shared/components/ui/Avatar'
 import BookmarkIcon from '@/shared/icons/BookmarkIcon'
@@ -8,17 +9,12 @@ import PostBody from '@/features/post/pages/PostBody'
 import CommentsSection from '@/features/post/pages/CommentsSection'
 import useFetchPost from '@/features/post/hooks/useFetchPost'
 import usePostLike from '@/features/post/hooks/usePostLike'
+import AppreciationButton from '@/features/post/components/AppreciationButton'
 import useBookmarkPost from '@/features/post/hooks/useBookmarkPost'
 import useAuth from '@/features/auth/hooks/useAuth'
 import useDialogFocus from '@/shared/hooks/useDialogFocus'
 import { PostDetailSkeleton } from '@/shared/components/ui/Skeleton'
 import useToast from '@/shared/hooks/useToast'
-
-const HeartIcon = ({ filled }) => (
-  <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-    <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-  </svg>
-)
 
 const CommentIcon = () => (
   <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -86,8 +82,8 @@ export default function ShortReadModal({ postId, onClose }) {
     comments.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' })
   }
 
-  return <div className="fixed inset-0 z-[300] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-5" role="presentation" onMouseDown={event => event.target === event.currentTarget && onClose()}>
-    <section ref={dialogRef} role="dialog" aria-modal="true" aria-busy={postQuery.isPending} aria-labelledby={post && blocks ? 'short-read-title' : 'short-read-dialog-label'} tabIndex={-1} className="flex max-h-[94dvh] w-full max-w-[440px] flex-col overflow-hidden rounded-t-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_20px_70px_rgba(0,0,0,0.24)] sm:max-h-[88dvh] sm:rounded-[16px]">
+  return <ModalLayer onDismiss={onClose} aria-busy={postQuery.isPending} aria-labelledby={post && blocks ? 'short-read-title' : 'short-read-dialog-label'} className="flex items-end justify-center p-0 sm:items-center sm:p-5">
+    <section ref={dialogRef} tabIndex={-1} className="flex max-h-[calc(var(--overlay-height)*0.94)] w-full max-w-[440px] flex-col overflow-hidden rounded-t-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_20px_70px_rgba(0,0,0,0.24)] sm:max-h-[calc(var(--overlay-height)*0.88)] sm:rounded-[16px]">
       <header className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--color-border)] px-5 py-4 sm:px-7">
         <div><p id="short-read-dialog-label" className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--color-accent)]">Short read</p><p className="mt-1 text-[11px] text-[var(--color-text-muted)]">A focused idea from the Ink Rider community</p></div>
         <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Close short read" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-alt)]">×</button>
@@ -110,12 +106,12 @@ export default function ShortReadModal({ postId, onClose }) {
         </>}
       </div>
       {post && blocks && <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3 sm:px-7">
-        <button type="button" onClick={handleLike} disabled={likeMutation.isPending} aria-label={post.isLiked ? 'Remove appreciation' : 'Appreciate this short read'} aria-pressed={post.isLiked} className={`flex h-10 items-center gap-1.5 rounded-full border border-[var(--color-border)] px-3 text-[12px] transition-colors disabled:opacity-60 ${post.isLiked ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)]' : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)]'}`}><HeartIcon filled={post.isLiked} /><span>{post.likesCount || 0}</span></button>
+        <AppreciationButton isLiked={post.isLiked} count={post.likesCount} label={post.isLiked ? 'Remove appreciation' : 'Appreciate this short read'} disabled={likeMutation.isPending} onClick={handleLike} />
         <button type="button" onClick={handleBookmark} disabled={bookmarkMutation.isPending} aria-label={post.isBookmarked ? 'Remove short read from saved articles' : 'Save this short read'} aria-pressed={post.isBookmarked} className={`flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-border)] transition-colors disabled:opacity-60 ${post.isBookmarked ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)]' : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)]'}`}><BookmarkIcon filled={post.isBookmarked} /></button>
         <button type="button" onClick={scrollToComments} aria-label={`View ${post.commentsCount || 0} comments`} className="flex h-10 items-center gap-1.5 rounded-full border border-[var(--color-border)] px-3 text-[12px] text-[var(--color-text-secondary)]"><CommentIcon /><span>{post.commentsCount || 0}</span></button>
         <button type="button" onClick={handleShare} aria-label="Copy short read link" className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)]"><ShareIcon /></button>
         {shareStatus && <span role="status" className="ml-auto text-[11px] text-[var(--color-text-muted)]">{shareStatus}</span>}
       </footer>}
     </section>
-  </div>
+  </ModalLayer>
 }

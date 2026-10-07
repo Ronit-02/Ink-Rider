@@ -55,6 +55,8 @@ Recommendation learning distinguishes viewed content from intentional interactio
 
 Discovery lists use bounded cursor pages and compact presentation DTOs. Personalized ranking reads a bounded candidate projection, then loads only the selected page's display fields; it must not hydrate or parse full article bodies for every ranking candidate.
 
+Competition detail entry author data includes the stored public profile handle, resolved through one batch profile read, so entry cards can link directly to the writer without guessing a handle from the display name.
+
 ## Product data principles
 
 Ink-Rider maintains identity, content, community, discovery, and optional member-experience records. Published content preserves its historical representation; drafts remain private to authorized people. Relationship and event records remain authoritative over derived counters, and private activity is not exposed through public discovery.

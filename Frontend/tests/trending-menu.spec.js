@@ -19,6 +19,29 @@ const story = {
   recommendationReason: 'Popular with readers following design.',
 }
 
+for (const width of [300, 320, 350, 390, 768, 1280]) {
+  test(`trending filter label stays intact at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await page.route(url => url.pathname.startsWith('/api/'), route => {
+      if (new URL(route.request().url()).pathname === '/api/auth/refresh-token') return route.fulfill({ status: 401, json: { message: 'Signed out' } })
+      return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+    })
+    await page.goto('/explore/trending?trendingTopic=science&trendingSort=latest')
+    const trigger = page.getByRole('button', { name: /Filters/ })
+    await expect(trigger).toHaveCSS('white-space', 'nowrap')
+    const bounds = await trigger.boundingBox()
+    expect(bounds.x).toBeGreaterThanOrEqual(0)
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width)
+    expect(bounds.height).toBeLessThanOrEqual(44)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await trigger.click()
+    await expect(page.getByRole('dialog', { name: 'Filter by topic' })).toBeVisible()
+    await page.getByRole('button', { name: 'Close filters' }).press('Escape')
+    await expect(trigger).toBeFocused()
+    if (width === 350) await page.screenshot({ path: 'test-results/trending-filter-mobile.png' })
+  })
+}
+
 test('article-of-the-day menu supports keyboard navigation and focus return', async ({ page }) => {
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const url = new URL(route.request().url())
@@ -90,13 +113,13 @@ test('discovery-card menu keeps nested controls safe while navigating menu items
   await trigger.click()
 
   const menu = page.getByRole('menu', { name: `Options for ${story.title}` })
-  const appreciate = menu.getByRole('menuitem', { name: 'Appreciate story' })
+  const save = menu.getByRole('menuitem', { name: 'Save story' })
   const why = menu.getByRole('menuitem', { name: 'Why you’re seeing this' })
   const hide = menu.getByRole('menuitem', { name: 'Not interested' })
   const report = menu.getByRole('menuitem', { name: 'Report story' })
-  await expect(appreciate).toBeFocused()
+  await expect(save).toBeFocused()
 
-  await appreciate.press('End')
+  await save.press('End')
   await expect(report).toBeFocused()
   await report.press('Enter')
 
@@ -111,10 +134,10 @@ test('discovery-card menu keeps nested controls safe while navigating menu items
   await expect(trigger).toBeFocused()
 
   await trigger.click()
-  await expect(appreciate).toBeFocused()
-  await appreciate.press('Home')
-  await expect(appreciate).toBeFocused()
-  await appreciate.press('ArrowUp')
+  await expect(save).toBeFocused()
+  await save.press('Home')
+  await expect(save).toBeFocused()
+  await save.press('ArrowUp')
   await expect(report).toBeFocused()
   await report.press('ArrowUp')
   await expect(hide).toBeFocused()

@@ -1,36 +1,43 @@
+import ViewportPopover from '@/shared/components/ui/ViewportPopover'
 /* eslint-disable react-hooks/set-state-in-effect -- URL navigation and changing suggestions intentionally synchronize transient search state. */
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import useAuth from '@/features/auth/hooks/useAuth'
 import Button from '@/shared/components/ui/Button'
 import Avatar from '@/shared/components/ui/Avatar'
 import { LogoIcon, SearchIcon } from '@/shared/icons'
-import { useTheme } from '../../hooks/useTheme'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import { useClickOutside } from '../../hooks/useClickOutside'
 import { useQuery } from '@tanstack/react-query'
 import { fetchNotifications } from '@/features/notification/api/notifications'
 import { searchDiscovery } from '@/features/discovery/api/search'
+import MobileSearchDialog from '@/features/discovery/components/MobileSearchDialog'
 
-const MoonIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></svg>
-const SunIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
 
 export default function Navbar() {
   const { user, avatarUrl, signIn, signUp, signOut, signOutAllDevices, loggedIn } = useAuth()
-  const { dark, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
-  const isSearchPage = location.pathname === '/search'
   const [openMenu, setOpenMenu] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const [mobileSearchOrigin, setMobileSearchOrigin] = useState(null)
   const [searchType, setSearchType] = useState('all')
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
   const notifications = useQuery({ queryKey: ['notifications'], queryFn: fetchNotifications, enabled: loggedIn, staleTime: 30000, refetchInterval: 60000, retry: false })
   const menuRef = useRef()
   const accountButtonRef = useRef()
   const accountMenuRef = useRef()
+  const suggestionsRef = useRef()
   const searchRef = useRef()
+  const searchInputRef = useRef()
+  const closingMobileSearchRef = useRef(false)
+  const closeMobileSearch = useCallback(() => {
+    closingMobileSearchRef.current = true
+    setMobileSearchOrigin(null)
+    setSearchOpen(false)
+    requestAnimationFrame(() => searchInputRef.current?.focus({ preventScroll: true }))
+  }, [])
   const searchSuggestions = useQuery({
     queryKey: ['search-suggestions', searchValue.trim(), searchType],
     queryFn: () => searchDiscovery({ query: searchValue.trim(), type: searchType, suggestions: true, limit: 6 }),
@@ -38,8 +45,8 @@ export default function Navbar() {
     staleTime: 30_000,
   })
 
-  useClickOutside(menuRef, () => setOpenMenu(false))
-  useClickOutside(searchRef, () => { setSearchOpen(false); setActiveSuggestionIndex(-1) })
+  useClickOutside(menuRef, () => setOpenMenu(false), accountMenuRef)
+  useClickOutside(searchRef, () => { setSearchOpen(false); setActiveSuggestionIndex(-1) }, suggestionsRef)
   useEscapeKey(() => {
     if (openMenu) accountButtonRef.current?.focus()
     setOpenMenu(false)
@@ -142,22 +149,34 @@ export default function Navbar() {
   return (
     <nav aria-label="Global navigation" className="navbar-shell fixed top-0 w-full z-[100] h-14 flex items-center gap-4 px-4 md:px-8 border-b border-[var(--color-border)] bg-[var(--color-bg)]"
       style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-      <Link to="/" className="flex items-center gap-2 shrink-0">
-        <span className="text-[18px] font-bold text-[var(--color-text)]">Ink Rider</span>
+      <Link to="/" aria-label="Ink Rider home" className="flex items-center gap-2 shrink-0">
+        <span className="hidden md:inline text-[18px] font-bold text-[var(--color-text)]">Ink Rider</span>
         <div className="w-9 h-9 rounded-[10px] flex items-center justify-center border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-accent)]"><LogoIcon /></div>
       </Link>
 
-      {!isSearchPage && <form ref={searchRef} onSubmit={runSearch} className="flex-1 max-w-[660px] relative hidden md:block">
-        <div className={`flex items-center gap-[10px] bg-[var(--color-surface)] border rounded-full px-[14px] min-h-[38px] focus-within:border-[var(--color-accent)] ${searchOpen ? 'border-[var(--color-accent)]' : 'border-[var(--color-border)]'}`}>
+      <form ref={searchRef} role="search" onSubmit={runSearch} className="min-w-0 flex-1 md:max-w-[660px] relative">
+        <div className={`flex flex-wrap md:flex-nowrap items-center gap-[10px] bg-[var(--color-surface)] border rounded-full px-[14px] min-h-[38px] focus-within:border-[var(--color-accent)] ${searchOpen ? 'border-[var(--color-accent)]' : 'border-[var(--color-border)]'}`}>
           <SearchIcon />
-          <input value={searchValue} onFocus={() => setSearchOpen(true)} onChange={event => { setSearchValue(event.target.value); setSearchOpen(true); setActiveSuggestionIndex(-1) }} onKeyDown={handleSearchKeyDown} placeholder="Search posts and writers…"
+          <input ref={searchInputRef} value={searchValue} onFocus={() => {
+            if (closingMobileSearchRef.current) return
+            if (window.matchMedia('(max-width: 767px)').matches) {
+              const bounds = searchRef.current.getBoundingClientRect()
+              setMobileSearchOrigin({ left: bounds.left, width: bounds.width })
+            } else setSearchOpen(true)
+          }} onClick={() => {
+            if (window.matchMedia('(max-width: 767px)').matches && !mobileSearchOrigin) {
+              closingMobileSearchRef.current = false
+              const bounds = searchRef.current.getBoundingClientRect()
+              setMobileSearchOrigin({ left: bounds.left, width: bounds.width })
+            }
+          }} onBlur={() => { closingMobileSearchRef.current = false }} onChange={event => { setSearchValue(event.target.value); setSearchOpen(true); setActiveSuggestionIndex(-1) }} onKeyDown={handleSearchKeyDown} placeholder="Search posts and writers…"
             role="combobox" aria-label="Search posts and writers" aria-autocomplete="list" aria-expanded={suggestionsVisible} aria-controls="search-suggestions" aria-activedescendant={activeSuggestionIndex >= 0 ? `search-suggestion-${activeSuggestionIndex}` : undefined} className="search-input min-w-0 flex-1 border-none bg-transparent py-[9px] text-[13px] text-[var(--color-text)] outline-none" />
-          {searchOpen && <div role="group" className="flex shrink-0 items-center gap-1" aria-label="Search result type">
+          {searchOpen && <div role="group" className="hidden md:flex shrink-0 items-center gap-1" aria-label="Search result type">
             {filters.map(filter => <button key={filter.id} type="button" onMouseDown={event => event.preventDefault()} onClick={() => { setSearchType(filter.id); setActiveSuggestionIndex(-1) }} aria-pressed={searchType === filter.id}
               className={`rounded-full border px-2 py-1 text-[10px] transition-colors ${searchType === filter.id ? 'border-[var(--color-text)] bg-[var(--color-text)] text-[var(--color-text-inverted)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-secondary)]'}`}>{filter.label}</button>)}
           </div>}
         </div>
-        {suggestionsVisible && <div id="search-suggestions" role="listbox" aria-label="Search suggestions" className="absolute left-0 right-0 top-[calc(100%+8px)] z-[200] overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]">
+        {suggestionsVisible && <ViewportPopover ref={suggestionsRef} anchorRef={searchRef} matchAnchorWidth id="search-suggestions" role="listbox" aria-label="Search suggestions" className="absolute left-0 right-0 top-[calc(100%+8px)] z-[200] overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]">
           {searchSuggestions.isPending && <p className="px-4 py-5 text-[12px] text-[var(--color-text-muted)]">Searching…</p>}
           {searchSuggestions.isError && <p className="px-4 py-5 text-[12px] text-[var(--color-danger)]">Suggestions are unavailable. Press Enter to search.</p>}
           {!searchSuggestions.isPending && !searchSuggestions.isError && suggestionItems.length === 0 && <p className="px-4 py-5 text-[12px] text-[var(--color-text-muted)]">No matching articles or authors yet.</p>}
@@ -173,34 +192,27 @@ export default function Navbar() {
             </span>
             <span className="shrink-0 text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">{kind === 'post' ? 'Article' : 'Author'}</span>
           </button>)}
-        </div>}
-      </form>}
+        </ViewportPopover>}
+      </form>
 
-      <div className="flex-1" />
-      <div className="flex items-center gap-2 shrink-0">
-        {!isSearchPage && <Link to="/search" aria-label="Open search"
-          className="navbar-mobile-search md:hidden w-10 h-10 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-text-secondary)] flex items-center justify-center"><SearchIcon /></Link>
-        }
-        <button type="button" onClick={toggleTheme} aria-label={dark ? 'Use light theme' : 'Use dark theme'}
-          className="w-10 h-10 md:w-8 md:h-8 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-text-secondary)] flex items-center justify-center">
-          {dark ? <SunIcon /> : <MoonIcon />}
-        </button>
-
+      <div className="hidden md:flex items-center gap-2 shrink-0 ml-auto">
+        <Link to="/membership" style={{ color: 'var(--color-text-inverted)' }} className="inline-flex min-h-9 items-center justify-center rounded-full bg-[var(--color-accent)] px-[18px] text-[13px] font-medium whitespace-nowrap">Join</Link>
         {loggedIn && <Link to="/notifications" aria-label={`${notifications.data?.meta.unreadCount || 0} unread notifications`} className="relative w-10 h-10 md:w-8 md:h-8 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-text-secondary)] flex items-center justify-center"><span aria-hidden="true">♢</span>{notifications.data?.meta.unreadCount > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[var(--color-accent)] text-[9px] text-white flex items-center justify-center">{Math.min(99, notifications.data.meta.unreadCount)}</span>}</Link>}
         {loggedIn ? <div ref={menuRef} className="relative">
           <button type="button" ref={accountButtonRef} onClick={() => setOpenMenu(value => !value)} aria-label="Open account menu" aria-haspopup="menu" aria-expanded={openMenu} aria-controls="account-menu"
             className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-transparent p-0 text-[var(--color-text-inverted)] font-semibold text-[12px] uppercase [&>img]:border-0 md:h-8 md:w-8">
             <Avatar src={avatarUrl} name={user} size={28} />
           </button>
-          {openMenu && <div ref={accountMenuRef} id="account-menu" role="menu" tabIndex={-1} aria-label="Account" onKeyDown={handleAccountMenuKeyDown} className="absolute top-[calc(100%+6px)] right-0 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[10px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] p-1 flex flex-col gap-0.5 min-w-[170px] z-[200]">
-            {[{ label: 'View Profile', path: '/profile' }, { label: 'Saved', path: '/saved' }, { label: 'Settings', path: '/settings' }].map(item =>
+          {openMenu && <ViewportPopover ref={accountMenuRef} anchorRef={accountButtonRef} onAnchorHidden={() => setOpenMenu(false)} id="account-menu" role="menu" tabIndex={-1} aria-label="Account" onKeyDown={handleAccountMenuKeyDown} className="absolute top-[calc(100%+6px)] right-0 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[10px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] p-1 flex flex-col gap-0.5 min-w-[170px] z-[200]">
+            {[{ label: 'View Profile', path: '/profile' }, { label: 'Saved', path: '/saved' }].map(item =>
               <Link key={item.label} role="menuitem" to={item.path} onClick={() => setOpenMenu(false)} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus:bg-[var(--color-bg-alt)] focus:outline-none">{item.label}</Link>)}
             <div className="h-px bg-[var(--color-border)] my-1" />
             <button type="button" role="menuitem" onClick={() => { setOpenMenu(false); signOut() }} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus:bg-[var(--color-bg-alt)] focus:outline-none">Sign Out</button>
             <button type="button" role="menuitem" onClick={() => { setOpenMenu(false); signOutAllDevices() }} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus:bg-[var(--color-bg-alt)] focus:outline-none">Sign Out all Devices</button>
-          </div>}
+          </ViewportPopover>}
         </div> : <><Button className="navbar-auth-action" variant="secondary" onClick={signIn}>Sign In</Button><Button className="navbar-auth-action" variant="primary" onClick={signUp}>Sign Up</Button></>}
       </div>
+      {mobileSearchOrigin && <MobileSearchDialog initialQuery={searchValue} origin={mobileSearchOrigin} onClose={closeMobileSearch} />}
     </nav>
   )
 }

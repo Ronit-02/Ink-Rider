@@ -2,12 +2,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { HomeIcon, PenIcon, ChevronDown, ExploreArrow, CollectionIcon, BookmarkIcon, MembershipIcon } from '@/shared/icons'
+import { HomeIcon, PenIcon, ChevronDown, ExploreArrow, CollectionIcon, ShortsIcon, MembershipIcon, SettingsIcon } from '@/shared/icons'
+import { useSelector } from 'react-redux'
 
 const LINKS = [
   { to: '/',                 label: 'Home',        icon: <HomeIcon /> },
   { 
-    to: '/explore/trending', label: 'Explore',     icon: <ExploreArrow />, 
+    to: '/explore/trending', label: 'Explore',     icon: <ExploreArrow color="currentColor" />,
     children: [
       { id: 'trending',     label: 'Trending',     path: '/explore/trending' },
       { id: 'questions',    label: 'Questions',    path: '/explore/questions' },
@@ -15,7 +16,7 @@ const LINKS = [
   ]},
   { to: '/write',            label: 'Write',       icon: <PenIcon /> },
   { to: '/collections',      label: 'Collections', icon: <CollectionIcon /> },
-  { to: '/shorts',           label: 'Short Reads', icon: <BookmarkIcon /> },
+  { to: '/shorts',           label: 'Short Reads', icon: <ShortsIcon /> },
   { to: '/members',          label: 'Member Hub', icon: <MembershipIcon /> },
 ]
 
@@ -92,6 +93,7 @@ function readStoredWidth() {
 
 export default function Sidebar() {
   const { pathname } = useLocation()
+  const loggedIn = useSelector(state => state.auth.isReady && Boolean(state.auth.user))
   const reducedMotion = useReducedMotion()
   const [width, setWidth] = useState(readStoredWidth)
   const startX = useRef(0) 
@@ -141,14 +143,20 @@ export default function Sidebar() {
       className="sidebar-desktop shrink-0 h-full overflow-y-auto bg-(--color-bg) border-r border-(--color-border) py-6 relative"
       style={{ width }}
     >
-      <nav aria-label="Desktop primary navigation" className="flex flex-col">
-        {LINKS.map(item =>
+      <nav aria-label="Desktop primary navigation" className="flex min-h-full flex-col">
+        <div>
+        {LINKS.filter(item => item.to !== '/write' || loggedIn).map(item =>
           item.children ? (
             <ExploreSection key={item.to} item={item} pathname={pathname} reducedMotion={reducedMotion} />
           ) : (
             <NavLink key={item.to} to={item.to} label={item.label} icon={item.icon}active={pathname === item.to} />
           )
         )}
+        </div>
+        <div className="mt-auto border-t border-(--color-border) pt-3">
+          <NavLink to="/help" label="Help" icon={<span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-current text-[11px]">?</span>} active={pathname === '/help'} />
+          <NavLink to="/settings" label="Settings" icon={<SettingsIcon />} active={pathname === '/settings'} />
+        </div>
       </nav>
 
       {/* Drag handle */}

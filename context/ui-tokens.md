@@ -1,6 +1,6 @@
 # Ink-Rider UI tokens
 
-Last reviewed: 2026-09-08
+Last reviewed: 2026-10-06
 
 ## Token principles
 
@@ -39,18 +39,20 @@ These values preserve the current warm editorial direction while making states e
 
 ### Dark theme
 
+The background uses Reddit's classic dark grey (`#1A1A1B`) rather than the previous near-black. Secondary, grouped, and hover surfaces retain their relative brightness steps. Runtime names in `Frontend/src/styles/global.css` are `--color-bg`, `--color-bg-alt`, and `--color-text-inverted` for canvas, subtle canvas, and inverse text respectively.
+
 | Token | Value | Use |
 |---|---:|---|
-| `--color-canvas` | `#111110` | Main page background |
-| `--color-canvas-subtle` | `#1A1A18` | Secondary sections |
-| `--color-surface` | `#161614` | Grouped surfaces |
-| `--color-surface-hover` | `#1F1F1D` | Hover surface |
+| `--color-canvas` | `#1A1A1B` | Main page background |
+| `--color-canvas-subtle` | `#232324` | Secondary sections |
+| `--color-surface` | `#1F1F20` | Grouped surfaces |
+| `--color-surface-hover` | `#282829` | Hover surface |
 | `--color-border` | `#302F2B` | Standard border |
 | `--color-border-subtle` | `#24231F` | Low-emphasis separators |
 | `--color-text` | `#EEECE8` | Primary content |
 | `--color-text-secondary` | `#B1AAA3` | Supporting content |
 | `--color-text-muted` | `#8D867F` | Metadata |
-| `--color-text-inverse` | `#111110` | Text on light action surfaces |
+| `--color-text-inverse` | `#1A1A1B` | Text on light action surfaces |
 | `--color-action` | `#EEECE8` | Primary action and selected state |
 | `--color-action-hover` | `#D0CEC9` | Primary action hover |
 | `--color-focus` | `#D39A68` | Focus ring |

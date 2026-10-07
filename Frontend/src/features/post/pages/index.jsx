@@ -1,7 +1,7 @@
-/* eslint-disable jsx-a11y/interactive-supports-focus -- The menu container delegates focus to its menuitem children. */
+import ViewportPopover from '@/shared/components/ui/ViewportPopover'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { BackIcon, BookmarkIcon, ShareIcon, LinkIcon, XIcon } from '@/shared/icons'
+import { BookmarkIcon, ShareIcon, LinkIcon, XIcon } from '@/shared/icons'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
 import Tag from '@/shared/components/ui/Tag'
 import Divider from '@/shared/components/ui/Divider'
@@ -16,6 +16,7 @@ import { AIStickyButtons, AccessPanel, SummaryPanel, ReadAloudPanel } from './AI
 import useFetchPost from '../hooks/useFetchPost'
 import useBookmarkPost from '../hooks/useBookmarkPost'
 import usePostLike from '../hooks/usePostLike'
+import AppreciationButton from '@/features/post/components/AppreciationButton'
 import useReportPost from '../hooks/useReportPost'
 import useReadingProgress from '../hooks/useProgressBar'
 import useAuth from '@/features/auth/hooks/useAuth'
@@ -26,12 +27,6 @@ import PageFrame from '@/shared/components/layout/PageFrame'
 import ImageBox from '@/shared/components/ui/ImageBox'
 import useToast from '@/shared/hooks/useToast'
 import { useEscapeKey } from '@/shared/hooks/useEscapeKey'
-
-const HeartIcon = ({ filled }) => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-    <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-  </svg>
-)
 
 const FlagIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -61,6 +56,7 @@ export default function PostPage() {
   const [showShare,   setShowShare]   = useState(false)
   const [showReport,  setShowReport]  = useState(false)
   const [shortReadId, setShortReadId] = useState(null)
+  const [isWideScreen, setIsWideScreen] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
   const hasSidePanel = showSummary || readAloud;
 
   // Hooks
@@ -81,6 +77,13 @@ export default function PostPage() {
   }
 
   // Page Effects
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1024px)')
+    const update = () => setIsWideScreen(media.matches)
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
   // Close share menu on outside click
   useEffect(() => {
     if (!showShare) return
@@ -169,6 +172,16 @@ export default function PostPage() {
     otherSetter(false)
   }
 
+  const readingTools = <AIStickyButtons
+    showSummary={showSummary} readAloud={readAloud}
+    onSummary={() => openPremiumPanel(setShowSummary, setReadAloud)}
+    onAudio={() => openPremiumPanel(setReadAloud, setShowSummary)}
+  />
+  const readingPanel = <>
+    {showSummary && (capabilities.has('article_summary') ? <SummaryPanel postId={postId} /> : <AccessPanel capability="article_summary" />)}
+    {readAloud && (capabilities.has('read_aloud') ? <ReadAloudPanel text={articleText} /> : <AccessPanel capability="read_aloud" />)}
+  </>
+
   return (
     <div ref={pageRef} className="relative bg-(--color-bg) text-(--color-text) min-h-screen">
       <PostMetadata post={postData} blocks={postBlocks} />
@@ -190,14 +203,7 @@ export default function PostPage() {
       <PageFrame className="flex flex-col gap-8 lg:flex-row">
 
         {/* ── Article column ── */}
-        <div className={`order-2 min-w-0 w-full flex-1 lg:order-none ${hasSidePanel ? '' : 'max-w-[760px]'}`}>
-
-          {/* Back button */}
-          <button type="button" onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-1.5 bg-(--color-bg-alt) border border-(--color-border) text-(--color-text-secondary) text-[13px] cursor-pointer mb-7 px-3.5 py-1.5 rounded-full transition-all hover:bg-(--color-border) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">
-            <BackIcon /> 
-            Back
-          </button>
+        <div className={`min-w-0 w-full flex-1 ${hasSidePanel ? '' : 'max-w-[760px]'}`}>
 
           {/* Tags */}
           {postData.tags?.length > 0 && (
@@ -216,22 +222,14 @@ export default function PostPage() {
           </h1>
 
           {/* Author row + actions */}
-          <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-            <AuthorMeta author={postData.author} readTime={postData?.readTime || '5 mins'} date={postData.createdAt} size="md" />
+          <div className="flex flex-col items-start justify-between mb-6 gap-4 lg:flex-row lg:items-center lg:flex-wrap">
+            <div className="w-full min-w-0 lg:w-auto lg:flex-1">
+              <AuthorMeta author={postData.author} readTime={postData?.readTime || '5 mins'} date={postData.createdAt} size="md" stacked={!isWideScreen} />
+            </div>
 
             <div className="flex gap-2 shrink-0">
               
-              <button
-                type="button"
-                onClick={handleLike}
-                disabled={likeMutation.isPending}
-                aria-label={postData.isLiked ? 'Remove appreciation' : 'Appreciate this article'}
-                aria-pressed={postData.isLiked}
-                className={`h-10 sm:h-9 px-3 rounded-full border border-(--color-border) flex items-center gap-1.5 justify-center cursor-pointer transition-all duration-150
-                  disabled:opacity-60 ${postData.isLiked ? 'bg-(--color-accent) text-(--color-text-inverted)' : 'bg-(--color-surface) text-(--color-text-secondary)'}`}>
-                <HeartIcon filled={postData.isLiked} />
-                <span className="text-[12px] tabular-nums">{postData.likesCount || 0}</span>
-              </button>
+              <AppreciationButton isLiked={postData.isLiked} count={postData.likesCount} label={postData.isLiked ? 'Remove appreciation' : 'Appreciate this article'} disabled={likeMutation.isPending} onClick={handleLike} />
 
               <button type="button" onClick={handleBookmark}
                 disabled={BookmarkMutation.isPending}
@@ -252,7 +250,7 @@ export default function PostPage() {
                   className="w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-(--color-border) bg-(--color-surface) text-(--color-text-secondary) flex items-center justify-center cursor-pointer transition-all">
                   <ShareIcon />
                 </button>
-                {showShare && <ShareDropdown onClose={closeShareMenu} />}
+                {showShare && <ShareDropdown anchorRef={shareTriggerRef} onClose={closeShareMenu} />}
               </div>
 
               <button
@@ -267,6 +265,11 @@ export default function PostPage() {
             </div>
             
           </div>
+
+          {!isWideScreen && <div className="mb-6">
+            {readingTools}
+            {hasSidePanel && readingPanel}
+          </div>}
 
           <Divider className="mb-6" />
 
@@ -304,19 +307,12 @@ export default function PostPage() {
         </div>
 
         {/* ── AI sticky buttons ── */}
-        <div className="order-1 w-full shrink-0 lg:order-none lg:w-13">
-          <AIStickyButtons
-            showSummary={showSummary} readAloud={readAloud}
-            onSummary={() => openPremiumPanel(setShowSummary, setReadAloud)}
-            onAudio={() => openPremiumPanel(setReadAloud, setShowSummary)}
-          />
-        </div>
+        {isWideScreen && <div className="w-13 shrink-0">{readingTools}</div>}
 
         {/* ── Side AI panels ── */}
-        {hasSidePanel && (
-          <div className="order-3 h-fit w-full shrink-0 flex flex-col gap-3 lg:order-none lg:sticky lg:top-20 lg:w-90">
-            {showSummary && (capabilities.has('article_summary') ? <SummaryPanel postId={postId} /> : <AccessPanel capability="article_summary" />)}
-            {readAloud && (capabilities.has('read_aloud') ? <ReadAloudPanel text={articleText} /> : <AccessPanel capability="read_aloud" />)}
+        {isWideScreen && hasSidePanel && (
+          <div className="h-fit shrink-0 flex flex-col gap-3 sticky top-20 w-90">
+            {readingPanel}
           </div>
         )}
       </PageFrame>
@@ -466,7 +462,7 @@ function ReportPanel({ mutation, onClose }) {
   )
 }
 
-function ShareDropdown({ onClose }) {
+function ShareDropdown({ onClose, anchorRef }) {
   const url = window.location.href
   const { notify } = useToast()
   const menuRef = useRef(null)
@@ -517,13 +513,13 @@ function ShareDropdown({ onClose }) {
   ]
 
   return (
-    <div ref={menuRef} id="article-share-menu" role="menu" aria-label="Share article" onKeyDown={handleKeyDown} className="absolute top-full right-0 mt-1.5 bg-(--color-surface) border border-(--color-border) rounded-[14px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden z-50 min-w-45">
+    <ViewportPopover ref={menuRef} anchorRef={anchorRef} onAnchorHidden={() => onClose()} id="article-share-menu" role="menu" aria-label="Share article" onKeyDown={handleKeyDown} className="absolute top-full right-0 mt-1.5 bg-(--color-surface) border border-(--color-border) rounded-[14px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden z-50 min-w-45">
       {SHARE_MENU.map(item => (
         <button type="button" role="menuitem" key={item.label} onClick={item.fn}
           className="flex items-center gap-2.5 w-full px-3.5 py-2.5 border-none bg-transparent text-(--color-text) text-[13px] cursor-pointer text-left hover:bg-(--color-bg-alt) focus:bg-(--color-bg-alt) focus:outline-none transition-colors">
           {item.icon} {item.label}
         </button>
       ))}
-    </div>
+    </ViewportPopover>
   )
 }

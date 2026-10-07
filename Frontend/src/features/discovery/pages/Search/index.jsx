@@ -1,8 +1,6 @@
-/* eslint-disable react-hooks/set-state-in-effect -- The URL query intentionally seeds the editable search input after navigation. */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Avatar from '@/shared/components/ui/Avatar'
-import { SearchIcon } from '@/shared/icons'
 import FilterPopover from '@/shared/components/ui/FilterPopover'
 import DiscoveryPostCard from '../../components/DiscoveryPostCard'
 import ShortCard from '../../components/ShortCard'
@@ -71,7 +69,6 @@ function WriterResult({ writer }) {
 export default function SearchPage() {
   const [params, setParams] = useSearchParams()
   const query = params.get('q') || ''
-  const [input, setInput] = useState(query)
   const [shortReadId, setShortReadId] = useState(null)
   const requestedTab = params.get('type')
   const activeTab = TABS.some(tab => tab.id === requestedTab) ? requestedTab : 'posts'
@@ -81,23 +78,11 @@ export default function SearchPage() {
   const result = useDiscoverySearch(query, activeTab, { topic, time, sort })
   const items = result.data?.data?.[activeTab] || []
 
-  useEffect(() => setInput(query), [query])
-
   const setActiveTab = nextTab => {
     const next = new URLSearchParams(params)
     if (nextTab === 'posts') next.delete('type')
     else next.set('type', nextTab)
     setParams(next)
-  }
-
-  const submit = event => {
-    event.preventDefault()
-    const nextQuery = input.trim()
-    if (nextQuery.length >= 1) {
-      const next = new URLSearchParams(params)
-      next.set('q', nextQuery)
-      setParams(next)
-    }
   }
 
   const updateFilter = (key, value, defaultValue) => {
@@ -133,17 +118,7 @@ export default function SearchPage() {
   return (
     <main className="max-w-[920px] mx-auto px-5 md:px-8 pt-10 md:pt-12 pb-24">
       <header className="mb-7">
-        <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row">
-          <label htmlFor="discovery-search" className="sr-only">Search posts and writers</label>
-          <div className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 transition-colors focus-within:border-[var(--color-focus)] focus-within:ring-2 focus-within:ring-[var(--color-focus)]/15">
-            <SearchIcon />
-            <input id="discovery-search" value={input} onChange={event => setInput(event.target.value)} placeholder="Search articles, writers, or topics"
-              className="search-input min-w-0 flex-1 border-none bg-transparent text-[14px] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-muted)]" />
-          </div>
-          <button type="submit" disabled={input.trim().length < 1}
-            className="h-12 w-full shrink-0 rounded-[14px] bg-[var(--color-accent)] px-5 text-[13px] font-semibold text-[var(--color-text-inverted)] transition-transform hover:opacity-90 active:translate-y-px disabled:opacity-40 sm:w-auto">Search</button>
-        </form>
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-[21px] font-semibold tracking-[-0.025em] text-[var(--color-text)]">Search results</h1>
             {query.length >= 1 && <p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">Matching “{query}” across Ink Rider</p>}
@@ -163,7 +138,7 @@ export default function SearchPage() {
       </div>
 
       <div id="search-results-panel" role="tabpanel" aria-labelledby={`search-tab-${activeTab}`}>
-      {query.trim().length < 1 && <SearchState title="What are you curious about?" detail="Enter at least one character to search published stories and writer profiles." />}
+      {query.trim().length < 1 && <SearchState title="What are you curious about?" detail="Use the search bar above to find published stories and writer profiles." />}
       {result.isPending && query.trim().length >= 1 && (activeTab === 'writers' ? <ListSkeleton count={4} label="Loading writer results" /> : <PostFeedSkeleton count={3} label={`Loading ${activeTab === 'shorts' ? 'short-read' : 'article'} search results`} />)}
       {result.isError && <SearchState isError title="Search is unavailable" detail="Please check your connection and try again." onRetry={() => result.refetch()} />}
       {!result.isPending && !result.isError && query.trim().length >= 1 && items.length === 0 && (

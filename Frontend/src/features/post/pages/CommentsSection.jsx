@@ -29,7 +29,7 @@ function Comment({ comment, compact = false }) {
               {formatCommentDate(comment.createdAt)}
             </time>
           </div>
-          <p className={compact ? 'text-[12px] text-[var(--color-text)] leading-[1.6] whitespace-pre-wrap' : 'text-[13px] text-[var(--color-text)] leading-[1.6] whitespace-pre-wrap'}>
+          <p className={compact ? 'text-[12px] text-[var(--color-text)] leading-[1.6] break-words whitespace-pre-wrap' : 'text-[13px] text-[var(--color-text)] leading-[1.6] break-words whitespace-pre-wrap'}>
             {comment.content}
           </p>
         </div>
@@ -94,7 +94,7 @@ export default function CommentsSection({ postId, initialCount = 0, compact = fa
         {loggedIn ? (
           <div className="flex gap-3 items-start">
             <Avatar name={user || 'You'} size={compact ? 30 : 36} />
-            <form className="flex-1" onSubmit={handleSubmit}>
+            <form className="min-w-0 flex-1" onSubmit={handleSubmit}>
               <label htmlFor={commentInputId} className="mb-2 block text-[12px] font-semibold text-[var(--color-text)]">Add a comment</label>
               <textarea
                 id={commentInputId}
@@ -108,7 +108,7 @@ export default function CommentsSection({ postId, initialCount = 0, compact = fa
                   ${compact ? 'min-h-[56px]' : 'min-h-[80px]'}
                   leading-[1.6] resize-none font-[inherit] outline-none`}
               />
-              <div className="flex items-center justify-between gap-3 mt-[10px]">
+              <div className="flex items-center justify-between flex-wrap gap-3 mt-[10px]">
                 <span id={commentCountId} className="text-[11px] text-[var(--color-text-muted)]">{text.length}/1000</span>
                 {text.trim() && (
                   <div className="flex justify-end gap-2">
