@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, jsx-a11y/no-noninteractive-element-to-interactive-role -- Profile data initializes the edit draft and the tab container owns tab semantics. */
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -94,14 +95,14 @@ function MemberProfile({ accountActions }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
-  const profile = useQuery({ queryKey: ['me', 'profile'], queryFn: fetchMyProfile })
-  const posts = useQuery({ queryKey: ['me', 'posts'], queryFn: fetchMyPosts })
-  const bookmarks = useQuery({ queryKey: ['me', 'bookmarks'], queryFn: fetchBookmarks, enabled: tab === 'bookmarks' })
-  const drafts = useQuery({ queryKey: ['me', 'drafts'], queryFn: fetchDrafts, enabled: tab === 'drafts' })
-  const history = useReadingHistory()
+  const profile = retainRetryView(useQuery({ queryKey: ['me', 'profile'], queryFn: fetchMyProfile }))
+  const posts = retainRetryView(useQuery({ queryKey: ['me', 'posts'], queryFn: fetchMyPosts }))
+  const bookmarks = retainRetryView(useQuery({ queryKey: ['me', 'bookmarks'], queryFn: fetchBookmarks, enabled: tab === 'bookmarks' }))
+  const drafts = retainRetryView(useQuery({ queryKey: ['me', 'drafts'], queryFn: fetchDrafts, enabled: tab === 'drafts' }))
+  const history = retainRetryView(useReadingHistory())
   const entitlements = useEntitlements(true)
   const canViewAnalytics = entitlements.data?.capabilities?.includes('writer_analytics')
-  const analytics = useQuery({ queryKey: ['me', 'analytics'], queryFn: fetchWriterAnalytics, enabled: tab === 'analytics' && canViewAnalytics })
+  const analytics = retainRetryView(useQuery({ queryKey: ['me', 'analytics'], queryFn: fetchWriterAnalytics, enabled: tab === 'analytics' && canViewAnalytics }))
   const updateProfile = useMutation({
     mutationFn: updateMyProfile,
     onSuccess: () => {

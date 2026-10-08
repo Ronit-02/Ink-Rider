@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import ModalLayer from '@/shared/components/ui/ModalLayer'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -31,7 +32,7 @@ export default function ShortReadModal({ postId, onClose }) {
   const [shareOpen, setShareOpen] = useState(false)
   const shareTriggerRef = useRef(null)
   const { loggedIn, signIn, user } = useAuth()
-  const postQuery = useFetchPost(postId)
+  const postQuery = retainRetryView(useFetchPost(postId))
   const likeMutation = usePostLike(postId)
   const bookmarkMutation = useBookmarkPost(postId)
   const post = postQuery.data

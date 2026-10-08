@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import useOverlayViewport from '@/shared/hooks/useOverlayViewport'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -37,21 +38,21 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
   const [query, setQuery] = useState(initialQuery.trim())
   const [activeIndex, setActiveIndex] = useState(-1)
   const listId = useId()
-  const popular = useQuery<PopularResponse>({
+  const popular = retainRetryView(useQuery<PopularResponse>({
     queryKey: ['mobile-search-popular-stories'],
     queryFn: () => fetchDiscoveryFeed({ mode: 'popular', sort: 'popular', cursor: null }),
     enabled: !input.trim(),
     staleTime: 60_000,
     retry: false,
-  })
+  }))
   const trendingSearches = [...new Set((popular.data?.data || []).map(post => post.title))].slice(0, 4)
-  const result = useQuery<SearchResponse>({
+  const result = retainRetryView(useQuery<SearchResponse>({
     queryKey: ['search-suggestions', query, 'all'],
     queryFn: () => searchDiscovery({ query, type: 'all', suggestions: true, limit: 6 }),
     enabled: query.length > 0,
     staleTime: 30_000,
     retry: false,
-  })
+  }))
   const waiting = input.trim() !== query
   const items: Suggestion[] = waiting ? [] : [
     ...(result.data?.data.posts || []).map(item => ({ kind: 'post' as const, item })),

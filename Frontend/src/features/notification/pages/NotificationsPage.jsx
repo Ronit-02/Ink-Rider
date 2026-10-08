@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import useToast from '@/shared/hooks/useToast'
@@ -10,7 +11,7 @@ export default function NotificationsPage() {
   const navigate = useNavigate()
   const { notify } = useToast()
   const queryClient = useQueryClient()
-  const notifications = useQuery({ queryKey: ['notifications'], queryFn: fetchNotifications, refetchInterval: 60000, retry: false })
+  const notifications = retainRetryView(useQuery({ queryKey: ['notifications'], queryFn: fetchNotifications, refetchInterval: 60000, retry: false }))
   const markOne = useMutation({ mutationFn: markNotificationRead, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }), onError: () => notify('The notification could not be marked as read.', { tone: 'error' }) })
   const markAll = useMutation({ mutationFn: markAllNotificationsRead, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['notifications'] }); notify('All notifications marked as read.') }, onError: () => notify('Notifications could not be marked as read.', { tone: 'error' }) })
   const openNotification = async (event, item) => {

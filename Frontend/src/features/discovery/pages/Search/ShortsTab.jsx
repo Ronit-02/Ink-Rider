@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import ModalLayer from '@/shared/components/ui/ModalLayer'
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -43,7 +44,7 @@ export default function ShortsTab() {
   const requestedSort = params.get('shortSort')
   const topic = SHORT_FILTERS.some(option => option.id === requestedTopic) ? requestedTopic : 'all'
   const sort = ['latest', 'popular'].includes(requestedSort) ? requestedSort : 'latest'
-  const query = useShorts(sort)
+  const query = retainRetryView(useShorts(sort))
   const shorts = query.data?.pages.flatMap(page => page.data) || []
   const filteredShorts = topic === 'all' ? shorts : shorts.filter(post => (post.tags || []).some(tag => tag.toLowerCase() === topic))
   const series = seriesQuery.data?.pages.flatMap(page => page.data) || []

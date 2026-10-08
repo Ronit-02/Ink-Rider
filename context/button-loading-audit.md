@@ -81,6 +81,8 @@ The final scan has 214 declarations (111 native buttons, 100 shared Button usage
 
 All remaining controls perform local selection/editing, navigation, disclosure/dismissal, modal opening, browser speech playback, or full-page reload. Search/category/tab selections retain immediate selection and their existing result loading UI. Legacy ArticleCard/FeaturedCard/HorizontalCard bookmarks only toggle local state and have no pending request. Background editor autosave and page skeletons retain their existing independent status.
 
+Retry views use a small presentation helper, retainRetryView, to stay mounted while a previously failed no-data query refetches. The helper preserves query/cache data and request behavior, leaves initial loading skeletons intact, and keeps the muted Retry control visible until success or failure.
+
 Card action menus stay visible while save/appreciation is pending, close after success, and remain usable after failure. Desktop and mobile sign-out controls stay visible during the request; successful logout follows existing navigation. Collection Save retains the bookmark icon, preserves confirmed state on failure, and awaits the existing collection refresh. Other existing optimistic updates remain intact.
 
 Google Identity owns its injected iframe/button styling. The app marks the wrapper busy/inert and guards repeated credential exchanges; it does not replace or restyle Google's internal button. Live Google, billing, email delivery, and database writes were not exercised. Share on X opens a browser window synchronously and has no asynchronous completion promise.
@@ -89,7 +91,7 @@ Detailed per-button inventory is generated locally under Frontend/node_modules/.
 
 ## Files changed for loading behavior
 
-Shared: Frontend/src/styles/global.css; Frontend/src/shared/components/ui/Button.jsx; Frontend/src/shared/components/ui/ShareMenu.tsx; Frontend/src/shared/components/layout/Navbar.jsx; Frontend/src/features/post/components/AppreciationButton.tsx.
+Shared: Frontend/src/shared/utils/retainRetryView.js; Frontend/src/styles/global.css; Frontend/src/shared/components/ui/Button.jsx; Frontend/src/shared/components/ui/ShareMenu.tsx; Frontend/src/shared/components/layout/Navbar.jsx; Frontend/src/features/post/components/AppreciationButton.tsx.
 
 Authentication: Frontend/src/features/auth/hooks/useAuth.jsx; Frontend/src/features/auth/pages/Login.jsx.
 

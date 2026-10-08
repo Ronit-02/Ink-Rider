@@ -46,7 +46,7 @@ async function mockApi(page, name, state = 'loaded') {
 }
 
 async function openSurface(page, name, url, heading) {
-  await page.goto(url)
+  await page.goto(url, { waitUntil: 'domcontentloaded' })
   if (name === 'verification') {
     await page.getByLabel('Email', { exact: true }).fill('reader@example.test')
     await page.getByLabel('Password', { exact: true }).fill('fixture-value')
@@ -84,7 +84,7 @@ for (const width of [320, 1280]) for (const theme of ['light', 'dark']) {
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
     for (const [name, url, heading] of surfaces) {
-      await page.unrouteAll({ behavior: 'wait' })
+      await page.unrouteAll({ behavior: 'ignoreErrors' })
       await mockApi(page, name)
       await openSurface(page, name, url, heading)
       const back = page.getByRole('button', { name: /^(Back|Back to previous step)$/ })
@@ -120,9 +120,9 @@ for (const state of ['loading', 'missing', 'error']) {
     test.setTimeout(120_000)
     await page.setViewportSize({ width: 320, height: 560 })
     for (const [name, url] of surfaces.slice(0, 6)) {
-      await page.unrouteAll({ behavior: 'wait' })
+      await page.unrouteAll({ behavior: 'ignoreErrors' })
       await mockApi(page, name, state)
-      await page.goto(url)
+      await page.goto(url, { waitUntil: 'domcontentloaded' })
       await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible()
       if (state === 'loading') await expect(page.getByRole('status').first()).toBeVisible()
       else await expect(page.getByRole('alert').first()).toBeVisible()
@@ -133,12 +133,35 @@ for (const state of ['loading', 'missing', 'error']) {
   })
 }
 
+test('final onboarding step keeps Back clear of Skip and Get Started', async ({ page }) => {
+  for (const width of [320, 1280]) for (const theme of ['light', 'dark']) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript(value => localStorage.setItem('ink-theme', value), theme)
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
+    await mockApi(page, 'onboarding')
+    await openSurface(page, 'onboarding', '/onboarding', 'Find your first writers')
+    await page.getByRole('button', { name: 'Next →', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Discover features' })).toBeVisible()
+    const back = page.getByRole('button', { name: 'Back to previous step' })
+    await back.scrollIntoViewIfNeeded()
+    expect((await inspectBack(page)).covered).toBe(false)
+    const b = await back.boundingBox()
+    const skip = await page.getByRole('button', { name: 'Skip', exact: true }).boundingBox()
+    expect(b.x + b.width).toBeLessThanOrEqual(skip.x)
+    const output = path.resolve('node_modules/.cache/back-layout-audit/after', `${width}-${theme}`)
+    await fs.mkdir(output, { recursive: true })
+    await page.screenshot({ path: path.join(output, 'onboarding-final.png') })
+    await back.click()
+    await expect(page.getByRole('heading', { name: 'Find your first writers' })).toBeVisible()
+  }
+})
+
 test('Back remains reachable on short forms and aligned through responsive breakpoints', async ({ page }) => {
   test.setTimeout(180_000)
   for (const width of [390, 768, 1024, 1920]) {
     await page.setViewportSize({ width, height: 700 })
     for (const [name, url, heading] of surfaces.slice(0, 11)) {
-      await page.unrouteAll({ behavior: 'wait' })
+      await page.unrouteAll({ behavior: 'ignoreErrors' })
       await mockApi(page, name)
       await openSurface(page, name, url, heading)
       const result = await inspectBack(page)
@@ -149,7 +172,7 @@ test('Back remains reachable on short forms and aligned through responsive break
   }
   await page.setViewportSize({ width: 320, height: 360 })
   for (const [name, url, heading] of surfaces.slice(11)) {
-    await page.unrouteAll({ behavior: 'wait' })
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
     await mockApi(page, name)
     await openSurface(page, name, url, heading)
     const back = page.getByRole('button', { name: /^(Back|Back to previous step)$/ })

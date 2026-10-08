@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Button from '@/shared/components/ui/Button'
@@ -23,10 +24,10 @@ export default function MemberHub() {
   const [workshopForm, setWorkshopForm] = useState(emptyWorkshop)
   const entitlements = useEntitlements(true)
   const capabilities = new Set(entitlements.data?.capabilities || [])
-  const updates = useQuery({ queryKey: ['creator-updates'], queryFn: fetchCreatorUpdates, enabled: capabilities.has('behind_scenes') })
-  const earlyAccess = useQuery({ queryKey: ['early-access'], queryFn: fetchEarlyAccess, enabled: capabilities.has('early_access') })
-  const workshops = useQuery({ queryKey: ['workshops'], queryFn: fetchWorkshops })
-  const requests = useQuery({ queryKey: ['creator-requests', 'received'], queryFn: fetchReceivedRequests, enabled: section === 'studio' })
+  const updates = retainRetryView(useQuery({ queryKey: ['creator-updates'], queryFn: fetchCreatorUpdates, enabled: capabilities.has('behind_scenes') }))
+  const earlyAccess = retainRetryView(useQuery({ queryKey: ['early-access'], queryFn: fetchEarlyAccess, enabled: capabilities.has('early_access') }))
+  const workshops = retainRetryView(useQuery({ queryKey: ['workshops'], queryFn: fetchWorkshops }))
+  const requests = retainRetryView(useQuery({ queryKey: ['creator-requests', 'received'], queryFn: fetchReceivedRequests, enabled: section === 'studio' }))
   const register = useMutation({ mutationFn: registerWorkshop, onSuccess: () => notify('Workshop place reserved.'), onError: () => notify('The workshop reservation could not be completed.', { tone: 'error' }) })
   const publish = useMutation({ mutationFn: publishCreatorUpdate, onSuccess: () => { setUpdate({ title: '', body: '', audience: 'members' }); queryClient.invalidateQueries({ queryKey: ['creator-updates'] }); notify('Creator update published.') }, onError: () => notify('The creator update could not be published.', { tone: 'error' }) })
   const hostWorkshop = useMutation({ mutationFn: createWorkshop, onSuccess: () => { setWorkshopForm(emptyWorkshop); queryClient.invalidateQueries({ queryKey: ['workshops'] }); notify('Workshop published.') }, onError: () => notify('The workshop could not be published.', { tone: 'error' }) })

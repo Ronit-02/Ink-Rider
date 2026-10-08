@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Avatar from '@/shared/components/ui/Avatar'
@@ -75,7 +76,7 @@ export default function SearchPage() {
   const topic = params.get('topic') || 'all'
   const time = params.get('time') || 'any'
   const sort = params.get('sort') || 'relevance'
-  const result = useDiscoverySearch(query, activeTab, { topic, time, sort })
+  const result = retainRetryView(useDiscoverySearch(query, activeTab, { topic, time, sort }))
   const items = result.data?.data?.[activeTab] || []
 
   const setActiveTab = nextTab => {

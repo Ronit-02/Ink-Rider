@@ -90,11 +90,11 @@ test('article-of-the-day menu supports keyboard navigation and focus return', as
   expect(hasHorizontalOverflow).toBe(false)
 })
 
-test('discovery-card menu keeps nested controls safe while navigating menu items', async ({ page }) => {
+test('discovery-card menu opens the report modal and restores keyboard navigation', async ({ page }) => {
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const url = new URL(route.request().url())
     if (url.pathname === '/api/auth/refresh-token') {
-      return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
+      return route.fulfill({ json: { accessToken: 'report-menu-test', user: 'Reader', email: 'reader@example.test', role: 'regular' } })
     }
     if (url.pathname === '/api/post/feed') {
       return route.fulfill({
@@ -103,7 +103,7 @@ test('discovery-card menu keeps nested controls safe while navigating menu items
         body: JSON.stringify({ data: [article, story], meta: { nextCursor: null } }),
       })
     }
-    return route.abort('blockedbyclient')
+    return route.fulfill({ json: { data: [], meta: { nextCursor: null, unreadCount: 0 } } })
   })
 
   await page.setViewportSize({ width: 390, height: 844 })

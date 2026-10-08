@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import ReportModal, { reportTitle } from '@/shared/components/ui/ReportModal'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
@@ -72,7 +73,7 @@ export default function QuestionDetail() {
   const { id } = useParams()
   const { hash } = useLocation()
   const { loggedIn, signIn } = useAuth()
-  const question = useQuestion(id)
+  const question = retainRetryView(useQuestion(id))
   const answer = useQuestionAnswer(id)
   const follow = useQuestionFollow(id)
   const upvote = useQuestionUpvote('hot')

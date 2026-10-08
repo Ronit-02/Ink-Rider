@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import ReportForm from '@/shared/components/ui/ReportForm'
 import ReportModal, { reportTitle } from '@/shared/components/ui/ReportModal'
 import ShareMenu from '@/shared/components/ui/ShareMenu'
@@ -61,7 +62,7 @@ export default function PostPage() {
   const hasSidePanel = showSummary || readAloud;
 
   // Hooks
-  const { data: postData, isLoading: fetchPostIsLoading, isError, error, refetch } = useFetchPost(postId);
+  const { data: postData, isLoading: fetchPostIsLoading, isError, error, refetch } = retainRetryView(useFetchPost(postId));
   const BookmarkMutation = useBookmarkPost(postId);
   const likeMutation = usePostLike(postId)
   const reportMutation = useReportPost(postId)

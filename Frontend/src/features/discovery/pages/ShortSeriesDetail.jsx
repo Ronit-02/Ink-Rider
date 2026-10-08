@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Button from '@/shared/components/ui/Button'
@@ -10,7 +11,7 @@ import PageFrame from '@/shared/components/layout/PageFrame'
 
 export default function ShortSeriesDetail() {
   const { id } = useParams()
-  const query = useShortSeriesDetail(id)
+  const query = retainRetryView(useShortSeriesDetail(id))
   const update = useUpdateShortSeries(id)
   const [entryOverrides, setEntries] = useState([])
   const [shortReadId, setShortReadId] = useState(null)

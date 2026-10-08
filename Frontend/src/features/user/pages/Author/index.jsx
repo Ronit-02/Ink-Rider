@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
@@ -60,8 +61,8 @@ export default function AuthorPage() {
   const [details, setDetails] = useState('')
   const closeRequestRef = useRef(null)
   const requestDialogRef = useDialogFocus(() => setRequestOpen(false), closeRequestRef, requestOpen)
-  const entitlements = useEntitlements(loggedIn)
-  const writerQuery = useWriter(handle)
+  const entitlements = retainRetryView(useEntitlements(loggedIn))
+  const writerQuery = retainRetryView(useWriter(handle))
   const writer = writerQuery.data
   const followMutation = useWriterFollow({ writerId: writer?.id, handle })
   const requestMutation = useMutation({ mutationFn: sendCreatorRequest, onSuccess: () => { setSubject(''); setDetails('') } })

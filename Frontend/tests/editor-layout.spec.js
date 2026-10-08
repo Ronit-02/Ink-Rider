@@ -23,7 +23,7 @@ async function mockEditor(page, { capabilities = [], saveStatus = 200 } = {}) {
 }
 
 for (const size of [{ width: 320, height: 735 }, { width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 900 }]) {
-  test(`writing has priority and details remain accessible at ${size.width}px`, async ({ page }, testInfo) => {
+  test(`story details precede writing in one column at ${size.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(size)
     await page.emulateMedia({ colorScheme: size.width === 390 ? 'dark' : 'light' })
     const { saves, publications } = await mockEditor(page)
@@ -35,15 +35,17 @@ for (const size of [{ width: 320, height: 735 }, { width: 390, height: 844 }, { 
     expect((await body.boundingBox()).x).toBe((await title.boundingBox()).x)
     await page.screenshot({ path: testInfo.outputPath('editor-initial.png') })
     const details = page.locator('details')
-    await expect(details).toHaveJSProperty('open', size.width >= 1024)
-    if (size.width < 1024) await details.locator('summary').click()
+    await expect(details).toHaveJSProperty('open', false)
+    const detailsBounds = await details.boundingBox()
+    const editorBounds = await page.getByRole('region', { name: 'Writing area' }).boundingBox()
+    expect(detailsBounds.y + detailsBounds.height).toBeLessThan(editorBounds.y)
+    expect(detailsBounds.x).toBe(editorBounds.x)
+    expect(detailsBounds.width).toBe(editorBounds.width)
+    await details.locator('summary').click()
     const cover = page.getByRole('button', { name: '+ Add cover image', exact: true })
     await expect(cover).toBeVisible()
     expect((await cover.boundingBox()).height).toBeLessThan(80)
-    const editorBounds = await page.getByRole('region', { name: 'Writing area' }).boundingBox()
-    const detailsBounds = await details.boundingBox()
-    if (size.width >= 1024) expect(detailsBounds.x).toBeGreaterThan(editorBounds.x + editorBounds.width)
-    else expect(detailsBounds.y).toBeGreaterThan((await body.boundingBox()).y)
+    expect((await details.boundingBox()).y + (await details.boundingBox()).height).toBeLessThan((await title.boundingBox()).y)
     await page.getByRole('button', { name: 'Short read', exact: true }).click()
     await page.getByRole('textbox', { name: 'Short title', exact: true }).fill('A focused idea')
     await body.fill('This is a short explanation with enough content to test the existing publishing controls.')
@@ -89,6 +91,7 @@ test('cover removal restores article requirements', async ({ page }) => {
   await page.goto('/write')
   await page.getByRole('textbox', { name: 'Article title', exact: true }).fill('An article')
   await page.getByRole('textbox', { name: 'Paragraph block', exact: true }).fill('Article body.')
+  await page.locator('details summary').click()
   await page.getByLabel('Add a tag', { exact: true }).fill('writing')
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await page.locator('input[type=file]').setInputFiles({ name: 'cover.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZ94AAAAASUVORK5CYII=', 'base64') })

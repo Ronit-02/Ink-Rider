@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import PageFrame from '@/shared/components/layout/PageFrame'
@@ -70,8 +71,8 @@ export default function SavedPage() {
     updateFilter('savedSection', nextSection, 'stories')
     requestAnimationFrame(() => document.querySelectorAll('[role="tab"][aria-controls="saved-tabpanel"]')[nextIndex]?.focus())
   }
-  const stories = useQuery({ queryKey: ['me', 'bookmarks'], queryFn: fetchBookmarks, enabled: section === 'stories' })
-  const collections = useSavedCollections(sort)
+  const stories = retainRetryView(useQuery({ queryKey: ['me', 'bookmarks'], queryFn: fetchBookmarks, enabled: section === 'stories' }))
+  const collections = retainRetryView(useSavedCollections(sort))
   const savedCollections = collections.data?.pages.flatMap(page => page.data) || []
 
   return <PageFrame>

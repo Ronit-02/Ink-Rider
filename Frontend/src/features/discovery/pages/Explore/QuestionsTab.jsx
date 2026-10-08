@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import ModalLayer from '@/shared/components/ui/ModalLayer'
 import { useDeferredValue, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -113,7 +114,7 @@ export default function QuestionsTab() {
   const topic = requestedTopic?.trim().toLowerCase() || 'all'
   const [showAsk, setShowAsk] = useState(false)
   const { loggedIn, signIn } = useAuth()
-  const query = useQuestions(sort)
+  const query = retainRetryView(useQuestions(sort))
   const questions = query.data?.pages.flatMap(page => page.data) || []
   const topicOptions = [{ id: 'all', label: 'All' }, ...[...new Set(['science', 'career', 'wellness', ...questions.flatMap(question => question.tags || []).map(tag => tag.trim().toLowerCase()), ...(topic === 'all' ? [] : [topic])])].filter(tag => tag !== 'all').map(tag => ({ id: tag, label: tag.charAt(0).toUpperCase() + tag.slice(1) }))]
   const filteredQuestions = topic === 'all' ? questions : questions.filter(question => (question.tags || []).some(tag => tag.trim().toLowerCase() === topic))

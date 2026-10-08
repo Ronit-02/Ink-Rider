@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import { useMutation } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { useSelector } from 'react-redux'
@@ -23,7 +24,7 @@ const linkClass = 'inline-flex min-h-11 items-center justify-center rounded-full
 export default function MembershipPage() {
   const { loggedIn } = useAuth()
   const isReady = useSelector((state: { auth: { isReady: boolean } }) => state.auth.isReady)
-  const entitlements = useEntitlements(isReady && loggedIn)
+  const entitlements = retainRetryView(useEntitlements(isReady && loggedIn))
   const membership = entitlements.data?.membership
   // Trial/active subscriptions must use management even if their access period has expired.
   const hasSubscription = ['active', 'trialing'].includes(membership?.status)

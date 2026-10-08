@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 /* TopQuestionsSection — teaser showing hot questions, drives curiosity */
 import { Link } from 'react-router-dom'
 import SectionHeading from '@/shared/components/ui/SectionHeading'
@@ -6,7 +7,7 @@ import { useQuestions } from '@/features/question/hooks/useQuestions'
 import { ListSkeleton } from '@/shared/components/ui/Skeleton'
 
 export default function TopQuestionsSection() {
-  const query = useQuestions('hot')
+  const query = retainRetryView(useQuestions('hot'))
   const questions = query.data?.pages.flatMap(page => page.data).slice(0, 4) || []
 
   return (

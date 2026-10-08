@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import ModalLayer from '@/shared/components/ui/ModalLayer'
 /* eslint-disable jsx-a11y/heading-has-content -- Entry titles have a conditional accessible fallback. */
 import { useRef, useState } from 'react'
@@ -36,7 +37,7 @@ export default function CompetitionDetail() {
   const { id } = useParams()
   const location = useLocation()
   const { loggedIn, signIn } = useAuth()
-  const query = useCompetition(id)
+  const query = retainRetryView(useCompetition(id))
   const vote = useEntryVote(id)
   const [showEntry, setShowEntry] = useState(false)
   if (query.isPending) return <PageFrame><div role="status" aria-label="Loading competition"><Skeleton className="h-8 w-20 rounded-full" /><Skeleton className="mt-7 h-[clamp(180px,30vw,300px)] w-full rounded-[20px]" /><Skeleton className="mt-7 h-10 w-3/5" /><Skeleton className="mt-4 h-4 w-full max-w-2xl" /><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>

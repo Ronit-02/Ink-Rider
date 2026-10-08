@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import ModalLayer from '@/shared/components/ui/ModalLayer'
 import { useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -38,7 +39,7 @@ export default function CollectionsPage() {
   const visibility = ['all', 'public', 'unlisted', 'private'].includes(params.get('collectionVisibility')) ? params.get('collectionVisibility') : 'all'
   const sort = ['latest', 'popular'].includes(params.get('collectionSort')) ? params.get('collectionSort') : 'latest'
   const [showCreate, setShowCreate] = useState(false)
-  const query = useCollections(mine, sort)
+  const query = retainRetryView(useCollections(mine, sort))
   const collections = query.data?.pages.flatMap(page => page.data) || []
   const filteredCollections = visibility === 'all' ? collections : collections.filter(collection => collection.visibility === visibility)
   const updateFilter = (key, value, defaultValue) => {

@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import { useId, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import Button from '@/shared/components/ui/Button'
@@ -46,7 +47,7 @@ export default function CommentsSection({ postId, initialCount = 0, compact = fa
   const commentCountId = `${idPrefix}-comment-count`
   const queryClient = useQueryClient()
   const { loggedIn, signIn, user } = useAuth()
-  const commentsQuery = useComments(postId)
+  const commentsQuery = retainRetryView(useComments(postId))
   const { notify } = useToast()
 
   const comments = commentsQuery.data?.pages.flatMap(page => page.data) || []

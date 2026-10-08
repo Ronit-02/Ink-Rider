@@ -182,6 +182,31 @@ test('a query retry is visibly busy while refetching', async ({ page }) => {
   expect(count).toBe(pendingCount)
 })
 
+test('native search Retry remains mounted through refetch failure and retry', async ({ page }) => {
+  let calls = 0
+  let release
+  await holdAction(page, '/unused-action')
+  await page.route('**/api/search?*', async route => {
+    calls++
+    if (calls > 1) await new Promise(resolve => { release = resolve })
+    return route.fulfill({ status: 500, json: { message: 'Search unavailable' } })
+  })
+  await page.goto('/search?q=failure')
+  const retry = page.getByRole('main').getByRole('button', { name: 'Try again', exact: true })
+  await retry.click()
+  await expectMuted(retry)
+  await expect(page.getByRole('heading', { name: 'Search is unavailable' })).toBeVisible()
+  await retry.evaluate(element => element.click())
+  await expect.poll(() => calls).toBe(2)
+  release()
+  await expect(retry).toBeEnabled()
+  await retry.click()
+  await expectMuted(retry)
+  await expect.poll(() => calls).toBe(3)
+  release()
+  await expect(retry).toBeEnabled()
+})
+
 test('collection menu stays visible during save and permits retry after failure', async ({ page }) => {
   const held = await holdAction(page, '/api/collection/collection-1/save')
   await page.goto('/collections')

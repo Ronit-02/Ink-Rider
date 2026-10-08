@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 /* eslint-disable react-hooks/exhaustive-deps -- The observer intentionally depends on the specific stable query members it consumes. */
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -35,7 +36,7 @@ export default function HomePage() {
   const mode = availableFeeds.some(item => item.id === requestedMode)
     ? requestedMode
     : loggedIn ? 'for-you' : 'latest'
-  const feed = useDiscoveryFeed(mode)
+  const feed = retainRetryView(useDiscoveryFeed(mode))
   const posts = (feed.data?.pages.flatMap(page => page.data) || []).filter(post => !hiddenPostIds.includes(post.id))
   const selectedFeed = FEEDS.find(item => item.id === mode) || FEEDS[1]
   const recordedRequests = useRef(new Set())

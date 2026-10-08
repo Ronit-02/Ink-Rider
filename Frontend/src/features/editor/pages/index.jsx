@@ -69,7 +69,7 @@ function MemberEditor() {
   const [tagInput,setTagInput]= useState('')
   const [cover,   setCover]   = useState(null)
   const [coverURL, setCoverURL] = useState('')
-  const [detailsOpen, setDetailsOpen] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const [draftId, setDraftId] = useState(initialDraftId)
   const [draftVersion, setDraftVersion] = useState(null)
   const [postRevision, setPostRevision] = useState(null)
@@ -426,154 +426,153 @@ function MemberEditor() {
 
       {isError && <p role="alert" className="mb-5 text-[12px] text-[var(--color-danger)]">{error?.response?.data?.message || 'The post could not be published.'}</p>}
 
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
-        <section aria-label="Writing area" className="min-w-0">
-          <div className="mb-8 flex max-w-[400px] items-center gap-2 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-2">
-            {[{ id: 'article', label: 'Long-form article' }, { id: 'short', label: 'Short read' }].map(option => <button key={option.id} type="button" onClick={() => setFormat(option.id)} aria-pressed={format === option.id} className={`min-h-11 flex-1 rounded-[10px] px-3 py-2 text-[12px] font-semibold ${format === option.id ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm' : 'text-[var(--color-text-muted)]'}`}>{option.label}</button>)}
-          </div>
+      <div className="mb-8 flex max-w-[400px] items-center gap-2 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-2">
+        {[{ id: 'article', label: 'Long-form article' }, { id: 'short', label: 'Short read' }].map(option => <button key={option.id} type="button" onClick={() => setFormat(option.id)} aria-pressed={format === option.id} className={`min-h-11 flex-1 rounded-[10px] px-3 py-2 text-[12px] font-semibold ${format === option.id ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm' : 'text-[var(--color-text-muted)]'}`}>{option.label}</button>)}
+      </div>
 
-          {/* ── Title input ── */}
-          <label htmlFor="editor-title" className="mb-3 block text-[12px] font-medium text-[var(--color-text-secondary)]">{format === 'short' ? 'Short title' : 'Article title'}</label>
-          <textarea
-            id="editor-title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={format === 'short' ? 'A focused idea…' : 'Title…'}
-            maxLength={format === 'short' ? 120 : 180}
-            className="editor-writing-field w-full bg-transparent border-none outline-none resize-none font-bold text-[clamp(24px,4vw,36px)] leading-[1.3] tracking-[-0.5px] mb-8 text-(--color-text) placeholder:text-(--color-text-muted)"
-            style={{ fontFamily: "var(--font-display)", minHeight: "1.3em" }}
-            rows={1}
-            onInput={(e) => {
-              e.target.style.height = "auto";
-              e.target.style.height = e.target.scrollHeight + "px";
-            }}
-          />
-
-          {/* ── Block editor ── */}
-          <p className="mb-3 text-[12px] font-medium text-[var(--color-text-secondary)]">Story</p>
-          <div className="flex min-h-[240px] flex-col gap-2 mb-4 relative" ref={editorRef}>
-            {blocks.map(bl => (
-              <Block
-                key={bl.id}
-                block={bl}
-                ref={(el) => blockRefs.current[bl.id] = el}
-                onChange={(v) => updateBlock(bl.id, v)}
-                onAltChange={(value) => updateBlockField(bl.id, 'alt', value)}
-                onDelete={() => deleteBlock(bl.id)}
-                onAdd={(content) => addAfter(bl.id, content)}
-                onTypeChange={(t) => changeType(bl.id, t)}
-                openSlashMenu={openSlashMenu}
-                closeSlashMenu={closeSlashMenu}
-                isSlashMenuOpen={slashMenu.open && slashMenu.blockId === bl.id}
-                moveFocus={moveFocus}
-                mergeToPrevBlock={mergeToPrevBlock}
-                copyPasteContent={copyPasteContent}
+      <section aria-label="Publishing details" className="mb-8 min-w-0">
+        <details open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)} className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)]">
+          <summary className="cursor-pointer px-4 py-4 text-[14px] font-semibold text-[var(--color-text)]">
+            Story details
+            <span className="mt-1 block text-[12px] font-normal text-[var(--color-text-secondary)]">Cover, tags &amp; publishing options</span>
+          </summary>
+          <div className="border-t border-[var(--color-border)] p-4">
+            {/* ── Cover image ── */}
+            <div className="mb-6">
+              <h2 className="mb-3 text-[13px] font-semibold text-[var(--color-text)]">Cover image <span className="font-normal text-[var(--color-text-secondary)]">{format === 'short' ? '(optional)' : '(required)'}</span></h2>
+              {cover ? (
+                <div className="relative">
+                  <img src={cover} alt="cover" className="w-full h-40 object-cover rounded-[14px] block"/>
+                  <button
+                    type="button"
+                    aria-label="Remove cover image"
+                    onClick={() => { setCover(null); setCoverURL(''); if (fileRef.current) fileRef.current.value = '' }}
+                    className="absolute top-2 right-2 w-11 h-11 rounded-full bg-black/60 text-white border-none cursor-pointer flex items-center justify-center text-[18px]">
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => fileRef.current?.click()}
+                  className="w-full min-h-11 px-3 py-3 rounded-[14px] border-2 border-dashed border-(--color-border) flex items-center justify-center text-(--color-text-muted) text-[13px] font-medium cursor-pointer bg-transparent hover:bg-(--color-bg-alt) transition-colors">
+                  {format === 'short' ? '+ Add optional cover image' : '+ Add cover image'}
+                </button>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleCoverImage}
               />
-            ))}
+            </div>
 
-            {slashMenu.open && (
-              <SlashMenu anchorRef={slashAnchorRef}
-                options={BLOCK_TYPES.filter(b => b.type !== 'divider' || blocks.length > 1)}
-                position={slashMenu.position}
-                filter={slashMenu.filter}
-                onSelect={handleSlashSelect}
-                onClose={closeSlashMenu}
-              />
-            )}
-
-          </div>
-
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--color-text-secondary)]">
-            <p>Type / in a block for formatting options.</p>
-            <p className={format === 'short' && wordCount > 500 ? 'text-[var(--color-danger)]' : ''}>{format === 'short' ? `${wordCount}/500 words` : `${wordCount} ${wordCount === 1 ? 'word' : 'words'}`}</p>
-          </div>
-
-        </section>
-        <aside aria-label="Publishing details" className="min-w-0 lg:sticky lg:top-6">
-          <details open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)} className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)]">
-            <summary className="cursor-pointer px-4 py-4 text-[14px] font-semibold text-[var(--color-text)]">
-              Story details
-              <span className="mt-1 block text-[12px] font-normal text-[var(--color-text-secondary)]">Cover, tags &amp; publishing options</span>
-            </summary>
-            <div className="border-t border-[var(--color-border)] p-4">
-              {/* ── Cover image ── */}
-              <div className="mb-6">
-                <h2 className="mb-3 text-[13px] font-semibold text-[var(--color-text)]">Cover image <span className="font-normal text-[var(--color-text-secondary)]">{format === 'short' ? '(optional)' : '(required)'}</span></h2>
-                {cover ? (
-                  <div className="relative">
-                    <img src={cover} alt="cover" className="w-full h-40 object-cover rounded-[14px] block"/>
+            {/* ── Tags ── */}
+            <div className="mb-6">
+              <h2 className="mb-3 text-[13px] font-semibold text-[var(--color-text)]">Tags <span className="font-normal text-[var(--color-text-secondary)]">(at least one)</span></h2>
+              <div className="flex gap-2 flex-wrap mb-3">
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex max-w-full items-center gap-1 break-all px-2.5 py-1.25 rounded-full
+                    bg-(--color-surface) border border-(--color-border) text-[12px] text-(--color-text-secondary)"
+                  >
+                    {t}
                     <button
                       type="button"
-                      aria-label="Remove cover image"
-                      onClick={() => { setCover(null); setCoverURL(''); if (fileRef.current) fileRef.current.value = '' }}
-                      className="absolute top-2 right-2 w-11 h-11 rounded-full bg-black/60 text-white border-none cursor-pointer flex items-center justify-center text-[18px]">
+                      aria-label={`Remove ${t} tag`}
+                      onClick={() => setTags((v) => v.filter((x) => x !== t))}
+                      className="ml-1 text-(--color-text-muted) bg-transparent border-none cursor-pointer text-[14px]">
                       ×
                     </button>
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => fileRef.current?.click()}
-                    className="w-full min-h-11 px-3 py-3 rounded-[14px] border-2 border-dashed border-(--color-border) flex items-center justify-center text-(--color-text-muted) text-[13px] font-medium cursor-pointer bg-transparent hover:bg-(--color-bg-alt) transition-colors">
-                    {format === 'short' ? '+ Add optional cover image' : '+ Add cover image'}
-                  </button>
-                )}
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <label htmlFor="editor-tag-input" className="sr-only">Add a tag</label>
                 <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleCoverImage}
+                  id="editor-tag-input"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTag();
+                    }
+                  }}
+                  placeholder="Add a tag…"
+                  className="min-w-0 min-h-11 flex-1 px-3 py-2 border border-(--color-border) rounded-full bg-(--color-surface) text-[13px] text-(--color-text) outline-none"
                 />
+                <Button variant="secondary" className="!min-h-11" onClick={addTag}>
+                  Add
+                </Button>
               </div>
-
-              {/* ── Tags ── */}
-              <div className="mb-6">
-                <h2 className="mb-3 text-[13px] font-semibold text-[var(--color-text)]">Tags <span className="font-normal text-[var(--color-text-secondary)]">(at least one)</span></h2>
-                <div className="flex gap-2 flex-wrap mb-3">
-                  {tags.map((t) => (
-                    <span
-                      key={t}
-                      className="inline-flex max-w-full items-center gap-1 break-all px-2.5 py-1.25 rounded-full
-                      bg-(--color-surface) border border-(--color-border) text-[12px] text-(--color-text-secondary)"
-                    >
-                      {t}
-                      <button
-                        type="button"
-                        aria-label={`Remove ${t} tag`}
-                        onClick={() => setTags((v) => v.filter((x) => x !== t))}
-                        className="ml-1 text-(--color-text-muted) bg-transparent border-none cursor-pointer text-[14px]">
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <label htmlFor="editor-tag-input" className="sr-only">Add a tag</label>
-                  <input
-                    id="editor-tag-input"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addTag();
-                      }
-                    }}
-                    placeholder="Add a tag…"
-                    className="min-w-0 min-h-11 flex-1 px-3 py-2 border border-(--color-border) rounded-full bg-(--color-surface) text-[13px] text-(--color-text) outline-none"
-                  />
-                  <Button variant="secondary" className="!min-h-11" onClick={addTag}>
-                    Add
-                  </Button>
-                </div>
-              </div>
-
-              {format === 'short' && <div className="mb-7"><label htmlFor="depth-parent" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Deeper article <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><select id="depth-parent" value={depthParentId} onChange={event => setDepthParentId(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]"><option value="">This short stands alone</option>{depthOptions.data?.map(post => <option key={post.id} value={post.id}>{post.title}</option>)}</select><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Readers will be able to move between this quick explanation and the full article.</p></div>}
-              {canScheduleEarlyAccess && <div className="mb-7"><label htmlFor="public-at" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Public release <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><input id="public-at" type="datetime-local" value={publicAt} min={scheduleBounds.min} max={scheduleBounds.max} onChange={event => setPublicAt(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]" /><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Members can read immediately; everyone else gets access at this time.</p></div>}
             </div>
-          </details>
-          <p className="mt-3 text-[12px] leading-5 text-[var(--color-text-secondary)]">{format === 'article' ? 'To publish, add a title, at least one tag, and a cover image.' : 'To publish, add a title and at least one tag. Keep your short within 500 words.'}</p>
-        </aside>
-      </div>
+
+            {format === 'short' && <div className="mb-7"><label htmlFor="depth-parent" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Deeper article <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><select id="depth-parent" value={depthParentId} onChange={event => setDepthParentId(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]"><option value="">This short stands alone</option>{depthOptions.data?.map(post => <option key={post.id} value={post.id}>{post.title}</option>)}</select><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Readers will be able to move between this quick explanation and the full article.</p></div>}
+            {canScheduleEarlyAccess && <div className="mb-7"><label htmlFor="public-at" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Public release <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><input id="public-at" type="datetime-local" value={publicAt} min={scheduleBounds.min} max={scheduleBounds.max} onChange={event => setPublicAt(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]" /><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Members can read immediately; everyone else gets access at this time.</p></div>}
+          </div>
+        </details>
+        <p className="mt-3 text-[12px] leading-5 text-[var(--color-text-secondary)]">{format === 'article' ? 'To publish, add a title, at least one tag, and a cover image.' : 'To publish, add a title and at least one tag. Keep your short within 500 words.'}</p>
+      </section>
+
+      <section aria-label="Writing area" className="min-w-0">
+        {/* ── Title input ── */}
+        <label htmlFor="editor-title" className="mb-3 block text-[12px] font-medium text-[var(--color-text-secondary)]">{format === 'short' ? 'Short title' : 'Article title'}</label>
+        <textarea
+          id="editor-title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={format === 'short' ? 'A focused idea…' : 'Title…'}
+          maxLength={format === 'short' ? 120 : 180}
+          className="editor-writing-field w-full bg-transparent border-none outline-none resize-none font-bold text-[clamp(24px,4vw,36px)] leading-[1.3] tracking-[-0.5px] mb-8 text-(--color-text) placeholder:text-(--color-text-muted)"
+          style={{ fontFamily: "var(--font-display)", minHeight: "1.3em" }}
+          rows={1}
+          onInput={(e) => {
+            e.target.style.height = "auto";
+            e.target.style.height = e.target.scrollHeight + "px";
+          }}
+        />
+
+        {/* ── Block editor ── */}
+        <p className="mb-3 text-[12px] font-medium text-[var(--color-text-secondary)]">Story</p>
+        <div className="flex min-h-[240px] flex-col gap-2 mb-4 relative" ref={editorRef}>
+          {blocks.map(bl => (
+            <Block
+              key={bl.id}
+              block={bl}
+              ref={(el) => blockRefs.current[bl.id] = el}
+              onChange={(v) => updateBlock(bl.id, v)}
+              onAltChange={(value) => updateBlockField(bl.id, 'alt', value)}
+              onDelete={() => deleteBlock(bl.id)}
+              onAdd={(content) => addAfter(bl.id, content)}
+              onTypeChange={(t) => changeType(bl.id, t)}
+              openSlashMenu={openSlashMenu}
+              closeSlashMenu={closeSlashMenu}
+              isSlashMenuOpen={slashMenu.open && slashMenu.blockId === bl.id}
+              moveFocus={moveFocus}
+              mergeToPrevBlock={mergeToPrevBlock}
+              copyPasteContent={copyPasteContent}
+            />
+          ))}
+
+          {slashMenu.open && (
+            <SlashMenu anchorRef={slashAnchorRef}
+              options={BLOCK_TYPES.filter(b => b.type !== 'divider' || blocks.length > 1)}
+              position={slashMenu.position}
+              filter={slashMenu.filter}
+              onSelect={handleSlashSelect}
+              onClose={closeSlashMenu}
+            />
+          )}
+
+        </div>
+
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--color-text-secondary)]">
+          <p>Type / in a block for formatting options.</p>
+          <p className={format === 'short' && wordCount > 500 ? 'text-[var(--color-danger)]' : ''}>{format === 'short' ? `${wordCount}/500 words` : `${wordCount} ${wordCount === 1 ? 'word' : 'words'}`}</p>
+        </div>
+
+      </section>
 
     </main>
   );

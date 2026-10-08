@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import Button from '@/shared/components/ui/Button'
 import { useCompetition, useCompetitions } from '@/features/competition/hooks/useCompetitions'
@@ -25,7 +26,7 @@ function CompetitionCard({ competition }) {
 }
 
 export default function CompetitionsTab() {
-  const query = useCompetitions()
+  const query = retainRetryView(useCompetitions())
   if (query.isPending) return <ListSkeleton count={4} label="Loading competitions" />
   if (query.isError) return <div role="alert" className="py-12 text-center"><p className="text-[13px] text-[var(--color-danger)]">Competitions could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => query.refetch()} aria-busy={query.isFetching} disabled={query.isFetching}>Try again</Button></div>
   const active = query.data.filter(item => ['open', 'judging'].includes(item.status))

@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import { Link } from 'react-router-dom'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import PageHeader from '@/shared/components/ui/PageHeader'
@@ -26,7 +27,7 @@ function OpportunityCard({ opportunity }) {
 }
 
 export default function OpportunitiesPage() {
-  const query = useQuestionOpportunities()
+  const query = retainRetryView(useQuestionOpportunities())
   const opportunities = query.data?.data || []
   const summary = query.data?.meta?.summary
   return <PageFrame>

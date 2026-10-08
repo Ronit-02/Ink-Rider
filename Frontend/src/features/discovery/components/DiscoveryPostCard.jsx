@@ -20,7 +20,7 @@ const InfoIcon = () => <svg aria-hidden="true" width="17" height="17" viewBox="0
 const HideIcon = () => <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M6 6l12 12" /></svg>
 const FlagIcon = () => <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M5 21V3h14l-3 5 3 5H5" /></svg>
 
-export default function DiscoveryPostCard({ post, onHide, onOpen, comfortable = false, variant = 'list' }) {
+export default function DiscoveryPostCard({ post, onHide, onOpen, comfortable = false, variant = 'list', flushTop = true }) {
   const { loggedIn, signIn } = useAuth()
   const { notify } = useToast()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -92,7 +92,7 @@ export default function DiscoveryPostCard({ post, onHide, onOpen, comfortable = 
 
   return (
     <article
-      className={`group relative border-b border-[var(--color-border)] ${variant === 'grid' ? 'flex flex-col overflow-visible rounded-[16px] border bg-[var(--color-surface)]' : variant === 'short' ? 'flex self-start flex-col rounded-[16px] border p-5' : comfortable ? 'max-md:flex max-md:flex-col py-10 first:pt-10' : 'max-md:flex max-md:flex-col py-6 first:pt-0'}
+      className={`group relative border-b border-[var(--color-border)] ${variant === 'grid' ? 'flex flex-col overflow-visible rounded-[16px] border bg-[var(--color-surface)]' : variant === 'short' ? 'flex self-start flex-col rounded-[16px] border p-5' : comfortable ? 'max-md:flex max-md:flex-col py-10 first:pt-10' : `max-md:flex max-md:flex-col py-6 ${flushTop ? 'first:pt-0' : ''}`}
         ${post.image && variant !== 'short' && variant !== 'grid' ? 'md:grid md:grid-cols-[minmax(0,1fr)_240px] md:gap-8' : ''}`}
     >
       <div className={`min-w-0 flex flex-col ${variant === 'grid' ? 'order-last p-4' : variant === 'short' ? '' : 'max-md:contents'}`}>

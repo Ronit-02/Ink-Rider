@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import ShareMenu from '@/shared/components/ui/ShareMenu'
 import ViewportPopover from '@/shared/components/ui/ViewportPopover'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -79,7 +80,7 @@ export default function TrendingTab() {
   const [params, setParams] = useSearchParams()
   const requestedSort = params.get('trendingSort')
   const sort = ['popular', 'latest'].includes(requestedSort) ? requestedSort : 'popular'
-  const feed = useDiscoveryFeed('popular', sort)
+  const feed = retainRetryView(useDiscoveryFeed('popular', sort))
   const requestedTopic = params.get('trendingTopic')
   const topic = ['all', 'science', 'design', 'wellness', 'career'].includes(requestedTopic) ? requestedTopic : 'all'
   const posts = feed.data?.pages.flatMap(page => page.data) || []

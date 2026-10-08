@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 /* eslint-disable jsx-a11y/no-noninteractive-element-to-interactive-role -- The navigation container correctly owns tab semantics. */
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -22,7 +23,7 @@ export default function StaffConsole() {
   const [form, setForm] = useState(emptyCompetition)
   const me = useQuery({ queryKey: ['me', 'profile'], queryFn: fetchMyProfile })
   const isStaff = ['moderator', 'admin'].includes(me.data?.role)
-  const reports = useQuery({ queryKey: ['staff', 'reports', reportStatus], queryFn: () => fetchReports(reportStatus), enabled: isStaff && tab === 'moderation' })
+  const reports = retainRetryView(useQuery({ queryKey: ['staff', 'reports', reportStatus], queryFn: () => fetchReports(reportStatus), enabled: isStaff && tab === 'moderation' }))
   const fraud = useQuery({ queryKey: ['staff', 'competition-fraud', fraudMinutes], queryFn: () => fetchCompetitionFraudSignals(fraudMinutes), enabled: isStaff && tab === 'fraud' })
   const review = useMutation({ mutationFn: reviewReport, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['staff', 'reports'] }); notify('Moderation decision recorded.') }, onError: () => notify('The moderation decision could not be saved.', { tone: 'error' }) })
   const fraudReview = useMutation({ mutationFn: reviewCompetitionFraudSignal, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['staff', 'competition-fraud'] }); notify('Fraud disposition recorded.') }, onError: error => notify(error?.response?.data?.message || 'The fraud disposition could not be saved.', { tone: 'error' }) })

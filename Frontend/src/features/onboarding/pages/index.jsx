@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 /* eslint-disable react-hooks/set-state-in-effect -- Server-saved choices intentionally initialize the editable onboarding draft. */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -22,7 +23,7 @@ function ProgressBar({ current, total }) {
 
 export default function OnboardingPage() {
   const navigate = useNavigate()
-  const options = useOnboardingOptions()
+  const options = retainRetryView(useOnboardingOptions())
   const save = useSaveOnboarding()
   const [step, setStep] = useState(1)
   const [interests, setInterests] = useState([])
