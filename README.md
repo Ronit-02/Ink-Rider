@@ -1,7 +1,5 @@
 # Ink-Rider
 
-### A writing community where reader demand becomes writer opportunity.
-
 Ink-Rider connects the two sides of writing that most platforms keep apart. Readers can say what they want to understand. Writers can see that demand, respond with useful work, and earn an audience through relevance and quality rather than arriving with a large following.
 
 It combines thoughtful discovery, open publishing, reader questions, writing competitions, collections, and community participation in one responsive web experience. Primary articles remain free to read.
