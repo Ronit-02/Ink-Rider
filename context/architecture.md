@@ -47,6 +47,8 @@ Recommendation learning distinguishes viewed content from intentional interactio
 
 ## Public contract principles
 
+Public writer-profile article summaries include the viewer's `isLiked` state, resolved with one batch read of the existing like relationships. Guests receive false without a relationship lookup. The frontend waits for session restoration and partitions writer queries by authenticated/anonymous state; shared post-cache updates also cover writer articles for appreciation and comment-count changes. Existing response fields, routes, and persistence models are preserved.
+
 - Version public APIs and maintain a clear compatibility path for breaking changes.
 - Validate identifiers, allowlist client-controlled filters and sort keys, and paginate unstable result sets.
 - Use stable success and failure response shapes.
@@ -54,6 +56,8 @@ Recommendation learning distinguishes viewed content from intentional interactio
 - Support retry safety where a user action can be repeated.
 
 Discovery lists use bounded cursor pages and compact presentation DTOs. Personalized ranking reads a bounded candidate projection, then loads only the selected page's display fields; it must not hydrate or parse full article bodies for every ranking candidate.
+
+Competition detail entry author data includes the stored public profile handle, resolved through one batch profile read, so entry cards can link directly to the writer without guessing a handle from the display name.
 
 ## Product data principles
 

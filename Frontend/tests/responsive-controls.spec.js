@@ -233,10 +233,11 @@ test('search input keeps a visible keyboard focus indicator with custom outline 
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/search?q=city', { waitUntil: 'domcontentloaded' })
 
-  const searchInput = page.getByLabel('Search posts and writers')
-  await searchInput.focus()
+  await page.getByRole('navigation', { name: 'Global navigation' }).getByRole('combobox').focus()
+  const dialog = page.getByRole('dialog', { name: 'Search Ink Rider' })
+  const searchInput = dialog.getByRole('combobox')
   await expect(searchInput).toBeFocused()
-  await expect.poll(() => searchInput.evaluate(element => getComputedStyle(element).boxShadow)).not.toBe('none')
+  await expect.poll(() => dialog.getByRole('search').evaluate(element => getComputedStyle(element).borderColor)).toBe('rgb(25, 25, 25)')
 })
 
 test('search recovery action exposes a phone-sized retry target', async ({ page }) => {
@@ -336,11 +337,11 @@ test('mobile primary navigation exposes phone-sized link targets', async ({ page
   await expect(navigation).toBeVisible()
   const links = navigation.getByRole('link')
   await expect(links).toHaveCount(5)
-  await expect(links).toHaveText(['Home', 'Explore', 'Search', 'Write', 'Profile'])
+  await expect(links).toHaveText(['Home', 'Explore', 'Shorts', 'Write', 'Profile'])
   for (const link of await links.all()) {
     expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(40)
   }
-  await expect(navigation.getByRole('link', { name: 'Search' })).toHaveAttribute('aria-current', 'page')
+  await expect(navigation.getByRole('link', { name: 'Shorts' })).toHaveAttribute('href', '/shorts')
 })
 
 test('desktop sidebar resize handle supports bounded keyboard controls', async ({ page }) => {
@@ -425,7 +426,7 @@ test('desktop sidebar expands without motion when reduced motion is requested', 
   await expect(page.getByRole('link', { name: 'Trending' })).toBeVisible()
 })
 
-test('short-read comment navigation avoids smooth scrolling for reduced motion', async ({ page }) => {
+test('short-read comments remain inline without a redundant footer button', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const url = new URL(route.request().url())
@@ -454,8 +455,8 @@ test('short-read comment navigation avoids smooth scrolling for reduced motion',
   await expect(page.getByRole('dialog')).toHaveAttribute('aria-busy', 'false')
   await expect(page.getByRole('dialog').getByRole('heading', { name: 'Start with the street' })).toHaveAttribute('id', 'short-read-title')
   await expect(page.locator('h1')).toHaveCount(1)
-  await page.getByRole('button', { name: 'View 0 comments' }).click()
-  await expect.poll(() => page.evaluate(() => window.__scrollBehavior)).toBe('auto')
+  await expect(page.getByRole('button', { name: 'View 0 comments' })).toHaveCount(0)
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Comments (0)' })).toBeVisible()
 })
 
 test('competition detail back navigation exposes a phone-sized target', async ({ page }) => {
@@ -477,7 +478,7 @@ test('competition detail back navigation exposes a phone-sized target', async ({
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/explore/competitions/competition-1', { waitUntil: 'domcontentloaded' })
 
-  const back = page.getByRole('link', { name: '← Competitions' })
+  const back = page.getByRole('button', { name: 'Back', exact: true })
   await expect(back).toBeVisible()
   expect((await back.boundingBox())?.height).toBeGreaterThanOrEqual(40)
 })

@@ -3,6 +3,7 @@ const Follow = require('../schemas/follow.schema');
 const Post = require('../schemas/post.schema');
 const Profile = require('../schemas/profile.schema');
 const User = require('../schemas/user.schema');
+const Like = require('../schemas/like.schema');
 
 const isValidId = id => mongoose.isValidObjectId(id);
 
@@ -40,6 +41,11 @@ const getWriterByHandle = async (req, res) => {
         : Promise.resolve(null),
     ]);
 
+    const likes = req.auth
+      ? await Like.find({ userId: req.auth.userId, postId: { $in: posts.map(post => post._id) } }).select('postId').lean()
+      : [];
+    const likedPostIds = new Set(likes.map(like => like.postId.toString()));
+
     const author = {
       id: profile.userId._id,
       username: profile.displayName,
@@ -69,6 +75,7 @@ const getWriterByHandle = async (req, res) => {
           image: post.coverImage,
           tags: post.tags,
           likesCount: post.likesCount,
+          isLiked: likedPostIds.has(post._id.toString()),
           commentsCount: post.commentsCount,
           createdAt: post.createdAt,
           readTime: estimateReadTime(post.body),

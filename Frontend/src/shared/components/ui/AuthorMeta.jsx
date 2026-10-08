@@ -13,7 +13,7 @@ export default function AuthorMeta({ author, readTime, date, size = 'sm', stacke
   const authorPath = handle ? `/author/${encodeURIComponent(handle)}` : null
   const authorContent = <>
     <Avatar src={author.picture} name={author.username} size={avatarSz} />
-    <span className={`${textSize} text-(--color-text-secondary) font-medium hover:text-(--color-text) transition-colors capitalize`}>
+    <span className={`${textSize} min-w-0 break-words text-(--color-text-secondary) font-medium hover:text-(--color-text) transition-colors capitalize`}>
       {author.username}
     </span>
   </>
@@ -25,12 +25,12 @@ export default function AuthorMeta({ author, readTime, date, size = 'sm', stacke
           to={authorPath}
           onClick={event => event.stopPropagation()}
           aria-label={`View ${author.username}'s profile`}
-          className="flex items-center gap-2 rounded-[4px] p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2"
+          className="flex max-w-full min-w-0 items-center gap-2 rounded-[4px] p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2"
         >
           {authorContent}
         </Link>
       ) : (
-        <span className="flex items-center gap-2 rounded-[4px]">
+        <span className="flex max-w-full min-w-0 items-center gap-2 rounded-[4px]">
           {authorContent}
         </span>
       )}
@@ -38,12 +38,12 @@ export default function AuthorMeta({ author, readTime, date, size = 'sm', stacke
       {!stacked && <span className="text-(--color-text-muted)">·</span>}
 
       {/* Meta: date + read time */}
-      <div className={`flex items-center gap-1.5 ${textSize} text-(--color-text-muted)`}>
+      <div className={`flex max-w-full flex-wrap items-center gap-1.5 ${textSize} text-(--color-text-muted)`}>
         {date && <>
           <span>{ new Date(date).toLocaleString('en-GB', {day:'numeric', month: 'long', year:'numeric'})}</span>
           <span>·</span>
         </>}
-        {readTime && <span>{readTime}</span>}
+        {readTime && <span className="whitespace-nowrap">{readTime}</span>}
       </div>
     </div>
   )

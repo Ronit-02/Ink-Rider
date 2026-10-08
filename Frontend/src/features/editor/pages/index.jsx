@@ -10,8 +10,10 @@ import useEntitlements from '@/features/membership/hooks/useEntitlements'
 import { createDraft, deleteDraft, fetchDraft, updateDraft } from '../api/drafts'
 import { updatePost } from '../api/updatePost'
 import fetchPost from '@/features/post/api/fetchPost'
-import { requestWritingAssistance } from '../api/writingAssistant'
 import useToast from '@/shared/hooks/useToast'
+import { useSelector } from 'react-redux'
+import PageFrame from '@/shared/components/layout/PageFrame'
+import SignInPrompt from '@/shared/components/ui/SignInPrompt'
 
 // Block Input Types
 const BLOCK_TYPES = [
@@ -36,6 +38,14 @@ function newBlock(type = 'text') {
 
 // Write Page
 export default function WritePage() {
+  const isReady = useSelector(state => state.auth.isReady)
+  const user = useSelector(state => state.auth.user)
+  if (!isReady) return <PageFrame><p role="status">Restoring your session…</p></PageFrame>
+  if (!user) return <PageFrame className="flex min-h-full flex-col !pb-6"><SignInPrompt message="Sign in to start writing." /></PageFrame>
+  return <MemberEditor />
+}
+
+function MemberEditor() {
 
   // State and refs
   const navigate  = useNavigate()
@@ -59,13 +69,11 @@ export default function WritePage() {
   const [tagInput,setTagInput]= useState('')
   const [cover,   setCover]   = useState(null)
   const [coverURL, setCoverURL] = useState('')
-  const [saved,   setSaved]   = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const [draftId, setDraftId] = useState(initialDraftId)
   const [draftVersion, setDraftVersion] = useState(null)
   const [postRevision, setPostRevision] = useState(null)
   const [autosaveStatus, setAutosaveStatus] = useState(initialDraftId ? 'loading' : 'idle')
-  const [assistantOpen, setAssistantOpen] = useState(false)
-  const [assistantAction, setAssistantAction] = useState('improve_clarity')
   const [scheduleBounds] = useState(() => {
     const now = new Date()
     return {
@@ -75,6 +83,7 @@ export default function WritePage() {
   })
   const fileRef   = useRef()
   const blockRefs  = useRef({})
+  const slashAnchorRef = useRef(null)
   const editorRef = useRef()
   const hydratedDraftRef = useRef(!initialDraftId && !editPostId)
   const draftIdRef = useRef(initialDraftId)
@@ -83,8 +92,6 @@ export default function WritePage() {
   const depthOptions = useQuery({ queryKey: ['depth-options'], queryFn: fetchDepthOptions, enabled: format === 'short' })
   const entitlements = useEntitlements(true)
   const canScheduleEarlyAccess = entitlements.data?.capabilities?.includes('early_access')
-  const canUseWritingAssistant = entitlements.data?.capabilities?.includes('ai_writing_assistant')
-  const assistant = useMutation({ mutationFn: requestWritingAssistance, onSuccess: () => notify('Writing suggestion ready.'), onError: () => notify('The writing assistant is unavailable.', { tone: 'error' }) })
   const draftQuery = useQuery({ queryKey: ['draft', initialDraftId], queryFn: () => fetchDraft(initialDraftId), enabled: Boolean(initialDraftId), retry: false })
   const editQuery = useQuery({ queryKey: ['post', editPostId], queryFn: fetchPost, enabled: Boolean(editPostId), retry: false })
 
@@ -185,12 +192,6 @@ export default function WritePage() {
     mutate(formData);
   };
   
-  // Saving as Draft
-  const handleSave = () => { 
-    setSaved(true); 
-    setTimeout(() => setSaved(false), 2000) 
-  }
-  
   // Input Handlers
   const handleCoverImage = (e) => {
     const f = e.target.files[0];
@@ -269,6 +270,7 @@ export default function WritePage() {
     const editorEl = editorRef.current;
 
     if (!blockEl || !editorEl) return;
+    slashAnchorRef.current = blockEl;
 
     const blockRect = blockEl.getBoundingClientRect();
     const editorRect = editorEl.getBoundingClientRect();
@@ -398,166 +400,181 @@ export default function WritePage() {
   // }, []);
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] px-4 pt-8 pb-20 sm:px-6 lg:px-8">
+    <main className="mx-auto w-full max-w-[1180px] px-4 pt-6 pb-24 sm:px-6 lg:px-8 lg:pt-8">
 
       {/* <HoveringMenu position={menuPosition} onFormat={applyFormatting} /> */}
       
-      {/* ── Top bar ── */}
-      <div className="flex items-center justify-between mb-8 gap-4">
-        <button type="button" onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 bg-(--color-bg-alt) border border-(--color-border) text-(--color-text-secondary) text-[13px] cursor-pointer px-3.5 py-1.5 rounded-full transition-all hover:bg-(--color-border) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">
-          ← Back
-        </button>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={handleSave}>
-            {autosaveStatus === 'saving' ? 'Saving…' : autosaveStatus === 'conflict' ? 'Draft conflict' : autosaveStatus === 'error' ? 'Save failed' : autosaveStatus === 'saved' ? '✓ Saved' : saved ? '✓ Saved' : 'Save draft'}
-          </Button>
-          <Button 
+      <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-[var(--color-border)] pb-5">
+        <div>
+          <h1 className="text-[24px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{editPostId ? 'Edit story' : 'Write'}</h1>
+          <p role="status" aria-live="polite" className={`mt-1 text-[12px] ${['conflict', 'error'].includes(autosaveStatus) ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-secondary)]'}`}>
+            {autosaveStatus === 'loading' ? 'Loading draft…' : autosaveStatus === 'saving' ? 'Saving…' : autosaveStatus === 'conflict' ? 'Draft conflict' : autosaveStatus === 'error' ? 'Save failed' : autosaveStatus === 'saved' ? '✓ Saved' : autosaveStatus === 'waiting' ? 'Unsaved changes' : 'Autosave on'}
+          </p>
+        </div>
+          <Button
             variant="primary"
+            className="!min-h-11"
             disabled={!title.trim() || !tags.length || (format === 'article' && !coverURL && !cover) || (format === 'short' && wordCount > 500) || isPending}
-            onClick={handleSubmit}>
+            onClick={handleSubmit} aria-busy={isPending}>
             {editPostId ? 'Update' : 'Publish'}
           </Button>
-        </div>
-      </div>
+      </header>
 
       {sourceQuestionId && <div className="mb-6 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] px-4 py-3 text-[12px] text-[var(--color-text-secondary)]">This article will be published as a response to a reader question.</div>}
       {draftQuery.isError && <p role="alert" className="mb-6 rounded-[12px] border border-[var(--color-danger)] px-4 py-3 text-[12px] text-[var(--color-danger)]">This draft could not be loaded. Return to your profile and choose it again.</p>}
       {autosaveStatus === 'conflict' && <p role="alert" className="mb-6 rounded-[12px] border border-[var(--color-danger)] px-4 py-3 text-[12px] text-[var(--color-danger)]">This draft changed in another tab. Reload before making more edits so you do not overwrite newer work.</p>}
 
-      <div className="mb-7 flex items-center gap-2 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-2">
-        {[{ id: 'article', label: 'Long-form article' }, { id: 'short', label: 'Short read' }].map(option => <button key={option.id} type="button" onClick={() => setFormat(option.id)} aria-pressed={format === option.id} className={`flex-1 rounded-[10px] px-3 py-2 text-[12px] font-semibold ${format === option.id ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm' : 'text-[var(--color-text-muted)]'}`}>{option.label}</button>)}
-      </div>
-
-      {format === 'short' && <div className="mb-7"><label htmlFor="depth-parent" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Deeper article <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><select id="depth-parent" value={depthParentId} onChange={event => setDepthParentId(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]"><option value="">This short stands alone</option>{depthOptions.data?.map(post => <option key={post.id} value={post.id}>{post.title}</option>)}</select><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Readers will be able to move between this quick explanation and the full article.</p></div>}
-      {canScheduleEarlyAccess && <div className="mb-7"><label htmlFor="public-at" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Public release <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><input id="public-at" type="datetime-local" value={publicAt} min={scheduleBounds.min} max={scheduleBounds.max} onChange={event => setPublicAt(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]" /><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Members can read immediately; everyone else gets access at this time.</p></div>}
-      <section className="mb-7 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-4"><div className="flex items-center justify-between gap-4"><div><h2 className="text-[13px] font-semibold text-[var(--color-text)]">Writing assistant</h2><p className="mt-1 text-[11px] text-[var(--color-text-muted)]">Suggestions never replace your draft automatically.</p></div><Button variant="secondary" onClick={() => setAssistantOpen(value => !value)}>{assistantOpen ? 'Close' : 'Open assistant'}</Button></div>{assistantOpen && (!canUseWritingAssistant ? <p className="mt-4 text-[12px] text-[var(--color-text-secondary)]">AI writing assistance is available with membership.</p> : <div className="mt-4"><div className="flex gap-2"><select value={assistantAction} onChange={event => setAssistantAction(event.target.value)} className="flex-1 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px]"><option value="improve_clarity">Improve clarity</option><option value="tighten">Tighten prose</option><option value="create_outline">Create outline</option><option value="suggest_titles">Suggest titles</option><option value="find_gaps">Find reasoning gaps</option></select><Button disabled={assistant.isPending || blocks.map(block => block.content).join(' ').trim().length < 20} onClick={() => assistant.mutate({ action: assistantAction, text: blocks.map(block => block.content).join('\n').slice(0, 12000) })}>{assistant.isPending ? 'Thinking…' : 'Generate'}</Button></div>{assistant.isError && <p role="alert" className="mt-3 text-[11px] text-[var(--color-danger)]">{assistant.error?.response?.data?.message || 'The assistant is unavailable.'}</p>}{assistant.data && <div className="mt-4 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"><p className="whitespace-pre-wrap text-[13px] leading-[1.7] text-[var(--color-text-secondary)]">{assistant.data.data.suggestion}</p><div className="mt-4 flex items-center justify-between gap-3"><p className="text-[10px] text-[var(--color-text-muted)]">{assistant.data.data.disclosure}</p><Button variant="secondary" onClick={() => addAfter(blocks.at(-1).id, assistant.data.data.suggestion)}>Add as new block</Button></div></div>}</div>)}</section>
       {isError && <p role="alert" className="mb-5 text-[12px] text-[var(--color-danger)]">{error?.response?.data?.message || 'The post could not be published.'}</p>}
 
-      {/* ── Cover image ── */}
-      <div className="mb-7">
-        {cover ? (
-          <div className="relative">
-            <img src={cover} alt="cover" className="w-full h-60 object-cover rounded-[14px] block"/>
-            <button
-              type="button"
-              aria-label="Remove cover image"
-              onClick={() => setCover(null)}
-              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white border-none cursor-pointer flex items-center justify-center text-[18px]">
-              ×
-            </button>
+      <div className="mb-8 flex max-w-[400px] items-center gap-2 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-2">
+        {[{ id: 'article', label: 'Long-form article' }, { id: 'short', label: 'Short read' }].map(option => <button key={option.id} type="button" onClick={() => setFormat(option.id)} aria-pressed={format === option.id} className={`min-h-11 flex-1 rounded-[10px] px-3 py-2 text-[12px] font-semibold ${format === option.id ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm' : 'text-[var(--color-text-muted)]'}`}>{option.label}</button>)}
+      </div>
+
+      <section aria-label="Publishing details" className="mb-8 min-w-0">
+        <details open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)} className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)]">
+          <summary className="cursor-pointer px-4 py-4 text-[14px] font-semibold text-[var(--color-text)]">
+            Story details
+            <span className="mt-1 block text-[12px] font-normal text-[var(--color-text-secondary)]">Cover, tags &amp; publishing options</span>
+          </summary>
+          <div className="border-t border-[var(--color-border)] p-4">
+            {/* ── Cover image ── */}
+            <div className="mb-6">
+              <h2 className="mb-3 text-[13px] font-semibold text-[var(--color-text)]">Cover image <span className="font-normal text-[var(--color-text-secondary)]">{format === 'short' ? '(optional)' : '(required)'}</span></h2>
+              {cover ? (
+                <div className="relative">
+                  <img src={cover} alt="cover" className="w-full h-40 object-cover rounded-[14px] block"/>
+                  <button
+                    type="button"
+                    aria-label="Remove cover image"
+                    onClick={() => { setCover(null); setCoverURL(''); if (fileRef.current) fileRef.current.value = '' }}
+                    className="absolute top-2 right-2 w-11 h-11 rounded-full bg-black/60 text-white border-none cursor-pointer flex items-center justify-center text-[18px]">
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => fileRef.current?.click()}
+                  className="w-full min-h-11 px-3 py-3 rounded-[14px] border-2 border-dashed border-(--color-border) flex items-center justify-center text-(--color-text-muted) text-[13px] font-medium cursor-pointer bg-transparent hover:bg-(--color-bg-alt) transition-colors">
+                  {format === 'short' ? '+ Add optional cover image' : '+ Add cover image'}
+                </button>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleCoverImage}
+              />
+            </div>
+
+            {/* ── Tags ── */}
+            <div className="mb-6">
+              <h2 className="mb-3 text-[13px] font-semibold text-[var(--color-text)]">Tags <span className="font-normal text-[var(--color-text-secondary)]">(at least one)</span></h2>
+              <div className="flex gap-2 flex-wrap mb-3">
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex max-w-full items-center gap-1 break-all px-2.5 py-1.25 rounded-full
+                    bg-(--color-surface) border border-(--color-border) text-[12px] text-(--color-text-secondary)"
+                  >
+                    {t}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${t} tag`}
+                      onClick={() => setTags((v) => v.filter((x) => x !== t))}
+                      className="ml-1 text-(--color-text-muted) bg-transparent border-none cursor-pointer text-[14px]">
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <label htmlFor="editor-tag-input" className="sr-only">Add a tag</label>
+                <input
+                  id="editor-tag-input"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTag();
+                    }
+                  }}
+                  placeholder="Add a tag…"
+                  className="min-w-0 min-h-11 flex-1 px-3 py-2 border border-(--color-border) rounded-full bg-(--color-surface) text-[13px] text-(--color-text) outline-none"
+                />
+                <Button variant="secondary" className="!min-h-11" onClick={addTag}>
+                  Add
+                </Button>
+              </div>
+            </div>
+
+            {format === 'short' && <div className="mb-7"><label htmlFor="depth-parent" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Deeper article <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><select id="depth-parent" value={depthParentId} onChange={event => setDepthParentId(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]"><option value="">This short stands alone</option>{depthOptions.data?.map(post => <option key={post.id} value={post.id}>{post.title}</option>)}</select><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Readers will be able to move between this quick explanation and the full article.</p></div>}
+            {canScheduleEarlyAccess && <div className="mb-7"><label htmlFor="public-at" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Public release <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><input id="public-at" type="datetime-local" value={publicAt} min={scheduleBounds.min} max={scheduleBounds.max} onChange={event => setPublicAt(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]" /><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Members can read immediately; everyone else gets access at this time.</p></div>}
           </div>
-        ) : (
-          <button type="button" onClick={() => fileRef.current?.click()}
-            className="w-full h-40 rounded-[14px] border-2 border-dashed border-(--color-border) flex items-center justify-center text-(--color-text-muted) text-[13px] font-medium cursor-pointer bg-transparent hover:bg-(--color-bg-alt) transition-colors">
-            {format === 'short' ? '+ Add optional cover image' : '+ Add cover image'}
-          </button>
-        )}
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleCoverImage}
+        </details>
+        <p className="mt-3 text-[12px] leading-5 text-[var(--color-text-secondary)]">{format === 'article' ? 'To publish, add a title, at least one tag, and a cover image.' : 'To publish, add a title and at least one tag. Keep your short within 500 words.'}</p>
+      </section>
+
+      <section aria-label="Writing area" className="min-w-0">
+        {/* ── Title input ── */}
+        <label htmlFor="editor-title" className="mb-3 block text-[12px] font-medium text-[var(--color-text-secondary)]">{format === 'short' ? 'Short title' : 'Article title'}</label>
+        <textarea
+          id="editor-title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={format === 'short' ? 'A focused idea…' : 'Title…'}
+          maxLength={format === 'short' ? 120 : 180}
+          className="editor-writing-field w-full bg-transparent border-none outline-none resize-none font-bold text-[clamp(24px,4vw,36px)] leading-[1.3] tracking-[-0.5px] mb-8 text-(--color-text) placeholder:text-(--color-text-muted)"
+          style={{ fontFamily: "var(--font-display)", minHeight: "1.3em" }}
+          rows={1}
+          onInput={(e) => {
+            e.target.style.height = "auto";
+            e.target.style.height = e.target.scrollHeight + "px";
+          }}
         />
-      </div>
 
-      {/* ── Title input ── */}
-      <label htmlFor="editor-title" className="sr-only">{format === 'short' ? 'Short title' : 'Article title'}</label>
-      <textarea
-        id="editor-title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder={format === 'short' ? 'A focused idea…' : 'Title…'}
-        maxLength={format === 'short' ? 120 : 180}
-        className="editor-writing-field w-full bg-transparent border-none outline-none resize-none font-bold text-[clamp(24px,4vw,36px)] leading-[1.3] tracking-[-0.5px] mb-8 text-(--color-text) placeholder:text-(--color-text-muted)"
-        style={{ fontFamily: "var(--font-display)", minHeight: "1.3em" }}
-        rows={1}
-        onInput={(e) => {
-          e.target.style.height = "auto";
-          e.target.style.height = e.target.scrollHeight + "px";
-        }}
-      />
-
-      {/* ── Block editor ── */}
-      <div className="flex flex-col gap-2 mb-8 relative" ref={editorRef}>
-        {blocks.map(bl => (
-          <Block
-            key={bl.id}
-            block={bl}
-            ref={(el) => blockRefs.current[bl.id] = el}
-            onChange={(v) => updateBlock(bl.id, v)}
-            onAltChange={(value) => updateBlockField(bl.id, 'alt', value)}
-            onDelete={() => deleteBlock(bl.id)}
-            onAdd={(content) => addAfter(bl.id, content)}
-            onTypeChange={(t) => changeType(bl.id, t)}
-            openSlashMenu={openSlashMenu}
-            closeSlashMenu={closeSlashMenu}
-            isSlashMenuOpen={slashMenu.open}
-            moveFocus={moveFocus}
-            mergeToPrevBlock={mergeToPrevBlock}
-            copyPasteContent={copyPasteContent}
-          />
-        ))}
-
-        {slashMenu.open && (
-          <SlashMenu
-            options={BLOCK_TYPES.filter(b => b.type !== 'divider' || blocks.length > 1)}
-            position={slashMenu.position}
-            filter={slashMenu.filter}
-            onSelect={handleSlashSelect}
-            onClose={closeSlashMenu}
-          />
-        )}
-
-      </div>
-
-      {format === 'short' && <div className={`mb-6 text-right text-[12px] ${wordCount > 500 ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]'}`}>{wordCount}/500 words</div>}
-
-      {/* ── Tags ── */}
-      <div className="p-4 bg-(--color-bg-alt) rounded-[14px] border border-(--color-border)">
-        <p className="text-[11px] font-bold text-(--color-text-muted) uppercase tracking-[0.06em] mb-3">
-          Tags
-        </p>
-        <div className="flex gap-2 flex-wrap mb-3">
-          {tags.map((t) => (
-            <span
-              key={t}
-              className="inline-flex items-center gap-1 px-2.5 py-1.25 rounded-full
-              bg-(--color-surface) border border-(--color-border) text-[12px] text-(--color-text-secondary)"
-            >
-              {t}
-              <button
-                type="button"
-                aria-label={`Remove ${t} tag`}
-                onClick={() => setTags((v) => v.filter((x) => x !== t))}
-                className="ml-1 text-(--color-text-muted) bg-transparent border-none cursor-pointer text-[14px]">
-                ×
-              </button>
-            </span>
+        {/* ── Block editor ── */}
+        <p className="mb-3 text-[12px] font-medium text-[var(--color-text-secondary)]">Story</p>
+        <div className="flex min-h-[240px] flex-col gap-2 mb-4 relative" ref={editorRef}>
+          {blocks.map(bl => (
+            <Block
+              key={bl.id}
+              block={bl}
+              ref={(el) => blockRefs.current[bl.id] = el}
+              onChange={(v) => updateBlock(bl.id, v)}
+              onAltChange={(value) => updateBlockField(bl.id, 'alt', value)}
+              onDelete={() => deleteBlock(bl.id)}
+              onAdd={(content) => addAfter(bl.id, content)}
+              onTypeChange={(t) => changeType(bl.id, t)}
+              openSlashMenu={openSlashMenu}
+              closeSlashMenu={closeSlashMenu}
+              isSlashMenuOpen={slashMenu.open && slashMenu.blockId === bl.id}
+              moveFocus={moveFocus}
+              mergeToPrevBlock={mergeToPrevBlock}
+              copyPasteContent={copyPasteContent}
+            />
           ))}
+
+          {slashMenu.open && (
+            <SlashMenu anchorRef={slashAnchorRef}
+              options={BLOCK_TYPES.filter(b => b.type !== 'divider' || blocks.length > 1)}
+              position={slashMenu.position}
+              filter={slashMenu.filter}
+              onSelect={handleSlashSelect}
+              onClose={closeSlashMenu}
+            />
+          )}
+
         </div>
-        <div className="flex gap-2">
-          <label htmlFor="editor-tag-input" className="sr-only">Add a tag</label>
-          <input
-            id="editor-tag-input"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addTag();
-              }
-            }}
-            placeholder="Add a tag…"
-            className="flex-1 px-3 py-2 border border-(--color-border) rounded-full bg-(--color-surface) text-[13px] text-(--color-text) outline-none"
-          />
-          <Button variant="secondary" onClick={addTag}>
-            Add
-          </Button>
+
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--color-text-secondary)]">
+          <p>Type / in a block for formatting options.</p>
+          <p className={format === 'short' && wordCount > 500 ? 'text-[var(--color-danger)]' : ''}>{format === 'short' ? `${wordCount}/500 words` : `${wordCount} ${wordCount === 1 ? 'word' : 'words'}`}</p>
         </div>
-      </div>
-    </div>
+
+      </section>
+
+    </main>
   );
 }
 
@@ -653,18 +670,6 @@ const Block = forwardRef(
 
     return (
       <div className="relative group flex items-start gap-2">
-        {/* Add block button (appears on hover) */}
-        <button
-          type="button"
-          aria-label="Add block after this block"
-          onClick={() => onAdd()}
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity mt-1 w-8 h-8 flex items-center justify-center rounded text-(--color-text-muted) hover:text-green-500 bg-transparent border-none cursor-pointer text-[18px] shrink-0"
-          title="Add block after"
-          tabIndex={0}
-        >
-          +
-        </button>
-
         {/* Content */}
         {
           block.type === "divider"
@@ -695,9 +700,21 @@ const Block = forwardRef(
           </div>
         }
         
+        {/* Add block button (appears on hover) */}
+        <button
+          type="button"
+          aria-label="Add block after this block"
+          onClick={() => onAdd()}
+          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity mt-1 w-10 h-10 flex items-center justify-center rounded text-(--color-text-muted) hover:text-green-500 bg-transparent border-none cursor-pointer text-[18px] shrink-0"
+          title="Add block after"
+          tabIndex={0}
+        >
+          +
+        </button>
+
         {/* Delete button */}
         <button type="button" aria-label={`Delete ${block.type} block`} onClick={onDelete}
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity mt-1 w-8 h-8 flex items-center justify-center rounded text-(--color-text-muted) hover:text-red-500 bg-transparent border-none cursor-pointer text-[16px] shrink-0">
+          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity mt-1 w-10 h-10 flex items-center justify-center rounded text-(--color-text-muted) hover:text-red-500 bg-transparent border-none cursor-pointer text-[16px] shrink-0">
           ×
         </button>
       </div>

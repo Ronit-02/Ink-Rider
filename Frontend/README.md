@@ -58,11 +58,17 @@ not use this mode and continues to own its clean server processes.
 | `/shorts/series/:id` | Short-read series progression |
 | `/history` | Private reading history |
 | `/members` | Member Hub and creator experiences |
+| `/membership` | Public membership perks, sign-in, checkout, and membership management |
 | `/notifications` | Notifications and unread activity |
 | `/onboarding` | Onboarding interests and follows |
-| `/write` | Writer editor and publishing |
-| `/profile` | Personal profile, history, and account activity |
-| `/settings` | Account and appearance settings |
+| `/write` | Guest sign-in prompt or signed-in writer editor and publishing |
+| `/profile` | Centered guest sign-in prompt or personal profile, history, and account activity; mobile Account navigation opens an account sheet with a member-only Write link |
+| `/settings` | Public appearance/language settings and member-only reading-interest settings |
+| `/help` | Public guide to reading, writing, community participation, membership, settings, and recovery |
+
+On every mobile application page, Collections occupies the fourth bottom-bar position for guests and members. Write is available in the signed-in Account sheet; desktop navigation is unchanged.
+
+Theme defaults to the browser/system color preference and follows changes until the visitor explicitly chooses Light or Dark in Settings. That saved choice takes priority on later visits; browsers without preference detection fall back to dark.
 
 ## Project Structure
 

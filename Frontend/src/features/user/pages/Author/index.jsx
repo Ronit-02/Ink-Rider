@@ -1,15 +1,19 @@
-import { useState } from 'react'
+import retainRetryView from '@/shared/utils/retainRetryView'
+import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import Button from '@/shared/components/ui/Button'
 import Avatar from '@/shared/components/ui/Avatar'
 import Tag from '@/shared/components/ui/Tag'
+import PostEngagementControls from '@/features/discovery/components/PostEngagementControls'
 import useAuth from '@/features/auth/hooks/useAuth'
 import useWriter from '../../hooks/useWriter'
 import useWriterFollow from '../../hooks/useWriterFollow'
 import useEntitlements from '@/features/membership/hooks/useEntitlements'
 import { sendCreatorRequest, supportCreator } from '@/features/membership/api/memberExperience'
 import { ListSkeleton, Skeleton } from '@/shared/components/ui/Skeleton'
+import ModalLayer from '@/shared/components/ui/ModalLayer'
+import useDialogFocus from '@/shared/hooks/useDialogFocus'
 
 const formatJoinedDate = value => new Intl.DateTimeFormat('en', {
   month: 'long',
@@ -37,14 +41,14 @@ function WriterPostCard({ post }) {
           {post.title}
         </h2>
       </Link>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
       {post.tags?.length > 0 && (
-        <div className="flex gap-2 flex-wrap mt-3">
+        <div className="flex min-w-0 flex-1 gap-2 flex-wrap [&>a]:max-w-full [&>a]:whitespace-normal [&>a]:break-words">
           {post.tags.slice(0, 3).map(tag => <Tag key={tag} label={tag} clickable />)}
         </div>
       )}
-      <p className="text-[12px] text-[var(--color-text-muted)] mt-3 tabular-nums">
-        {post.likesCount || 0} appreciations · {post.commentsCount || 0} comments
-      </p>
+      <PostEngagementControls post={post} />
+      </div>
     </article>
   )
 }
@@ -55,8 +59,10 @@ export default function AuthorPage() {
   const [requestOpen, setRequestOpen] = useState(false)
   const [subject, setSubject] = useState('')
   const [details, setDetails] = useState('')
-  const entitlements = useEntitlements(loggedIn)
-  const writerQuery = useWriter(handle)
+  const closeRequestRef = useRef(null)
+  const requestDialogRef = useDialogFocus(() => setRequestOpen(false), closeRequestRef, requestOpen)
+  const entitlements = retainRetryView(useEntitlements(loggedIn))
+  const writerQuery = retainRetryView(useWriter(handle))
   const writer = writerQuery.data
   const followMutation = useWriterFollow({ writerId: writer?.id, handle })
   const requestMutation = useMutation({ mutationFn: sendCreatorRequest, onSuccess: () => { setSubject(''); setDetails('') } })
@@ -79,7 +85,7 @@ export default function AuthorPage() {
     )
   }
 
-  if (writerQuery.isLoading) {
+  if (writerQuery.isPending) {
     return <main className="max-w-[900px] mx-auto px-6 md:px-8 pt-10 pb-20"><div role="status" aria-label="Loading writer profile"><div className="flex items-start gap-5"><Skeleton className="h-20 w-20 rounded-full" /><div className="flex-1"><Skeleton className="h-7 w-48" /><Skeleton className="mt-3 h-3 w-32" /><Skeleton className="mt-4 h-3 w-full max-w-xl" /></div></div><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></main>
   }
 
@@ -96,7 +102,7 @@ export default function AuthorPage() {
         </p>
         {notFound
           ? <Link to="/" className="text-[13px] font-semibold underline underline-offset-4">Return home</Link>
-          : <Button variant="secondary" onClick={() => writerQuery.refetch()}>Try again</Button>}
+          : <Button variant="secondary" onClick={() => writerQuery.refetch()} aria-busy={writerQuery.isFetching} disabled={writerQuery.isFetching}>Try again</Button>}
         </div>
       </main>
     )
@@ -134,11 +140,11 @@ export default function AuthorPage() {
 
           {!writer.isSelf && (
             <div className="flex gap-2 flex-wrap">
-              <Button variant={writer.isFollowing ? 'secondary' : 'primary'} onClick={handleFollow} disabled={followMutation.isPending}>
-                {followMutation.isPending ? 'Updating…' : writer.isFollowing ? 'Following' : 'Follow'}
+              <Button variant={writer.isFollowing ? 'secondary' : 'primary'} onClick={handleFollow} disabled={followMutation.isPending} aria-busy={followMutation.isPending}>
+                {writer.isFollowing ? 'Following' : 'Follow'}
               </Button>
               {loggedIn && entitlements.data?.capabilities?.includes('behind_scenes') && (
-                <Button variant="secondary" disabled={supportMutation.isPending || supportMutation.isSuccess} onClick={() => supportMutation.mutate({ creatorId: writer.id })}>
+                <Button variant="secondary" disabled={supportMutation.isPending || supportMutation.isSuccess} onClick={() => supportMutation.mutate({ creatorId: writer.id })} aria-busy={supportMutation.isPending}>
                   {supportMutation.isSuccess ? 'Supported' : 'Support writer'}
                 </Button>
               )}
@@ -146,8 +152,13 @@ export default function AuthorPage() {
                 <Button
                   variant="secondary"
                   aria-expanded={loggedIn ? requestOpen : false}
-                  aria-controls={loggedIn ? 'direct-request-panel' : undefined}
-                  onClick={() => loggedIn ? setRequestOpen(value => !value) : signIn()}
+                  aria-haspopup="dialog"
+                  aria-controls={loggedIn && requestOpen ? 'direct-request-dialog' : undefined}
+                  onClick={() => {
+                    if (!loggedIn) return signIn()
+                    if (requestMutation.isSuccess) requestMutation.reset()
+                    setRequestOpen(true)
+                  }}
                 >
                   Request an article
                 </Button>
@@ -178,10 +189,21 @@ export default function AuthorPage() {
         )}
         {supportMutation.isError && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">Creator support could not be updated. Please try again.</p>}
         {requestOpen && (
-          <section id="direct-request-panel" aria-labelledby="direct-request-heading" className="mt-5 max-w-[620px] rounded-[16px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-5">
-            <h2 id="direct-request-heading" className="font-semibold text-[14px] text-[var(--color-text)]">Direct request to {writer.displayName}</h2>
-            {!entitlements.data?.capabilities?.includes('direct_creator_requests') ? (
-              <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">Direct creator requests are available to members.</p>
+          <ModalLayer id="direct-request-dialog" onDismiss={() => setRequestOpen(false)} dismissOnBackdrop={!subject && !details} aria-labelledby="direct-request-heading" className="flex items-center justify-center p-4">
+          <section ref={requestDialogRef} tabIndex={-1} className="w-full max-w-[620px] overflow-y-auto rounded-[16px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-5">
+            <div className="flex items-center justify-between gap-4">
+              <h2 id="direct-request-heading" className="font-semibold text-[14px] text-[var(--color-text)]">Direct request to {writer.displayName}</h2>
+              <button ref={closeRequestRef} type="button" onClick={() => setRequestOpen(false)} aria-label="Close article request" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)]">×</button>
+            </div>
+            {entitlements.isPending ? (
+              <p role="status" className="mt-2 text-[12px] text-[var(--color-text-secondary)]">Checking membership…</p>
+            ) : entitlements.isError ? (
+              <div className="mt-3"><p role="alert" className="text-[12px] text-[var(--color-danger)]">Membership could not be checked. Please try again.</p><Button className="mt-3" variant="secondary" onClick={() => entitlements.refetch()} disabled={entitlements.isFetching} aria-busy={entitlements.isFetching}>Try again</Button></div>
+            ) : !entitlements.data?.capabilities?.includes('direct_creator_requests') || requestMutation.error?.response?.data?.code === 'ENTITLEMENT_REQUIRED' ? (
+              <div>
+                <p role="alert" className="mt-2 text-[12px] text-[var(--color-text-secondary)]">Direct creator requests are available to members.</p>
+                <Link to="/membership" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--color-accent)] px-[18px] py-2 text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2"><span className="text-[var(--color-text-inverted)]">Become a member</span></Link>
+              </div>
             ) : requestMutation.isSuccess ? (
               <p role="status" className="mt-2 text-[12px] text-[var(--color-accent)]">Request sent. You have {requestMutation.data.remainingThisMonth} left this month.</p>
             ) : (
@@ -218,11 +240,12 @@ export default function AuthorPage() {
                 />
                 <p id="creator-request-details-count" className="mt-1 text-right text-[10px] tabular-nums text-[var(--color-text-muted)]">{details.length}/2000</p>
 
-                <Button className="mt-3" type="submit" disabled={!subject.trim() || !details.trim() || requestMutation.isPending}>{requestMutation.isPending ? 'Sending…' : 'Send request'}</Button>
+                <Button className="mt-3" type="submit" disabled={!subject.trim() || !details.trim() || requestMutation.isPending} aria-busy={requestMutation.isPending}>{'Send request'}</Button>
                 {requestMutation.isError && <p role="alert" className="mt-2 text-[11px] text-[var(--color-danger)]">The request could not be sent. Check your membership and try again.</p>}
               </form>
             )}
           </section>
+          </ModalLayer>
         )}
       </section>
 

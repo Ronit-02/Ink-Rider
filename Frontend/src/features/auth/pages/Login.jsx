@@ -1,6 +1,6 @@
 /* Login / Signup page — full Tailwind, split layout */
 import { useEffect, useRef, useState, forwardRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import { useMutation } from '@tanstack/react-query'
 import { LogoIcon } from '@/shared/icons'
@@ -12,9 +12,12 @@ import { loginFailure, loginStart, loginSuccess } from '../store/authSlice'
 import { googleLogin as requestGoogleLogin } from '../api/googleLogin'
 import useToast from '@/shared/hooks/useToast'
 import { useTheme } from '@/shared/hooks/useTheme'
+import BackButton from '@/shared/components/ui/BackButton'
 
 export default function Login({ signUp = false }) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const afterSignIn = location.state?.returnTo === '/membership' ? '/membership' : '/'
   const dispatch = useDispatch()
   const { notify } = useToast()
   const { dark } = useTheme()
@@ -25,6 +28,7 @@ export default function Login({ signUp = false }) {
   const [ otp, setOtp ] = useState(['', '', '', '', '', ''])
   const boxInputRefs = useRef([])
   const googleButtonRef = useRef(null)
+  const googlePendingRef = useRef(false)
   
   const loginMutation  = useMutation({ 
     mutationFn: loginUser,  
@@ -32,7 +36,7 @@ export default function Login({ signUp = false }) {
     onSuccess: (data) => { 
       dispatch(loginSuccess(data));
       notify('Welcome back.')
-      navigate('/') 
+      navigate(afterSignIn)
     },
     
     onError: (error) => {
@@ -82,8 +86,9 @@ export default function Login({ signUp = false }) {
     onSuccess: data => {
       dispatch(loginSuccess(data))
       notify('Welcome to Ink Rider.')
-      navigate('/')
+      navigate(afterSignIn)
     },
+    onSettled: () => { googlePendingRef.current = false },
   })
 
   const triggerGoogleLogin = googleMutation.mutate
@@ -97,15 +102,18 @@ export default function Login({ signUp = false }) {
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: response => {
+          if (googlePendingRef.current) return
+          googlePendingRef.current = true
           dispatch(loginStart())
           triggerGoogleLogin(response.credential)
         },
       })
-      window.google.accounts.id.renderButton(googleButtonRef.current, { theme: dark ? 'filled_black' : 'outline', size: 'large', width: 320, text: 'continue_with' })
+      window.google.accounts.id.renderButton(googleButtonRef.current, { theme: dark ? 'filled_black' : 'outline', size: 'large', width: Math.min(320, googleButtonRef.current.clientWidth), text: 'continue_with' })
     }
+    window.addEventListener('resize', renderButton)
     if (window.google?.accounts?.id) {
       renderButton()
-      return undefined
+      return () => window.removeEventListener('resize', renderButton)
     }
     const existingScript = document.querySelector('script[data-google-identity]')
     const script = existingScript || document.createElement('script')
@@ -115,11 +123,15 @@ export default function Login({ signUp = false }) {
     script.dataset.googleIdentity = 'true'
     if (!existingScript) document.head.appendChild(script)
     script.addEventListener('load', renderButton)
-    return () => script.removeEventListener('load', renderButton)
+    return () => {
+      script.removeEventListener('load', renderButton)
+      window.removeEventListener('resize', renderButton)
+    }
   }, [dark, dispatch, triggerGoogleLogin, isEmailVerified, mode])
 
   const handleSubmit = e => {
     e.preventDefault()
+    if (loginMutation.isPending || signupMutation.isPending) return
     if (mode === 'signup' && creds.password !== creds.confirmPassword) return
     dispatch(loginStart())
     if (mode === 'login') loginMutation.mutate({ email: creds.email, password: creds.password })
@@ -128,11 +140,13 @@ export default function Login({ signUp = false }) {
 
   const handleVerifyEmail = e => {
     e.preventDefault()
+    if (verifyEmailMutation.isPending || resendOtpMutation.isPending) return
     verifyEmailMutation.mutate({ email: creds.email, otp: otp.join('') })
   }
 
   const handleResendOtp = e => {
     e.preventDefault()
+    if (verifyEmailMutation.isPending || resendOtpMutation.isPending) return
     resendOtpMutation.mutate({ email: creds.email })
   }
   const handleAuthTabKeyDown = event => {
@@ -149,10 +163,10 @@ export default function Login({ signUp = false }) {
   const passwordsDiffer = mode === 'signup' && creds.confirmPassword && creds.password !== creds.confirmPassword
 
   return (
-    <main className="flex h-[100dvh] overflow-y-auto bg-[var(--color-bg)] text-[var(--color-text)]">
+    <main className="flex h-[100dvh] overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
 
       {/* Left image (hidden on mobile) */}
-      <div className="hidden md:block flex-1 overflow-hidden">
+      <div className="hidden md:block min-w-0 flex-1 overflow-hidden">
         <img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee"
           alt="" className="w-full h-full object-cover" />
       </div>
@@ -166,10 +180,13 @@ export default function Login({ signUp = false }) {
           handleVerifyEmail={handleVerifyEmail} 
           handleResendOtp={handleResendOtp}
           boxInputRefs={boxInputRefs}
+          verifying={verifyEmailMutation.isPending}
+          resending={resendOtpMutation.isPending}
         />
         :
-        <div className="flex min-h-full flex-1 items-center justify-center bg-[var(--color-bg)] px-6 py-6">
-          <form id="auth-form" onSubmit={handleSubmit} className="w-full max-w-95 flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-8 py-10 shadow-[0_14px_36px_rgba(0,0,0,0.12)]">
+        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-[var(--color-bg)] px-4 py-4 sm:px-6 sm:py-6">
+          <form id="auth-form" onSubmit={handleSubmit} className="m-auto w-full max-w-95 shrink-0 flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-6 sm:px-8 sm:py-10 shadow-[0_14px_36px_rgba(0,0,0,0.12)]">
+            <BackButton className="mb-5 self-start" />
 
             {/* Logo */}
             <Link to="/" 
@@ -254,10 +271,10 @@ export default function Login({ signUp = false }) {
 
             {/* Submit */}
             <button type="submit" disabled={loginMutation.isPending || signupMutation.isPending || passwordsDiffer}
-              className="mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-60">
-              {loginMutation.isPending || signupMutation.isPending ? 'Please wait…' : mode === 'login' ? 'Login' : 'Sign Up'}
+              className="mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-60" aria-busy={loginMutation.isPending || signupMutation.isPending}>
+              {mode === 'login' ? 'Login' : 'Sign Up'}
             </button>
-            {import.meta.env.VITE_GOOGLE_CLIENT_ID && <><div className="my-5 flex items-center gap-3 text-[11px] text-[var(--color-text-muted)]"><span className="h-px flex-1 bg-[var(--color-border)]" />or<span className="h-px flex-1 bg-[var(--color-border)]" /></div><div ref={googleButtonRef} className="flex min-h-10 justify-center" />{googleMutation.error && <p role="alert" className="mt-2 text-center text-[12px] text-[var(--color-danger)]">{googleMutation.error?.response?.data?.message || 'Google sign-in failed.'}</p>}</>}
+            {import.meta.env.VITE_GOOGLE_CLIENT_ID && <><div className="my-5 flex items-center gap-3 text-[11px] text-[var(--color-text-muted)]"><span className="h-px flex-1 bg-[var(--color-border)]" />or<span className="h-px flex-1 bg-[var(--color-border)]" /></div><div ref={googleButtonRef} aria-busy={googleMutation.isPending} inert={googleMutation.isPending ? "" : undefined} className="flex min-h-10 justify-center" />{googleMutation.error && <p role="alert" className="mt-2 text-center text-[12px] text-[var(--color-danger)]">{googleMutation.error?.response?.data?.message || 'Google sign-in failed.'}</p>}</>}
             </div>
           </form>
         </div>
@@ -266,7 +283,7 @@ export default function Login({ signUp = false }) {
   )
 }
 
-function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResendOtp}) {
+function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResendOtp, verifying, resending}) {
 
   const handleChange = (value, index) => {
     const newOtp = [...otp]
@@ -287,8 +304,9 @@ function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResend
   }
 
   return (
-    <div className="flex min-h-full flex-1 items-center justify-center bg-[var(--color-bg)] px-6 py-6">
-      <div className="w-full max-w-95 flex flex-col items-center gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-8 py-10 shadow-[0_14px_36px_rgba(0,0,0,0.12)]">
+    <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-[var(--color-bg)] px-4 py-4 sm:px-6 sm:py-6">
+      <div className="m-auto w-full max-w-95 shrink-0 flex flex-col items-center gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-6 sm:px-8 sm:py-10 shadow-[0_14px_36px_rgba(0,0,0,0.12)]">
+        <BackButton className="self-start" />
 
         {/* Logo */}
         <Link to="/" 
@@ -307,7 +325,7 @@ function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResend
         </p>
 
         {/* Boxes */}
-        <div className="flex gap-3 mb-6">
+        <div className="flex w-full gap-1.5 sm:gap-3 mb-6">
           {otp.map((digit, index) => (
             <BoxField
               key={index}
@@ -321,14 +339,14 @@ function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResend
           ))}
         </div>
 
-        <button type="button" onClick={handleResendOtp}
+        <button type="button" onClick={handleResendOtp} disabled={verifying || resending} aria-busy={resending}
           className='text-[12px] text-(--color-text-muted) hover:text-(--color-accent) transition-colors mr-auto'
         >
           Resend OTP
         </button>
 
           {/* Submit */}
-        <button type="button" onClick={handleVerifyEmail}
+        <button type="button" onClick={handleVerifyEmail} disabled={verifying || resending} aria-busy={verifying}
           className="mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)]">
           Verify Email
         </button>
@@ -364,7 +382,7 @@ const BoxField = forwardRef(
         inputMode="numeric"
         aria-label={label}
         placeholder={placeholder}
-        className="h-12 w-12 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-center text-[var(--color-text)] transition-colors focus:border-[var(--color-accent)]"
+        className="h-11 min-w-0 w-full flex-1 sm:h-12 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-center text-[var(--color-text)] transition-colors focus:border-[var(--color-accent)]"
         value={value}
         onChange={onChange}
         ref={ref}

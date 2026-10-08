@@ -18,14 +18,15 @@ const AudioIcon = ({ active }) => (
 
 export function AIStickyButtons({ onSummary, onAudio, showSummary, readAloud }) {
   return (
-    <div className="sticky top-16 flex flex-row gap-[10px] lg:top-20 lg:flex-col">
+    <div role="group" aria-label="Article tools" className="flex flex-row flex-wrap gap-[10px] lg:sticky lg:top-20 lg:flex-col">
       {[
         { fn: onSummary, active: showSummary, icon: <SummaryIcon active={showSummary} />, title: 'Article overview' },
         { fn: onAudio, active: readAloud, icon: <AudioIcon active={readAloud} />, title: 'Read aloud' },
       ].map(button => (
         <button type="button" key={button.title} onClick={button.fn} title={button.title} aria-label={button.title} aria-pressed={button.active}
-          className={`w-10 h-10 rounded-[10px] flex items-center justify-center cursor-pointer border transition-all duration-150 ${button.active ? 'bg-[var(--color-accent)] border-[var(--color-accent)]' : 'bg-[var(--color-bg-alt)] border-[var(--color-border)]'}`}>
+          className={`min-h-11 px-3 gap-2 lg:p-0 lg:w-10 lg:min-h-10 rounded-[10px] flex items-center justify-center cursor-pointer border transition-all duration-150 ${button.active ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-[var(--color-text-inverted)]' : 'bg-[var(--color-bg-alt)] border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}>
           {button.icon}
+          <span className="text-[12px] lg:hidden">{button.title}</span>
         </button>
       ))}
     </div>
@@ -41,8 +42,8 @@ export function AccessPanel({ capability }) {
       <p className="mt-2 text-[13px] leading-[1.65] text-[var(--color-text-secondary)]">
         {isSummary ? 'Article overviews' : 'Read aloud'} is included with an Ink-Rider membership. The full article always remains free to read.
       </p>
-      <button type="button" disabled={checkout.isPending} onClick={() => checkout.mutate()} className="mt-4 px-4 py-2 rounded-full bg-[var(--color-accent)] text-white text-[12px] font-semibold disabled:opacity-70">
-        {checkout.isPending ? 'Opening checkout…' : 'Become a member'}
+      <button type="button" disabled={checkout.isPending} onClick={() => checkout.mutate()} className="mt-4 px-4 py-2 rounded-full bg-[var(--color-accent)] text-white text-[12px] font-semibold disabled:opacity-70" aria-busy={checkout.isPending}>
+        {'Become a member'}
       </button>
       {checkout.isError && <p role="alert" className="mt-3 text-[11px] text-[var(--color-danger)]">{checkout.error?.response?.data?.message || 'Billing is temporarily unavailable.'}</p>}
     </section>

@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import { Link } from 'react-router-dom'
 import Button from '@/shared/components/ui/Button'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
@@ -9,8 +10,8 @@ function HistoryRow({ item }) {
 }
 
 export default function ReadingHistoryPage() {
-  const query = useReadingHistory()
+  const query = retainRetryView(useReadingHistory())
   if (query.isPending) return <main className="max-w-[850px] mx-auto px-5 md:px-8 pt-10 pb-24"><div role="status" aria-label="Loading reading history"><ListSkeleton count={5} role={undefined} /></div></main>
-  if (query.isError) return <main className="max-w-[850px] mx-auto px-5 md:px-8 pt-10 pb-24"><p role="alert" className="text-[13px] text-[var(--color-danger)]">Reading history could not be loaded.</p><Button className="mt-4" onClick={() => query.refetch()}>Try again</Button></main>
+  if (query.isError) return <main className="max-w-[850px] mx-auto px-5 md:px-8 pt-10 pb-24"><p role="alert" className="text-[13px] text-[var(--color-danger)]">Reading history could not be loaded.</p><Button className="mt-4" onClick={() => query.refetch()} aria-busy={query.isFetching} disabled={query.isFetching}>Try again</Button></main>
   return <main className="max-w-[850px] mx-auto px-5 md:px-8 pt-10 pb-24"><header className="mb-10"><p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">Your library</p><h1 className="mt-3 text-[clamp(32px,5vw,50px)] font-bold tracking-[-0.05em] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>Reading history</h1></header>{query.data.continueReading.length > 0 && <section className="mb-12"><h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Continue reading</h2>{query.data.continueReading.map(item => <HistoryRow key={item.id} item={item} />)}</section>}<section><h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Recent history</h2>{query.data.history.map(item => <HistoryRow key={item.id} item={item} />)}{query.data.history.length === 0 && <p className="py-12 text-[13px] text-[var(--color-text-muted)]">Articles and shorts you open will appear here.</p>}</section></main>
 }

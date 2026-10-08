@@ -26,9 +26,11 @@ export const useCreateCollection = () => {
 export const useCollectionSave = collectionId => {
   const client = useQueryClient()
   const { notify } = useToast()
-  return useMutation({ mutationFn: isSaved => updateCollectionSave({ collectionId, isSaved }), onSuccess: (_, isSaved) => {
-    client.invalidateQueries({ queryKey: ['collection', collectionId] })
-    client.invalidateQueries({ queryKey: ['collections'] })
+  return useMutation({ mutationFn: isSaved => updateCollectionSave({ collectionId, isSaved }), onSuccess: async (_, isSaved) => {
+    await Promise.all([
+      client.invalidateQueries({ queryKey: ['collection', collectionId] }),
+      client.invalidateQueries({ queryKey: ['collections'] }),
+    ])
     notify(isSaved ? 'Collection saved.' : 'Collection removed from saved.')
   }, onError: () => notify('The collection save could not be updated.', { tone: 'error' }) })
 }

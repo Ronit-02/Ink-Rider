@@ -1,7 +1,10 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, jsx-a11y/no-noninteractive-element-to-interactive-role -- Profile data initializes the edit draft and the tab container owns tab semantics. */
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import useAuth from '@/features/auth/hooks/useAuth'
 import Button from '@/shared/components/ui/Button'
 import Pill from '@/shared/components/ui/Pill'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
@@ -14,6 +17,7 @@ import useReadingHistory from '@/features/discovery/hooks/useReadingHistory'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import useToast from '@/shared/hooks/useToast'
 import Avatar from '@/shared/components/ui/Avatar'
+import SignInPrompt from '@/shared/components/ui/SignInPrompt'
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -49,7 +53,7 @@ function PostRows({ posts = [], emptyMessage, manage = false }) {
             <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">{post.format === 'short' ? 'Short' : 'Article'} · {new Date(post.createdAt).toLocaleDateString()}{post.publicationStatus === 'unpublished' ? ' · Unpublished' : ''}</p>
           </div>
           {post.likesCount !== undefined && <span className="col-start-2 text-[11px] text-[var(--color-text-muted)] sm:shrink-0">{post.likesCount} likes</span>}
-          {manage && <div className="col-start-2 flex w-full gap-2 sm:w-auto"><Link to={`/write?edit=${post._id}`} className="inline-flex min-h-10 flex-1 items-center justify-center px-3 py-1.5 rounded-full border border-[var(--color-border)] text-[11px] font-semibold sm:min-h-0 sm:flex-none">Edit</Link><button type="button" disabled={publication.isPending} onClick={() => publication.mutate({ postId: post._id, status: post.publicationStatus === 'unpublished' ? 'published' : 'unpublished' })} className="min-h-10 flex-1 rounded-full border border-[var(--color-border)] px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50 sm:min-h-0 sm:flex-none">{post.publicationStatus === 'unpublished' ? 'Republish' : 'Unpublish'}</button></div>}
+          {manage && <div className="col-start-2 flex w-full gap-2 sm:w-auto"><Link to={`/write?edit=${post._id}`} className="inline-flex min-h-10 flex-1 items-center justify-center px-3 py-1.5 rounded-full border border-[var(--color-border)] text-[11px] font-semibold sm:min-h-0 sm:flex-none">Edit</Link><button type="button" disabled={publication.isPending} onClick={() => publication.mutate({ postId: post._id, status: post.publicationStatus === 'unpublished' ? 'published' : 'unpublished' })} className="min-h-10 flex-1 rounded-full border border-[var(--color-border)] px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50 sm:min-h-0 sm:flex-none" aria-busy={publication.isPending}>{post.publicationStatus === 'unpublished' ? 'Republish' : 'Unpublish'}</button></div>}
         </div>
       ))}
     </div>
@@ -65,6 +69,24 @@ function ProfileDataError({ message, onRetry }) {
 }
 
 export default function ProfilePage() {
+  const isReady = useSelector(state => state.auth.isReady)
+  const auth = useAuth()
+  if (!isReady) return <PageFrame><p role="status" className="text-[13px] text-[var(--color-text-muted)]">Restoring your session…</p></PageFrame>
+  const accountActions = <section aria-label="Account" className={`mb-8 border-b border-[var(--color-border)] pb-6 ${auth.loggedIn ? 'md:hidden' : ''}`}>
+    <h2 className="mb-3 text-[15px] font-semibold">Account</h2>
+    <div className="flex flex-wrap gap-2">
+        {[{ to: '/saved', label: 'Saved' }, { to: '/settings', label: 'Settings' }, { to: '/notifications', label: 'Notifications' }].map(link => <Link key={link.to} to={link.to} className="inline-flex min-h-11 items-center rounded-full border border-[var(--color-border)] px-4 text-[13px]">{link.label}</Link>)}
+        <Button variant="secondary" disabled={auth.isSigningOut} aria-busy={auth.isSigningOut} onClick={auth.signOut}>Sign Out</Button>
+        <Button variant="secondary" disabled={auth.isSigningOut} aria-busy={auth.isSigningOut} onClick={auth.signOutAllDevices}>Sign Out all Devices</Button>
+    </div>
+  </section>
+  if (!auth.loggedIn) return <PageFrame className="flex min-h-full flex-col !pb-6">
+    <SignInPrompt message="Sign in to view your profile." />
+  </PageFrame>
+  return <MemberProfile accountActions={accountActions} />
+}
+
+function MemberProfile({ accountActions }) {
   const queryClient = useQueryClient()
   const { notify } = useToast()
   const [params, setParams] = useSearchParams()
@@ -73,14 +95,14 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
-  const profile = useQuery({ queryKey: ['me', 'profile'], queryFn: fetchMyProfile })
-  const posts = useQuery({ queryKey: ['me', 'posts'], queryFn: fetchMyPosts })
-  const bookmarks = useQuery({ queryKey: ['me', 'bookmarks'], queryFn: fetchBookmarks, enabled: tab === 'bookmarks' })
-  const drafts = useQuery({ queryKey: ['me', 'drafts'], queryFn: fetchDrafts, enabled: tab === 'drafts' })
-  const history = useReadingHistory()
+  const profile = retainRetryView(useQuery({ queryKey: ['me', 'profile'], queryFn: fetchMyProfile }))
+  const posts = retainRetryView(useQuery({ queryKey: ['me', 'posts'], queryFn: fetchMyPosts }))
+  const bookmarks = retainRetryView(useQuery({ queryKey: ['me', 'bookmarks'], queryFn: fetchBookmarks, enabled: tab === 'bookmarks' }))
+  const drafts = retainRetryView(useQuery({ queryKey: ['me', 'drafts'], queryFn: fetchDrafts, enabled: tab === 'drafts' }))
+  const history = retainRetryView(useReadingHistory())
   const entitlements = useEntitlements(true)
   const canViewAnalytics = entitlements.data?.capabilities?.includes('writer_analytics')
-  const analytics = useQuery({ queryKey: ['me', 'analytics'], queryFn: fetchWriterAnalytics, enabled: tab === 'analytics' && canViewAnalytics })
+  const analytics = retainRetryView(useQuery({ queryKey: ['me', 'analytics'], queryFn: fetchWriterAnalytics, enabled: tab === 'analytics' && canViewAnalytics }))
   const updateProfile = useMutation({
     mutationFn: updateMyProfile,
     onSuccess: () => {
@@ -127,8 +149,8 @@ export default function ProfilePage() {
     setBio(profile.data.bio || '')
   }, [profile.data])
 
-  if (profile.isLoading || posts.isLoading) return <PageFrame><div role="status" aria-label="Loading profile"><div className="flex items-start gap-5"><Skeleton className="h-20 w-20 shrink-0 rounded-full" /><div className="flex-1"><Skeleton className="h-7 w-48" /><Skeleton className="mt-3 h-3 w-72" /><Skeleton className="mt-2 h-3 w-full max-w-xl" /></div></div><div className="mt-10 grid gap-[14px] sm:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-[14px] border border-[var(--color-border)] p-5"><Skeleton className="h-7 w-16" /><Skeleton className="mt-2 h-3 w-24" /></div>)}</div><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
-  if (profile.isError) return <PageFrame><div><p role="alert" className="text-[13px] text-[var(--color-danger)]">We couldn’t load your profile.</p><Button variant="secondary" className="mt-4" onClick={() => profile.refetch()}>Try again</Button></div></PageFrame>
+  if (profile.isLoading || posts.isLoading) return <PageFrame>{accountActions}<div role="status" aria-label="Loading profile"><div className="flex items-start gap-5"><Skeleton className="h-20 w-20 shrink-0 rounded-full" /><div className="flex-1"><Skeleton className="h-7 w-48" /><Skeleton className="mt-3 h-3 w-72" /><Skeleton className="mt-2 h-3 w-full max-w-xl" /></div></div><div className="mt-10 grid gap-[14px] sm:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-[14px] border border-[var(--color-border)] p-5"><Skeleton className="h-7 w-16" /><Skeleton className="mt-2 h-3 w-24" /></div>)}</div><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
+  if (profile.isError) return <PageFrame>{accountActions}<div><p role="alert" className="text-[13px] text-[var(--color-danger)]">We couldn’t load your profile.</p><Button variant="secondary" className="mt-4" onClick={() => profile.refetch()} aria-busy={profile.isFetching} disabled={profile.isFetching}>Try again</Button></div></PageFrame>
   const me = profile.data
   const recentPosts = posts.data?.slice(0, 4) || []
 
@@ -155,15 +177,16 @@ export default function ProfilePage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {me.writerStatus === 'writer' && <Link to="/opportunities" className="inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-4 py-2 text-[12px] font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Find reader demand</Link>}
-          {editing ? <><Button type="button" variant="secondary" onClick={() => setEditing(false)}>Cancel</Button><Button type="submit" form="profile-edit-form" disabled={!name.trim() || updateProfile.isPending}>{updateProfile.isPending ? 'Saving…' : 'Save'}</Button></> : <Button variant="secondary" onClick={() => setEditing(true)}>Edit profile</Button>}
+          {editing ? <><Button type="button" variant="secondary" onClick={() => setEditing(false)}>Cancel</Button><Button type="submit" form="profile-edit-form" disabled={!name.trim() || updateProfile.isPending} aria-busy={updateProfile.isPending}>{'Save'}</Button></> : <Button variant="secondary" onClick={() => setEditing(true)}>Edit profile</Button>}
         </div>
       </header>
+      {accountActions}
 
       {updateProfile.isError && <p role="alert" className="mb-5 text-[12px] text-[var(--color-danger)]">{updateProfile.error?.response?.data?.message || 'Profile update failed.'}</p>}
 
       <section className="mb-7 rounded-[18px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-5 flex items-center justify-between gap-4 flex-wrap">
         <div><p className="text-[13px] font-semibold text-[var(--color-text)]">{entitlements.data?.membership?.status === 'active' ? 'Ink-Rider member' : 'Free membership'}</p><p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">Primary articles stay free. Membership adds summaries, audio, workshops, and creator extras.</p></div>
-        <Button disabled={billing.isPending} onClick={() => billing.mutate()}>{billing.isPending ? 'Opening…' : entitlements.data?.membership?.status === 'active' ? 'Manage membership' : 'Become a member'}</Button>
+        <Button disabled={billing.isPending} onClick={() => billing.mutate()} aria-busy={billing.isPending}>{entitlements.data?.membership?.status === 'active' ? 'Manage membership' : 'Become a member'}</Button>
       </section>
       {billing.isError && <p role="alert" className="-mt-4 mb-6 text-[12px] text-[var(--color-danger)]">{billing.error?.response?.data?.message || 'Billing is temporarily unavailable.'}</p>}
 
@@ -173,12 +196,12 @@ export default function ProfilePage() {
       </nav>
 
       <div id="profile-tabpanel" role="tabpanel" aria-label={`${TABS.find(item => item.id === tab)?.label || 'Overview'} content`}>
-      {tab === 'overview' && <div className="flex flex-col gap-8"><div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))' }}><StatCard label="Published posts" value={me.postCount} /><StatCard label="Followers" value={me.followersCount} /><StatCard label="Following" value={me.followingCount} /><StatCard label="Account type" value={me.writerStatus === 'writer' ? 'Writer' : 'Reader'} /></div>{me.writerStatus === 'writer' && <section className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-5 flex items-center justify-between gap-4"><div><h2 className="text-[14px] font-semibold text-[var(--color-text)]">Direct member requests</h2><p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">Choose whether members can send you up to three private requests per month.</p></div><Button variant={me.directRequestsEnabled ? 'primary' : 'secondary'} disabled={updateProfile.isPending} onClick={() => updateProfile.mutate({ directRequestsEnabled: !me.directRequestsEnabled })}>{me.directRequestsEnabled ? 'Accepting requests' : 'Requests off'}</Button></section>}<section><h2 className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-text-muted)] mb-3">Recent posts</h2>{posts.isError ? <ProfileDataError message="Published posts could not be loaded." onRetry={() => posts.refetch()} /> : <PostRows posts={recentPosts} emptyMessage="You haven’t published anything yet." />}</section></div>}
+      {tab === 'overview' && <div className="flex flex-col gap-8"><div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))' }}><StatCard label="Published posts" value={me.postCount} /><StatCard label="Followers" value={me.followersCount} /><StatCard label="Following" value={me.followingCount} /><StatCard label="Account type" value={me.writerStatus === 'writer' ? 'Writer' : 'Reader'} /></div>{me.writerStatus === 'writer' && <section className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-5 flex items-center justify-between gap-4"><div><h2 className="text-[14px] font-semibold text-[var(--color-text)]">Direct member requests</h2><p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">Choose whether members can send you up to three private requests per month.</p></div><Button variant={me.directRequestsEnabled ? 'primary' : 'secondary'} disabled={updateProfile.isPending} onClick={() => updateProfile.mutate({ directRequestsEnabled: !me.directRequestsEnabled })} aria-busy={updateProfile.isPending}>{me.directRequestsEnabled ? 'Accepting requests' : 'Requests off'}</Button></section>}<section><h2 className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-text-muted)] mb-3">Recent posts</h2>{posts.isError ? <ProfileDataError message="Published posts could not be loaded." onRetry={() => posts.refetch()} /> : <PostRows posts={recentPosts} emptyMessage="You haven’t published anything yet." />}</section></div>}
       {tab === 'posts' && (posts.isError ? <ProfileDataError message="Published posts could not be loaded." onRetry={() => posts.refetch()} /> : <PostRows posts={posts.data} manage emptyMessage="You haven’t published anything yet." />)}
       {tab === 'drafts' && (drafts.isLoading ? <div role="status" aria-label="Loading drafts"><ListSkeleton count={4} role={undefined} /></div> : drafts.isError ? <ProfileDataError message="Drafts could not be loaded." onRetry={() => drafts.refetch()} /> : drafts.data?.length ? <div className="border-t border-[var(--color-border)]">{drafts.data.map(draft => <Link key={draft._id} to={`/write?draft=${draft._id}`} className="flex items-center justify-between gap-4 py-4 border-b border-[var(--color-border)]"><div className="min-w-0"><p className="font-semibold text-[14px] text-[var(--color-text)] truncate">{draft.title || 'Untitled draft'}</p><p className="mt-1 text-[11px] text-[var(--color-text-muted)]">{draft.format === 'short' ? 'Short' : 'Article'} · Saved {new Date(draft.updatedAt).toLocaleString()}</p></div><span className="text-[12px] font-semibold text-[var(--color-accent)]">Continue writing →</span></Link>)}</div> : <p className="py-10 text-center text-[13px] text-[var(--color-text-muted)]">Your autosaved drafts will appear here.</p>)}
-      {tab === 'bookmarks' && (bookmarks.isLoading ? <div role="status" aria-label="Loading saved articles" className="card-grid card-grid--post gap-4">{Array.from({ length: 4 }, (_, index) => <PostCardSkeleton key={index} compact />)}</div> : bookmarks.isError ? <div><p role="alert" className="text-[13px] text-[var(--color-danger)]">Saved articles could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => bookmarks.refetch()}>Try again</Button></div> : <PostRows posts={bookmarks.data} emptyMessage="Saved articles will appear here." />)}
-      {tab === 'history' && (history.isPending ? <div role="status" aria-label="Loading reading history"><ListSkeleton count={4} role={undefined} /></div> : history.isError ? <div><p role="alert" className="text-[13px] text-[var(--color-danger)]">Reading history could not be loaded.</p><Button className="mt-4" onClick={() => history.refetch()}>Try again</Button></div> : <div>{history.data.continueReading.length > 0 && <section className="mb-8"><h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-text-muted)]">Continue reading</h2>{history.data.continueReading.map(item => <HistoryRow key={item.id} item={item} />)}</section>}<section><h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-text-muted)]">Recent history</h2>{history.data.history.map(item => <HistoryRow key={item.id} item={item} />)}{history.data.history.length === 0 && <p className="py-10 text-center text-[13px] text-[var(--color-text-muted)]">Articles and shorts you open will appear here.</p>}</section></div>)}
-      {tab === 'analytics' && !canViewAnalytics && <section className="rounded-[18px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-7 text-center"><h2 className="font-semibold text-[16px] text-[var(--color-text)]">Advanced writer analytics</h2><p className="mt-2 text-[13px] text-[var(--color-text-secondary)]">See opens, completions, engagement, and completion rate with membership.</p><Button className="mt-5" disabled={billing.isPending} onClick={() => billing.mutate()}>{billing.isPending ? 'Opening checkout…' : 'Become a member'}</Button></section>}
+      {tab === 'bookmarks' && (bookmarks.isLoading ? <div role="status" aria-label="Loading saved articles" className="card-grid card-grid--post gap-4">{Array.from({ length: 4 }, (_, index) => <PostCardSkeleton key={index} compact />)}</div> : bookmarks.isError ? <div><p role="alert" className="text-[13px] text-[var(--color-danger)]">Saved articles could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => bookmarks.refetch()} aria-busy={bookmarks.isFetching} disabled={bookmarks.isFetching}>Try again</Button></div> : <PostRows posts={bookmarks.data} emptyMessage="Saved articles will appear here." />)}
+      {tab === 'history' && (history.isPending ? <div role="status" aria-label="Loading reading history"><ListSkeleton count={4} role={undefined} /></div> : history.isError ? <div><p role="alert" className="text-[13px] text-[var(--color-danger)]">Reading history could not be loaded.</p><Button className="mt-4" onClick={() => history.refetch()} aria-busy={history.isFetching} disabled={history.isFetching}>Try again</Button></div> : <div>{history.data.continueReading.length > 0 && <section className="mb-8"><h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-text-muted)]">Continue reading</h2>{history.data.continueReading.map(item => <HistoryRow key={item.id} item={item} />)}</section>}<section><h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-text-muted)]">Recent history</h2>{history.data.history.map(item => <HistoryRow key={item.id} item={item} />)}{history.data.history.length === 0 && <p className="py-10 text-center text-[13px] text-[var(--color-text-muted)]">Articles and shorts you open will appear here.</p>}</section></div>)}
+      {tab === 'analytics' && !canViewAnalytics && <section className="rounded-[18px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-7 text-center"><h2 className="font-semibold text-[16px] text-[var(--color-text)]">Advanced writer analytics</h2><p className="mt-2 text-[13px] text-[var(--color-text-secondary)]">See opens, completions, engagement, and completion rate with membership.</p><Button className="mt-5" disabled={billing.isPending} onClick={() => billing.mutate()} aria-busy={billing.isPending}>{'Become a member'}</Button></section>}
       {tab === 'analytics' && canViewAnalytics && (analytics.isLoading ? <div role="status" aria-label="Loading writer analytics"><ListSkeleton count={5} role={undefined} /></div> : analytics.isError ? <ProfileDataError message="Analytics could not be loaded." onRetry={() => analytics.refetch()} /> : analytics.data && <div className="flex flex-col gap-7"><div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))' }}><StatCard label="Article opens" value={analytics.data.totalViews} /><StatCard label="Completed reads" value={analytics.data.totalCompletions} /><StatCard label="Completion rate" value={`${analytics.data.completionRate}%`} /><StatCard label="Published posts" value={analytics.data.totalPosts} /></div><section><h2 className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-text-muted)] mb-3">Post performance</h2>{analytics.data.posts.map(post => <div key={post.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-4 py-3 border-b border-[var(--color-border)] text-[12px]"><Link to={`/post/${post.id}`} className="font-semibold text-[var(--color-text)] truncate">{post.title}</Link><span className="text-[var(--color-text-muted)]">{post.opens} opens</span><span className="text-[var(--color-text-muted)]">{post.completions} completed</span><span className="text-[var(--color-text-muted)]">{post.likes} likes</span></div>)}</section></div>)}
       </div>
     </PageFrame>

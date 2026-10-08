@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 /* eslint-disable react-hooks/set-state-in-effect -- IntersectionObserver fallback intentionally activates deferred content synchronously. */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -67,10 +68,10 @@ function CategorySection({ posts }) {
 }
 
 function CollectionsSection() {
-  const query = useCollections(false)
+  const query = retainRetryView(useCollections(false))
   const collections = query.data?.pages.flatMap(page => page.data) || []
   if (query.isPending) return <section><SectionBar title="Browse collections" /><div role="status" aria-label="Loading collections" className="card-grid card-grid--collection gap-4"><div className="h-40 animate-pulse rounded-[16px] bg-[var(--color-bg-alt)]" /><div className="h-40 animate-pulse rounded-[16px] bg-[var(--color-bg-alt)]" /></div></section>
-  if (query.isError) return <section><SectionBar title="Browse collections" /><div role="alert" className="border-y border-[var(--color-border)] py-8"><p className="text-[13px] text-[var(--color-danger)]">Collections could not be loaded.</p><button type="button" onClick={() => query.refetch()} className="mt-3 inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-4 py-2 text-[12px] font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Try again</button></div></section>
+  if (query.isError) return <section><SectionBar title="Browse collections" /><div role="alert" className="border-y border-[var(--color-border)] py-8"><p className="text-[13px] text-[var(--color-danger)]">Collections could not be loaded.</p><button type="button" onClick={() => query.refetch()} className="mt-3 inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-4 py-2 text-[12px] font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0" aria-busy={query.isFetching} disabled={query.isFetching}>Try again</button></div></section>
   if (!collections.length) return null
   return <section><SectionBar title="Browse collections" action={<Link to="/collections" className="inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-[18px] py-2 text-[13px] font-medium text-[var(--color-text)] transition-all duration-150 hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">See all →</Link>} /><div className="card-grid card-grid--collection gap-4">{collections.slice(0, 2).map(collection => <CollectionCard key={collection.id} collection={collection} />)}</div></section>
 }

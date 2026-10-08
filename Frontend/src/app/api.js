@@ -35,7 +35,11 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const isConnectionFailure = !error.response && error.code !== 'ERR_CANCELED';
     const isGatewayFailure = [502, 503, 504].includes(status);
-    if (isConnectionFailure || isGatewayFailure) markServerUnavailable();
+    // Optional billing setup is a feature-level failure, not an API outage.
+    const isBillingNotConfigured = status === 503
+      && error.response?.data?.code === 'PROVIDER_NOT_CONFIGURED'
+      && ['/api/v1/billing/checkout', '/api/v1/billing/portal'].includes(error.config?.url);
+    if (isConnectionFailure || (isGatewayFailure && !isBillingNotConfigured)) markServerUnavailable();
 
     // Check if originalRequest exists to avoid issues with non-HTTP errors
     const originalRequest = error.config;

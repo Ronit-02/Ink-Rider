@@ -17,6 +17,8 @@ test('reader can draft, publish, read, save, comment, and reload a short article
 
   await page.goto('/write', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: 'Short read', exact: true }).click()
+  const storyDetails = page.locator('details').filter({ has: page.locator('summary', { hasText: 'Story details' }) })
+  if (!await storyDetails.evaluate(element => element.open)) await storyDetails.locator('summary').click()
   await expect(page.getByRole('button', { name: /Add optional cover image/ })).toHaveAttribute('type', 'button')
   await page.getByPlaceholder('A focused idea…').fill('A browser-tested short reading flow')
   await page.getByPlaceholder('Write something…').fill('This short article verifies the complete reader and writer journey from draft to durable discussion.')

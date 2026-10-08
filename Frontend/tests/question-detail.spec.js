@@ -23,7 +23,7 @@ test('question detail exposes answers, published responses, and follow controls 
   await expect(page.getByRole('heading', { name: 'How can cities preserve neighborhood memory?', level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Answers (1)' })).toBeVisible()
   await expect(page.getByText('Start by documenting lived experience with the people who hold it.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Report answer' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Report this answer' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Designing Better Questions for Better Technology' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Follow question' })).toBeVisible()
   await expect(page.locator('main')).toHaveCount(1)

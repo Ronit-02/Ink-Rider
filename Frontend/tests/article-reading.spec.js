@@ -72,13 +72,13 @@ test('article progress and sharing preserve keyboard reading access', async ({ p
 
   const shareTrigger = page.getByRole('button', { name: 'Share this article' })
   await shareTrigger.click()
-  const shareMenu = page.getByRole('menu', { name: 'Share article' })
-  const copyLink = shareMenu.getByRole('menuitem', { name: 'Copy Link' })
-  const shareOnX = shareMenu.getByRole('menuitem', { name: 'Share on X' })
+  const shareMenu = page.getByRole('dialog', { name: 'Share article' })
+  const copyLink = shareMenu.getByRole('button', { name: 'Copy Link' })
+  const shareOnX = shareMenu.getByRole('button', { name: 'Share on X' })
   await expect(shareMenu).toBeVisible()
   await expect(copyLink).toBeFocused()
 
-  await copyLink.press('ArrowDown')
+  await copyLink.press('Tab')
   await expect(shareOnX).toBeFocused()
   await shareOnX.press('Escape')
   await expect(shareMenu).toBeHidden()

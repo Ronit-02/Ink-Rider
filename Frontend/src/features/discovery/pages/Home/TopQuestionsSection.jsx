@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 /* TopQuestionsSection — teaser showing hot questions, drives curiosity */
 import { Link } from 'react-router-dom'
 import SectionHeading from '@/shared/components/ui/SectionHeading'
@@ -6,7 +7,7 @@ import { useQuestions } from '@/features/question/hooks/useQuestions'
 import { ListSkeleton } from '@/shared/components/ui/Skeleton'
 
 export default function TopQuestionsSection() {
-  const query = useQuestions('hot')
+  const query = retainRetryView(useQuestions('hot'))
   const questions = query.data?.pages.flatMap(page => page.data).slice(0, 4) || []
 
   return (
@@ -26,7 +27,7 @@ export default function TopQuestionsSection() {
       </div>
 
       {query.isPending && <ListSkeleton count={3} label="Loading reader questions" />}
-      {query.isError && <div role="alert" className="py-8"><p className="text-[13px] text-[var(--color-danger)]">Questions could not be loaded.</p><Button className="mt-3" variant="secondary" onClick={() => query.refetch()}>Try again</Button></div>}
+      {query.isError && <div role="alert" className="py-8"><p className="text-[13px] text-[var(--color-danger)]">Questions could not be loaded.</p><Button className="mt-3" variant="secondary" onClick={() => query.refetch()} aria-busy={query.isFetching} disabled={query.isFetching}>Try again</Button></div>}
       {!query.isPending && !query.isError && questions.length === 0 && <p className="py-8 text-[13px] text-[var(--color-text-muted)]">No open questions yet.</p>}
       <div className="grid gap-0">
         {questions.map(q => (

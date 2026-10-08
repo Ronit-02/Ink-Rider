@@ -1,3 +1,4 @@
+import retainRetryView from '@/shared/utils/retainRetryView'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import PageFrame from '@/shared/components/layout/PageFrame'
@@ -70,8 +71,8 @@ export default function SavedPage() {
     updateFilter('savedSection', nextSection, 'stories')
     requestAnimationFrame(() => document.querySelectorAll('[role="tab"][aria-controls="saved-tabpanel"]')[nextIndex]?.focus())
   }
-  const stories = useQuery({ queryKey: ['me', 'bookmarks'], queryFn: fetchBookmarks, enabled: section === 'stories' })
-  const collections = useSavedCollections(sort)
+  const stories = retainRetryView(useQuery({ queryKey: ['me', 'bookmarks'], queryFn: fetchBookmarks, enabled: section === 'stories' }))
+  const collections = retainRetryView(useSavedCollections(sort))
   const savedCollections = collections.data?.pages.flatMap(page => page.data) || []
 
   return <PageFrame>
@@ -84,8 +85,8 @@ export default function SavedPage() {
       {section === 'collections' && <label className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-text-secondary)] sm:justify-end">Sort <select value={sort} onChange={event => updateFilter('savedSort', event.target.value, 'latest')} className="min-h-11 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[11px] text-[var(--color-text)] sm:min-h-0"><option value="latest">Latest saved</option><option value="popular">Most saved</option></select></label>}
     </div>
     <div id="saved-tabpanel" role="tabpanel" aria-label={`${section === 'stories' ? 'Stories' : 'Collections'} content`}>
-      {section === 'stories' && (stories.isPending ? <div role="status" aria-label="Loading saved stories" className="space-y-4"><PostCardSkeleton compact /><PostCardSkeleton compact /><PostCardSkeleton compact /></div> : stories.isError ? <div className="py-12 text-center"><p role="alert" className="text-[13px] text-[var(--color-danger)]">Saved stories could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => stories.refetch()}>Try again</Button></div> : <SavedStoryList posts={stories.data || []} />)}
-      {section === 'collections' && (collections.isPending ? <div role="status" aria-label="Loading saved collections" className="card-grid card-grid--collection gap-5"><PostCardSkeleton compact /><PostCardSkeleton compact /></div> : collections.isError ? <div className="py-12 text-center"><p role="alert" className="text-[13px] text-[var(--color-danger)]">Saved collections could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => collections.refetch()}>Try again</Button></div> : savedCollections.length ? <><section className="card-grid card-grid--collection gap-5">{savedCollections.map(collection => <CollectionCard key={collection.id} collection={collection} />)}</section>{collections.hasNextPage && <div className="pt-9 text-center"><Button variant="secondary" onClick={() => collections.fetchNextPage()} disabled={collections.isFetchingNextPage}>{collections.isFetchingNextPage ? 'Loading…' : 'Load more'}</Button></div>}</> : <p className="py-16 text-center text-[13px] text-[var(--color-text-muted)]">Collections you save will appear here.</p>)}
+      {section === 'stories' && (stories.isPending ? <div role="status" aria-label="Loading saved stories" className="space-y-4"><PostCardSkeleton compact /><PostCardSkeleton compact /><PostCardSkeleton compact /></div> : stories.isError ? <div className="py-12 text-center"><p role="alert" className="text-[13px] text-[var(--color-danger)]">Saved stories could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => stories.refetch()} aria-busy={stories.isFetching} disabled={stories.isFetching}>Try again</Button></div> : <SavedStoryList posts={stories.data || []} />)}
+      {section === 'collections' && (collections.isPending ? <div role="status" aria-label="Loading saved collections" className="card-grid card-grid--collection gap-5"><PostCardSkeleton compact /><PostCardSkeleton compact /></div> : collections.isError ? <div className="py-12 text-center"><p role="alert" className="text-[13px] text-[var(--color-danger)]">Saved collections could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => collections.refetch()} aria-busy={collections.isFetching} disabled={collections.isFetching}>Try again</Button></div> : savedCollections.length ? <><section className="card-grid card-grid--collection gap-5">{savedCollections.map(collection => <CollectionCard key={collection.id} collection={collection} />)}</section>{collections.hasNextPage && <div className="pt-9 text-center"><Button variant="secondary" onClick={() => collections.fetchNextPage()} disabled={collections.isFetchingNextPage} aria-busy={collections.isFetchingNextPage}>{'Load more'}</Button></div>}</> : <p className="py-16 text-center text-[13px] text-[var(--color-text-muted)]">Collections you save will appear here.</p>)}
     </div>
   </PageFrame>
 }

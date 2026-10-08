@@ -1,3 +1,6 @@
+import ShareMenu from '@/shared/components/ui/ShareMenu'
+import ModalLayer from '@/shared/components/ui/ModalLayer'
+import ViewportPopover from '@/shared/components/ui/ViewportPopover'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ImageBox from '@/shared/components/ui/ImageBox'
@@ -17,6 +20,7 @@ export default function CollectionCard({ collection }) {
   const actionMenuRef = useRef(null)
   const deleteCloseRef = useRef(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [hidden, setHidden] = useState(false)
   const menuId = `collection-menu-${collection.id}`
@@ -31,7 +35,7 @@ export default function CollectionCard({ collection }) {
     if (!menuOpen) return undefined
     actionMenuRef.current?.querySelector('[role="menuitem"]')?.focus()
     const close = event => {
-      if (!menuRef.current?.contains(event.target)) closeMenu()
+      if (!menuRef.current?.contains(event.target) && !actionMenuRef.current?.contains(event.target)) closeMenu()
     }
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
@@ -61,21 +65,10 @@ export default function CollectionCard({ collection }) {
       signIn()
       return
     }
-    save.mutate(!collection.isSaved)
-    closeMenu({ restoreFocus: true })
+    save.mutate(!collection.isSaved, { onSuccess: () => closeMenu({ restoreFocus: true }) })
   }
 
-  const share = async event => {
-    event.stopPropagation()
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}/collections/${collection.id}`)
-      notify('Collection link copied.')
-    } catch {
-      // Clipboard access is optional.
-      notify('The collection link could not be copied.', { tone: 'error' })
-    }
-    closeMenu({ restoreFocus: true })
-  }
+  const share = event => { event.stopPropagation(); closeMenu(); setShareOpen(true) }
 
   const requestDelete = event => {
     event.stopPropagation()
@@ -90,28 +83,29 @@ export default function CollectionCard({ collection }) {
   if (hidden) return null
 
   return (
-    <article className="group relative flex h-[198px] min-h-0 overflow-hidden rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)]">
-      <div ref={menuRef} className="absolute right-3 top-3 z-10">
-        <button ref={triggerRef} type="button" aria-label={`More options for ${collection.title}`} aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuOpen ? menuId : undefined} onClick={event => { event.stopPropagation(); setMenuOpen(value => !value) }} className="flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]/90 text-[var(--color-text-secondary)]"><span aria-hidden="true" className="-mt-2 text-[20px] leading-none">…</span></button>
-        {menuOpen && <div ref={actionMenuRef} id={menuId} role="menu" tabIndex={-1} aria-label={`Options for ${collection.title}`} onKeyDown={handleMenuKeyDown} className="absolute right-0 top-10 w-52 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface)] p-1 shadow-[var(--shadow-menu)]">
-          <button type="button" role="menuitem" onClick={toggleSave} className="min-h-10 sm:min-h-0 block w-full rounded-[8px] px-3 py-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">{collection.isSaved ? 'Remove from saved' : 'Save collection'}</button>
+    <article className="group relative flex min-h-[216px] flex-col overflow-hidden rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 pt-5">
+      <div ref={menuRef} className="absolute right-4 top-5 z-10">
+        <button ref={triggerRef} type="button" aria-label={`More options for ${collection.title}`} aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuOpen ? menuId : undefined} onClick={event => { event.stopPropagation(); setMenuOpen(value => !value) }} className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"><span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[20px] leading-none transition-colors hover:bg-[var(--color-bg-alt)]"><span className="-mt-2">…</span></span></button>
+        {menuOpen && <ViewportPopover ref={actionMenuRef} anchorRef={triggerRef} onAnchorHidden={() => closeMenu()} id={menuId} role="menu" tabIndex={-1} aria-label={`Options for ${collection.title}`} onKeyDown={handleMenuKeyDown} className="absolute right-0 top-10 w-52 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface)] p-1 shadow-[var(--shadow-menu)]">
+          <button type="button" role="menuitem" disabled={save.isPending} aria-busy={save.isPending} onClick={toggleSave} className="min-h-10 sm:min-h-0 block w-full rounded-[8px] px-3 py-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">{collection.isSaved ? 'Remove from saved' : 'Save collection'}</button>
           <button type="button" role="menuitem" onClick={share} className="min-h-10 sm:min-h-0 block w-full rounded-[8px] px-3 py-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">Share link</button>
           {collection.isOwner && <button type="button" role="menuitem" onClick={requestDelete} className="min-h-10 sm:min-h-0 block w-full rounded-[8px] px-3 py-2 text-left text-[12px] text-[var(--color-danger)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">Delete collection</button>}
           <button type="button" role="menuitem" onClick={event => { event.stopPropagation(); setHidden(true); setMenuOpen(false); notify('Collection hidden from this list.', { tone: 'info' }) }} className="min-h-10 sm:min-h-0 block w-full rounded-[8px] px-3 py-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">Not interested</button>
-        </div>}
+        </ViewportPopover>}
       </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-between p-5 pr-14">
-        <div>
-          <h2 className="line-clamp-2 text-[17px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}><Link to={`/collections/${collection.id}`} className="rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">{collection.title}</Link></h2>
-          <p className="mt-3 line-clamp-3 text-[12px] leading-5 text-[var(--color-text-secondary)]">{collection.description || 'A curated reading collection.'}</p>
+      <div className="grid flex-1 grid-cols-[minmax(0,1fr)_34%] items-center gap-4">
+        <div className="min-w-0">
+          <h2 className="line-clamp-2 [overflow-wrap:anywhere] text-[18px] font-normal leading-[1.3] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}><Link to={`/collections/${collection.id}`} className="rounded-[4px] after:absolute after:inset-0 after:z-[1] after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">{collection.title}</Link></h2>
+          <p className="mt-2 line-clamp-3 [overflow-wrap:anywhere] text-[13px] leading-5 text-[var(--color-text-secondary)]">{collection.description || 'A curated reading collection.'}</p>
         </div>
-        <div className="mt-5 flex items-center gap-2 text-[11px] text-[var(--color-text-muted)]">
-          <span>{collection.postsCount} stories</span><span>·</span><span>by {collection.author?.username}</span>
-        </div>
+        <div className="min-w-0 overflow-hidden rounded-[8px] [&>div]:transition-transform [&>div]:duration-200 group-hover:[&>div]:scale-[1.02]"><ImageBox src={collection.coverImage} alt="" height={120} radius="8px" placeholderLabel="Reading collection" /></div>
       </div>
-      <div className="w-[34%] shrink-0 overflow-hidden [&>div]:h-full [&>div]:transition-transform [&>div]:duration-200 group-hover:[&>div]:scale-[1.02]"><ImageBox src={collection.coverImage} alt="" height="100%" placeholderLabel="Reading collection" /></div>
-      {deleteOpen && <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4" role="presentation">
-        <section ref={deleteDialogRef} role="dialog" aria-modal="true" aria-labelledby={`${deleteDialogId}-title`} tabIndex="-1" className="w-full max-w-[420px] rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-menu)]">
+      <div className="mt-6 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-[var(--color-border)] pt-3 text-[12px] text-[var(--color-text-secondary)]">
+        <span className="shrink-0 whitespace-nowrap">{collection.postsCount} {collection.postsCount === 1 ? 'story' : 'stories'}</span><span aria-hidden="true">·</span><span className="min-w-0 [overflow-wrap:anywhere]">by {collection.author?.username}</span>
+      </div>
+      {shareOpen && <ShareMenu anchorRef={triggerRef} id={`collection-share-${collection.id}`} label="Share collection" contentName="Collection" url={`${window.location.origin}/collections/${collection.id}`} onClose={({ restoreFocus = false } = {}) => { setShareOpen(false); if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus()) }} />}
+      {deleteOpen && <ModalLayer onDismiss={() => setDeleteOpen(false)} dismissOnBackdrop={false} returnFocusRef={triggerRef} aria-labelledby={`${deleteDialogId}-title`} className="flex items-center justify-center p-4 backdrop:bg-black/40">
+        <section ref={deleteDialogRef} tabIndex="-1" className="w-full max-w-[420px] overflow-y-auto rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-menu)]">
           <div className="flex items-start justify-between gap-4">
             <h2 id={`${deleteDialogId}-title`} className="text-[18px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>Delete collection?</h2>
             <button ref={deleteCloseRef} type="button" aria-label="Cancel delete" onClick={() => setDeleteOpen(false)} className="rounded-full px-2 text-[22px] leading-none text-[var(--color-text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">×</button>
@@ -119,10 +113,10 @@ export default function CollectionCard({ collection }) {
           <p className="mt-3 text-[13px] leading-5 text-[var(--color-text-secondary)]">This permanently removes “{collection.title}”. Stories in the collection are not deleted.</p>
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancel</Button>
-            <Button onClick={confirmDelete} disabled={remove.isPending} className="!bg-[var(--color-danger)] !border-[var(--color-danger)]">{remove.isPending ? 'Deleting…' : 'Delete collection'}</Button>
+            <Button onClick={confirmDelete} disabled={remove.isPending} className="!bg-[var(--color-danger)] !border-[var(--color-danger)]" aria-busy={remove.isPending}>{'Delete collection'}</Button>
           </div>
         </section>
-      </div>}
+      </ModalLayer>}
     </article>
   )
 }

@@ -1,7 +1,10 @@
-/* eslint-disable jsx-a11y/interactive-supports-focus -- The menu container delegates focus to its menuitem children. */
+import retainRetryView from '@/shared/utils/retainRetryView'
+import ReportForm from '@/shared/components/ui/ReportForm'
+import ReportModal, { reportTitle } from '@/shared/components/ui/ReportModal'
+import ShareMenu from '@/shared/components/ui/ShareMenu'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { BackIcon, BookmarkIcon, ShareIcon, LinkIcon, XIcon } from '@/shared/icons'
+import { BookmarkIcon, ShareIcon } from '@/shared/icons'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
 import Tag from '@/shared/components/ui/Tag'
 import Divider from '@/shared/components/ui/Divider'
@@ -16,6 +19,7 @@ import { AIStickyButtons, AccessPanel, SummaryPanel, ReadAloudPanel } from './AI
 import useFetchPost from '../hooks/useFetchPost'
 import useBookmarkPost from '../hooks/useBookmarkPost'
 import usePostLike from '../hooks/usePostLike'
+import AppreciationButton from '@/features/post/components/AppreciationButton'
 import useReportPost from '../hooks/useReportPost'
 import useReadingProgress from '../hooks/useProgressBar'
 import useAuth from '@/features/auth/hooks/useAuth'
@@ -24,14 +28,7 @@ import useEntitlements from '@/features/membership/hooks/useEntitlements'
 import ShortReadModal from '@/features/discovery/components/ShortReadModal'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import ImageBox from '@/shared/components/ui/ImageBox'
-import useToast from '@/shared/hooks/useToast'
 import { useEscapeKey } from '@/shared/hooks/useEscapeKey'
-
-const HeartIcon = ({ filled }) => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-    <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
-  </svg>
-)
 
 const FlagIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -61,10 +58,11 @@ export default function PostPage() {
   const [showShare,   setShowShare]   = useState(false)
   const [showReport,  setShowReport]  = useState(false)
   const [shortReadId, setShortReadId] = useState(null)
+  const [isWideScreen, setIsWideScreen] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
   const hasSidePanel = showSummary || readAloud;
 
   // Hooks
-  const { data: postData, isLoading: fetchPostIsLoading, isError, error, refetch } = useFetchPost(postId);
+  const { data: postData, isLoading: fetchPostIsLoading, isError, error, refetch } = retainRetryView(useFetchPost(postId));
   const BookmarkMutation = useBookmarkPost(postId);
   const likeMutation = usePostLike(postId)
   const reportMutation = useReportPost(postId)
@@ -81,17 +79,15 @@ export default function PostPage() {
   }
 
   // Page Effects
-  // Close share menu on outside click
   useEffect(() => {
-    if (!showShare) return
-    const close = () => setShowShare(false)
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
-  }, [showShare])
+    const media = window.matchMedia('(min-width: 1024px)')
+    const update = () => setIsWideScreen(media.matches)
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
 
   useEscapeKey(() => {
     if (showShare) closeShareMenu({ restoreFocus: true })
-    setShowReport(false)
   })
 
   useEffect(() => {
@@ -147,7 +143,7 @@ export default function PostPage() {
   const handleReportOpen = () => {
     if (!loggedIn) return signIn()
     reportMutation.reset()
-    setShowReport(value => !value)
+    setShowReport(true)
   }
 
   // Conditional Rendering
@@ -168,6 +164,16 @@ export default function PostPage() {
     setter(value => !value)
     otherSetter(false)
   }
+
+  const readingTools = <AIStickyButtons
+    showSummary={showSummary} readAloud={readAloud}
+    onSummary={() => openPremiumPanel(setShowSummary, setReadAloud)}
+    onAudio={() => openPremiumPanel(setReadAloud, setShowSummary)}
+  />
+  const readingPanel = <>
+    {showSummary && (capabilities.has('article_summary') ? <SummaryPanel postId={postId} /> : <AccessPanel capability="article_summary" />)}
+    {readAloud && (capabilities.has('read_aloud') ? <ReadAloudPanel text={articleText} /> : <AccessPanel capability="read_aloud" />)}
+  </>
 
   return (
     <div ref={pageRef} className="relative bg-(--color-bg) text-(--color-text) min-h-screen">
@@ -190,14 +196,7 @@ export default function PostPage() {
       <PageFrame className="flex flex-col gap-8 lg:flex-row">
 
         {/* ── Article column ── */}
-        <div className={`order-2 min-w-0 w-full flex-1 lg:order-none ${hasSidePanel ? '' : 'max-w-[760px]'}`}>
-
-          {/* Back button */}
-          <button type="button" onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-1.5 bg-(--color-bg-alt) border border-(--color-border) text-(--color-text-secondary) text-[13px] cursor-pointer mb-7 px-3.5 py-1.5 rounded-full transition-all hover:bg-(--color-border) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">
-            <BackIcon /> 
-            Back
-          </button>
+        <div className={`min-w-0 w-full flex-1 ${hasSidePanel ? '' : 'max-w-[760px]'}`}>
 
           {/* Tags */}
           {postData.tags?.length > 0 && (
@@ -216,29 +215,21 @@ export default function PostPage() {
           </h1>
 
           {/* Author row + actions */}
-          <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-            <AuthorMeta author={postData.author} readTime={postData?.readTime || '5 mins'} date={postData.createdAt} size="md" />
+          <div className="flex flex-col items-start justify-between mb-6 gap-4 lg:flex-row lg:items-center lg:flex-wrap">
+            <div className="w-full min-w-0 lg:w-auto lg:flex-1">
+              <AuthorMeta author={postData.author} readTime={postData?.readTime || '5 mins'} date={postData.createdAt} size="md" stacked={!isWideScreen} />
+            </div>
 
             <div className="flex gap-2 shrink-0">
               
-              <button
-                type="button"
-                onClick={handleLike}
-                disabled={likeMutation.isPending}
-                aria-label={postData.isLiked ? 'Remove appreciation' : 'Appreciate this article'}
-                aria-pressed={postData.isLiked}
-                className={`h-10 sm:h-9 px-3 rounded-full border border-(--color-border) flex items-center gap-1.5 justify-center cursor-pointer transition-all duration-150
-                  disabled:opacity-60 ${postData.isLiked ? 'bg-(--color-accent) text-(--color-text-inverted)' : 'bg-(--color-surface) text-(--color-text-secondary)'}`}>
-                <HeartIcon filled={postData.isLiked} />
-                <span className="text-[12px] tabular-nums">{postData.likesCount || 0}</span>
-              </button>
+              <AppreciationButton isLiked={postData.isLiked} count={postData.likesCount} label={postData.isLiked ? 'Remove appreciation' : 'Appreciate this article'} disabled={likeMutation.isPending} onClick={handleLike} />
 
               <button type="button" onClick={handleBookmark}
                 disabled={BookmarkMutation.isPending}
                 aria-label={postData.isBookmarked ? 'Remove from saved articles' : 'Save this article'}
                 aria-pressed={postData.isBookmarked}
                 className={`w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-(--color-border) flex items-center justify-center cursor-pointer transition-all duration-150
-                  disabled:opacity-60 ${postData.isBookmarked ? 'bg-(--color-accent) text-(--color-text-inverted)' : 'bg-(--color-surface) text-(--color-text-secondary)'}`}>
+                  disabled:opacity-60 ${postData.isBookmarked ? 'bg-(--color-accent) text-(--color-text-inverted)' : 'bg-(--color-surface) text-(--color-text-secondary)'}`} aria-busy={BookmarkMutation.isPending}>
                 <BookmarkIcon filled={postData.isBookmarked} />
               </button>
               
@@ -247,18 +238,19 @@ export default function PostPage() {
                 <button ref={shareTriggerRef} type="button" onClick={e => { e.stopPropagation(); setShowShare(v => !v) }}
                   aria-label="Share this article"
                   aria-expanded={showShare}
-                  aria-haspopup="menu"
+                  aria-haspopup="dialog"
                   aria-controls={showShare ? 'article-share-menu' : undefined}
                   className="w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-(--color-border) bg-(--color-surface) text-(--color-text-secondary) flex items-center justify-center cursor-pointer transition-all">
                   <ShareIcon />
                 </button>
-                {showShare && <ShareDropdown onClose={closeShareMenu} />}
+                {showShare && <ShareMenu anchorRef={shareTriggerRef} onClose={closeShareMenu} id="article-share-menu" label="Share article" contentName="Article" url={`${window.location.origin}/post/${postId}`} />}
               </div>
 
               <button
                 type="button"
                 onClick={handleReportOpen}
-                aria-label="Report this article"
+                aria-label={reportTitle(postData.format === 'short' ? 'short' : 'post')}
+                aria-haspopup="dialog"
                 aria-expanded={showReport}
                   className="w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-(--color-border) bg-(--color-surface)
                   text-(--color-text-secondary) flex items-center justify-center cursor-pointer transition-all">
@@ -267,6 +259,11 @@ export default function PostPage() {
             </div>
             
           </div>
+
+          {!isWideScreen && <div className="mb-6">
+            {readingTools}
+            {hasSidePanel && readingPanel}
+          </div>}
 
           <Divider className="mb-6" />
 
@@ -281,10 +278,9 @@ export default function PostPage() {
           )}
 
           {showReport && (
-            <ReportPanel
-              mutation={reportMutation}
-              onClose={() => setShowReport(false)}
-            />
+            <ReportModal title={reportTitle(postData.format === 'short' ? 'short' : 'post')} onClose={() => setShowReport(false)}>
+              <ReportForm subject={postData.format === 'short' ? 'short' : 'post'} mutation={reportMutation} onClose={() => setShowReport(false)} />
+            </ReportModal>
           )}
 
           {/* Body */}
@@ -304,19 +300,12 @@ export default function PostPage() {
         </div>
 
         {/* ── AI sticky buttons ── */}
-        <div className="order-1 w-full shrink-0 lg:order-none lg:w-13">
-          <AIStickyButtons
-            showSummary={showSummary} readAloud={readAloud}
-            onSummary={() => openPremiumPanel(setShowSummary, setReadAloud)}
-            onAudio={() => openPremiumPanel(setReadAloud, setShowSummary)}
-          />
-        </div>
+        {isWideScreen && <div className="w-13 shrink-0">{readingTools}</div>}
 
         {/* ── Side AI panels ── */}
-        {hasSidePanel && (
-          <div className="order-3 h-fit w-full shrink-0 flex flex-col gap-3 lg:order-none lg:sticky lg:top-20 lg:w-90">
-            {showSummary && (capabilities.has('article_summary') ? <SummaryPanel postId={postId} /> : <AccessPanel capability="article_summary" />)}
-            {readAloud && (capabilities.has('read_aloud') ? <ReadAloudPanel text={articleText} /> : <AccessPanel capability="read_aloud" />)}
+        {isWideScreen && hasSidePanel && (
+          <div className="h-fit shrink-0 flex flex-col gap-3 sticky top-20 w-90">
+            {readingPanel}
           </div>
         )}
       </PageFrame>
@@ -378,152 +367,4 @@ function PostMetadata({ post, blocks }) {
     }
   }, [post, blocks])
   return null
-}
-
-const REPORT_REASONS = [
-  { value: 'spam', label: 'Spam or deceptive content' },
-  { value: 'harassment', label: 'Harassment' },
-  { value: 'hate', label: 'Hateful content' },
-  { value: 'toxicity', label: 'Toxic or abusive content' },
-  { value: 'plagiarism', label: 'Plagiarism' },
-  { value: 'misinformation', label: 'Potential misinformation' },
-  { value: 'other', label: 'Something else' },
-]
-
-function ReportPanel({ mutation, onClose }) {
-  const [reason, setReason] = useState('')
-  const [details, setDetails] = useState('')
-
-  const handleSubmit = () => {
-    if (!reason || mutation.isPending) return
-    mutation.mutate({ reason, details })
-  }
-
-  if (mutation.isSuccess) {
-    return (
-      <section aria-live="polite" className="mb-6 p-5 rounded-[14px] bg-(--color-bg-alt) border border-(--color-border)">
-        <h2 className="font-semibold text-[14px] text-(--color-text) mb-1">Report received</h2>
-        <p className="text-[13px] text-(--color-text-secondary) mb-4">
-          Our moderation queue will review this article.
-        </p>
-        <Button variant="secondary" onClick={onClose}>Close</Button>
-      </section>
-    )
-  }
-
-  return (
-    <section aria-labelledby="report-heading" className="mb-6 p-5 rounded-[14px] bg-(--color-bg-alt) border border-(--color-border)">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
-          <h2 id="report-heading" className="font-semibold text-[14px] text-(--color-text) mb-1">Report this article</h2>
-          <p className="text-[12px] text-(--color-text-secondary)">Reports are private and help the moderation team review harmful content.</p>
-        </div>
-        <button type="button" onClick={onClose} aria-label="Close report form"
-          className="w-10 h-10 sm:w-8 sm:h-8 rounded-full border border-(--color-border) bg-(--color-surface) text-(--color-text-secondary)">
-          ×
-        </button>
-      </div>
-
-      <label htmlFor="report-reason" className="block text-[12px] font-semibold text-(--color-text) mb-2">Reason</label>
-      <select
-        id="report-reason"
-        value={reason}
-        onChange={event => setReason(event.target.value)}
-        className="w-full px-3 py-2.5 rounded-[10px] border border-(--color-border) bg-(--color-surface)
-          text-[13px] text-(--color-text) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] mb-4"
-      >
-        <option value="">Select a reason</option>
-        {REPORT_REASONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
-
-      <label htmlFor="report-details" className="block text-[12px] font-semibold text-(--color-text) mb-2">
-        Details <span className="font-normal text-(--color-text-muted)">(optional)</span>
-      </label>
-      <textarea
-        id="report-details"
-        value={details}
-        maxLength={1000}
-        onChange={event => setDetails(event.target.value)}
-        className="w-full min-h-[90px] px-3 py-2.5 rounded-[10px] border border-(--color-border) bg-(--color-surface)
-          text-[13px] text-(--color-text) resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"
-        placeholder="Add context that will help the review"
-      />
-      <div className="flex items-center justify-between gap-4 mt-3">
-        <span className="text-[11px] text-(--color-text-muted)">{details.length}/1000</span>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose} disabled={mutation.isPending}>Cancel</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={!reason || mutation.isPending}>
-            {mutation.isPending ? 'Submitting…' : 'Submit report'}
-          </Button>
-        </div>
-      </div>
-      {mutation.isError && (
-        <p role="alert" className="text-[12px] text-[var(--color-danger)] mt-3">
-          We couldn't submit the report. Please try again.
-        </p>
-      )}
-    </section>
-  )
-}
-
-function ShareDropdown({ onClose }) {
-  const url = window.location.href
-  const { notify } = useToast()
-  const menuRef = useRef(null)
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => menuRef.current?.querySelector('[role="menuitem"]')?.focus())
-    return () => cancelAnimationFrame(frame)
-  }, [])
-  const copyLink = () => { 
-    navigator.clipboard.writeText(url).then(() => notify('Article link copied.')).catch(() => notify('The article link could not be copied.', { tone: 'error' })).finally(() => onClose({ restoreFocus: true }))
-  }
-  const shareX = () => { 
-    window.open(`https://x.com/intent/tweet?url=${encodeURIComponent(url)}`); 
-    notify('Share window opened.')
-    onClose({ restoreFocus: true })
-  }
-
-  const handleKeyDown = event => {
-    const items = [...(menuRef.current?.querySelectorAll('[role="menuitem"]') || [])]
-    if (!items.length) return
-
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      event.stopPropagation()
-      onClose({ restoreFocus: true })
-      return
-    }
-    if (event.key === 'Tab') {
-      const currentIndex = items.indexOf(document.activeElement)
-      const leavesMenu = (event.shiftKey && currentIndex === 0) || (!event.shiftKey && currentIndex === items.length - 1)
-      if (leavesMenu) setTimeout(() => onClose(), 0)
-      return
-    }
-    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
-
-    event.preventDefault()
-    const currentIndex = items.indexOf(document.activeElement)
-    const nextIndex = event.key === 'Home'
-      ? 0
-      : event.key === 'End'
-        ? items.length - 1
-        : (Math.max(currentIndex, 0) + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
-    items[nextIndex].focus()
-  }
-
-  const SHARE_MENU = [
-    { label: 'Copy Link', icon: <LinkIcon />, fn: copyLink }, 
-    { label: 'Share on X', icon: <XIcon />, fn: shareX }
-  ]
-
-  return (
-    <div ref={menuRef} id="article-share-menu" role="menu" aria-label="Share article" onKeyDown={handleKeyDown} className="absolute top-full right-0 mt-1.5 bg-(--color-surface) border border-(--color-border) rounded-[14px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden z-50 min-w-45">
-      {SHARE_MENU.map(item => (
-        <button type="button" role="menuitem" key={item.label} onClick={item.fn}
-          className="flex items-center gap-2.5 w-full px-3.5 py-2.5 border-none bg-transparent text-(--color-text) text-[13px] cursor-pointer text-left hover:bg-(--color-bg-alt) focus:bg-(--color-bg-alt) focus:outline-none transition-colors">
-          {item.icon} {item.label}
-        </button>
-      ))}
-    </div>
-  )
 }
