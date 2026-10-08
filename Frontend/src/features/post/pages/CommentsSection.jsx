@@ -112,9 +112,9 @@ export default function CommentsSection({ postId, initialCount = 0, compact = fa
                 <span id={commentCountId} className="text-[11px] text-[var(--color-text-muted)]">{text.length}/1000</span>
                 {text.trim() && (
                   <div className="flex justify-end gap-2">
-                    <Button className="min-h-10 sm:min-h-0" variant="secondary" onClick={() => setText('')} disabled={commentMutation.isPending}>Cancel</Button>
-                    <Button className="min-h-10 sm:min-h-0" type="submit" variant="primary" disabled={commentMutation.isPending}>
-                      {commentMutation.isPending ? 'Posting…' : 'Comment'}
+                    <Button className="min-h-10 sm:min-h-0" variant="secondary" onClick={() => setText('')} disabled={commentMutation.isPending} aria-busy={commentMutation.isPending}>Cancel</Button>
+                    <Button className="min-h-10 sm:min-h-0" type="submit" variant="primary" disabled={commentMutation.isPending} aria-busy={commentMutation.isPending}>
+                      {'Comment'}
                     </Button>
                   </div>
                 )}
@@ -140,7 +140,7 @@ export default function CommentsSection({ postId, initialCount = 0, compact = fa
       {commentsQuery.isError && (
         <div className="py-6">
           <p role="alert" className="text-[13px] text-[var(--color-danger)] mb-3">We couldn't load the comments.</p>
-          <Button className="min-h-10 sm:min-h-0" variant="secondary" onClick={() => commentsQuery.refetch()}>Try again</Button>
+          <Button className="min-h-10 sm:min-h-0" variant="secondary" onClick={() => commentsQuery.refetch()} aria-busy={commentsQuery.isFetching} disabled={commentsQuery.isFetching}>Try again</Button>
         </div>
       )}
       {!commentsQuery.isLoading && !commentsQuery.isError && comments.length === 0 && (
@@ -155,8 +155,8 @@ export default function CommentsSection({ postId, initialCount = 0, compact = fa
             variant="secondary"
             onClick={() => commentsQuery.fetchNextPage()}
             disabled={commentsQuery.isFetchingNextPage}
-          >
-            {commentsQuery.isFetchingNextPage ? 'Loading…' : 'Load more comments'}
+           aria-busy={commentsQuery.isFetchingNextPage}>
+            {'Load more comments'}
           </Button>
         </div>
       )}

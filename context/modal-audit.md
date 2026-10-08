@@ -4,7 +4,7 @@ Audited: 2026-10-07. Scope: the current working tree, including its native-dialo
 
 ## Inventory and verification boundary
 
-There are nine user-facing modal types. `ModalLayer` is a wrapper, not a tenth product dialog. The first six feature forms/reading surfaces below use that wrapper; Account, mobile search, and comments have their own native-dialog implementations. All nine enter the browser's modal top layer.
+The original 2026-10-07 audit covered nine user-facing modal types. Reporting became a tenth type on 2026-10-08; its separate inventory and verification are owned by the [report-button audit](report-audit.md). `ModalLayer` is a wrapper, not a tenth product dialog. The first six feature forms/reading surfaces below use that wrapper; Account, mobile search, and comments have their own native-dialog implementations. All nine enter the browser's modal top layer.
 
 | Modal | Owning implementation | Entry point | Observed issues |
 |---|---|---|---|
@@ -63,14 +63,14 @@ File relevant to a fix: `Frontend/src/features/post/pages/CommentsSection.jsx`. 
 | Surface | Classification | Existing coverage used in this audit |
 |---|---|---|
 | Filters | Non-modal `role=dialog` popover; page remains interactive | Shared filter reset, focus return, outside dismissal, pinned position, short-height scrolling |
-| Discovery story and Article of the Day options | Menus, including inline recommendation/report sections | Keyboard actions/focus return, portal placement, resize/scroll bounds |
+| Discovery story and Article of the Day options | Menus, including inline recommendation sections; discovery Report now opens a separate modal | Keyboard actions/focus return, portal placement, resize/scroll bounds |
 | Collection options | Menu leading to the separate delete modal | Arrow-key navigation, focus return, card-clipping avoidance |
 | Desktop Account | Menu | Keyboard navigation, Escape/Tab handling, opener focus |
 | Desktop search suggestions | Combobox/listbox | Keyboard suggestion selection and existing navbar behavior |
 | Article share | Menu | Initial item focus, keyboard navigation, Escape/focus restoration |
 | Editor insert choices | Listbox, not a modal | Keyboard insertion and bottom-edge viewport positioning |
 
-Article reporting, summary/audio tools, collection editing, member studio forms, and authentication/verification are inline/page surfaces. Toasts are live feedback, and Loader components are route/loading surfaces. None should be represented as audited product modals. Search in the current source found no application `window.alert`, `window.confirm`, or `window.prompt` dialogs.
+Summary/audio tools, collection editing, member studio forms, and authentication/verification are inline/page surfaces. Article, discovery-card, question, and answer reporting now use the separate report modal (2026-10-08). Toasts are live feedback, and Loader components are route/loading surfaces. None should be represented as audited product modals. Search in the current source found no application `window.alert`, `window.confirm`, or `window.prompt` dialogs.
 
 ## Architecture and change scope
 

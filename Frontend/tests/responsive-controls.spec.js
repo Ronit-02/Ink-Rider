@@ -426,7 +426,7 @@ test('desktop sidebar expands without motion when reduced motion is requested', 
   await expect(page.getByRole('link', { name: 'Trending' })).toBeVisible()
 })
 
-test('short-read comment navigation avoids smooth scrolling for reduced motion', async ({ page }) => {
+test('short-read comments remain inline without a redundant footer button', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const url = new URL(route.request().url())
@@ -455,8 +455,8 @@ test('short-read comment navigation avoids smooth scrolling for reduced motion',
   await expect(page.getByRole('dialog')).toHaveAttribute('aria-busy', 'false')
   await expect(page.getByRole('dialog').getByRole('heading', { name: 'Start with the street' })).toHaveAttribute('id', 'short-read-title')
   await expect(page.locator('h1')).toHaveCount(1)
-  await page.getByRole('button', { name: 'View 0 comments' }).click()
-  await expect.poll(() => page.evaluate(() => window.__scrollBehavior)).toBe('auto')
+  await expect(page.getByRole('button', { name: 'View 0 comments' })).toHaveCount(0)
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Comments (0)' })).toBeVisible()
 })
 
 test('competition detail back navigation exposes a phone-sized target', async ({ page }) => {

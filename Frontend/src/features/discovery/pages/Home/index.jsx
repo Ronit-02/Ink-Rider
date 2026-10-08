@@ -136,7 +136,7 @@ export default function HomePage() {
 
       {feed.isPending && <PostFeedSkeleton count={4} label={`Loading ${selectedFeed.label.toLowerCase()} stories`} />}
       {feed.isError && <FeedState isError title="The feed could not be loaded" detail="Please check your connection and try again."
-        action={<button type="button" onClick={() => feed.refetch()} className="mt-5 inline-flex min-h-10 items-center justify-center px-4 py-2 rounded-full bg-[var(--color-accent)] text-[var(--color-text-inverted)] text-[12px] font-semibold sm:min-h-0">Try again</button>} />}
+        action={<button type="button" onClick={() => feed.refetch()} className="mt-5 inline-flex min-h-10 items-center justify-center px-4 py-2 rounded-full bg-[var(--color-accent)] text-[var(--color-text-inverted)] text-[12px] font-semibold sm:min-h-0" aria-busy={feed.isFetching} disabled={feed.isFetching}>Try again</button>} />}
       {!feed.isPending && !feed.isError && posts.length === 0 && (
         <FeedState title="No stories here yet" detail={mode === 'day' ? 'Nothing has been published in the past 24 hours.' : 'The first published story will appear here.'} />
       )}
@@ -153,8 +153,8 @@ export default function HomePage() {
       {feed.isFetchingNextPage && <div className="fade-in mt-8 mb-4"><PostFeedSkeleton count={2} /></div>}
       {feed.hasNextPage && <div className="flex justify-center pt-10">
         <button type="button" onClick={() => feed.fetchNextPage()} disabled={feed.isFetchingNextPage}
-          className="px-5 py-2.5 rounded-full border border-[var(--color-border)] text-[13px] font-semibold text-[var(--color-text)] disabled:opacity-50">
-          {feed.isFetchingNextPage ? 'Loading…' : 'Load more stories'}
+          className="px-5 py-2.5 rounded-full border border-[var(--color-border)] text-[13px] font-semibold text-[var(--color-text)] disabled:opacity-50" aria-busy={feed.isFetchingNextPage}>
+          {'Load more stories'}
         </button>
       </div>}
       {!feed.hasNextPage && posts.length > 0 && posts.length < 16 && (

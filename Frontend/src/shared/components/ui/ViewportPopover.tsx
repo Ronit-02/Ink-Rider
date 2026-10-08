@@ -29,10 +29,11 @@ const ViewportPopover = forwardRef<HTMLDivElement, Props>(function ViewportPopov
       const navbar = document.querySelector('[aria-label="Global navigation"]')?.getBoundingClientRect()
       const bottomBar = document.querySelector('[aria-label="Mobile primary navigation"]')?.getBoundingClientRect()
       const inNavbar = anchor.closest('[aria-label="Global navigation"]') !== null
+      const inDialog = anchor.closest('dialog[open]') !== null
       const left = Math.max(viewportLeft, root?.left || 0) + gap
       const right = Math.min(viewportLeft + (viewport?.width || window.innerWidth), root?.right || Infinity) - gap
-      const top = Math.max(viewportTop, inNavbar ? 0 : (navbar?.bottom || 0)) + gap
-      const bottom = Math.min(viewportTop + (viewport?.height || window.innerHeight), bottomBar?.height ? bottomBar.top : Infinity) - gap
+      const top = Math.max(viewportTop, inNavbar || inDialog ? 0 : (navbar?.bottom || 0)) + gap
+      const bottom = Math.min(viewportTop + (viewport?.height || window.innerHeight), !inDialog && bottomBar?.height ? bottomBar.top : Infinity) - gap
       const bounds = anchor.getBoundingClientRect()
       if (bounds.bottom < top || bounds.top > bottom) {
         closeRef.current?.()
@@ -81,7 +82,7 @@ const ViewportPopover = forwardRef<HTMLDivElement, Props>(function ViewportPopov
     panelRef.current = element
     if (typeof forwardedRef === 'function') forwardedRef(element)
     else if (forwardedRef) forwardedRef.current = element
-  }} style={{ ...style, position: 'fixed', inset: 'auto', margin: 0, zIndex: 200, overflowY: 'auto', overscrollBehavior: 'contain' }}>{children}</div>, document.body)
+  }} style={{ ...style, position: 'fixed', inset: 'auto', margin: 0, zIndex: 200, overflowY: 'auto', overscrollBehavior: 'contain' }}>{children}</div>, anchorRef.current?.closest('dialog[open]') || document.body)
 })
 
 export default ViewportPopover

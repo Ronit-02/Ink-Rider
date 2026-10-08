@@ -48,10 +48,14 @@ for (const width of [320, 390, 1280]) {
       expect(await menu.evaluate(element => element.parentElement === document.body)).toBe(true)
       if (source === 'story') {
         await menu.getByRole('menuitem', { name: 'Why you’re seeing this' }).click()
-        await menu.getByRole('menuitem', { name: 'Report story' }).click()
+        await menu.getByRole('menuitem', { name: 'Report this post' }).click()
+        const dialog = page.getByRole('dialog', { name: 'Report this post' })
+        await expect(menu).toHaveCount(0)
+        await dialog.getByRole('button', { name: 'Submit report' }).scrollIntoViewIfNeeded()
+        await expect(dialog.getByRole('button', { name: 'Submit report' })).toBeInViewport()
+        await dialog.getByRole('button', { name: 'Close report dialog' }).click()
+        await trigger.click()
         await assertMenuBounds(page, menu)
-        await menu.getByRole('button', { name: 'Submit report' }).scrollIntoViewIfNeeded()
-        await expect(menu.getByRole('button', { name: 'Submit report' })).toBeInViewport()
       }
       await page.locator('[data-app-scroll]').evaluate(root => { root.scrollTop += 36 })
       await assertMenuBounds(page, menu)

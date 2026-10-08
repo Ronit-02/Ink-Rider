@@ -17,7 +17,6 @@ async function mockEditor(page, { capabilities = [], saveStatus = 200 } = {}) {
       publications.push(request.postData())
       return route.fulfill({ status: 400, json: { message: 'Publication test: draft preserved.' } })
     }
-    if (path === '/api/v1/writing-assistant') return route.fulfill({ json: { data: { suggestion: 'A clearer explanation for your reader.', disclosure: 'AI suggestion' } } })
     return route.fulfill({ json: { data: [], meta: { nextCursor: null, unreadCount: 0 } } })
   })
   return { saves, publications }
@@ -58,9 +57,7 @@ for (const size of [{ width: 320, height: 735 }, { width: 390, height: 844 }, { 
     await details.locator('summary').focus()
     await page.keyboard.press('Enter')
     await expect(page.getByLabel('Add a tag', { exact: true })).toHaveValue('')
-    await page.getByRole('button', { name: 'Open assistant', exact: true }).click()
-    await expect(page.getByText('AI writing assistance is available with membership.')).toBeVisible()
-    await page.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Open assistant', exact: true })).toHaveCount(0)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({ path: testInfo.outputPath('editor-layout.png'), fullPage: true })
     await page.getByRole('button', { name: 'Publish', exact: true }).click()
@@ -71,19 +68,18 @@ for (const size of [{ width: 320, height: 735 }, { width: 390, height: 844 }, { 
   })
 }
 
-test('member release settings and assistant remain usable on a narrow phone', async ({ page }) => {
+test('member release settings remain available without writing assistance', async ({ page }) => {
+  const assistantRequests = []
+  page.on('request', request => { if (request.url().includes('/writing-assistant')) assistantRequests.push(request.url()) })
   await page.setViewportSize({ width: 320, height: 568 })
   await mockEditor(page, { capabilities: ['early_access', 'ai_writing_assistant'] })
   await page.goto('/write')
-  await page.getByRole('textbox', { name: 'Paragraph block', exact: true }).fill('A long enough paragraph to ask for help with clarity.')
-  await page.getByRole('button', { name: 'Open assistant', exact: true }).click()
-  await page.getByLabel('Writing assistance action').selectOption('tighten')
-  await page.getByRole('button', { name: 'Generate', exact: true }).click()
-  await expect(page.getByText('A clearer explanation for your reader.', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Add as new block' }).click()
-  await expect(page.getByRole('textbox', { name: 'Paragraph block', exact: true })).toHaveCount(2)
+  await page.getByRole('textbox', { name: 'Paragraph block', exact: true }).fill('Your writing stays in the editor.')
   await page.locator('details summary').click()
   await expect(page.getByLabel('Public release')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Writing assistant', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Open assistant', exact: true })).toHaveCount(0)
+  expect(assistantRequests).toEqual([])
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
 

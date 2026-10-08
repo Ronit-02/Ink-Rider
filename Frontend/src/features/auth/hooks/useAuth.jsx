@@ -47,10 +47,12 @@ export default function useAuth() {
   }
 
   const signOut = async () => {
+    if (logoutMutation.isPending || logoutAllMutation.isPending) return
     logoutMutation.mutate();
   }
 
   const signOutAllDevices = async () => {
+    if (logoutMutation.isPending || logoutAllMutation.isPending) return
     logoutAllMutation.mutate();
   }
 
@@ -62,6 +64,7 @@ export default function useAuth() {
     user,
     avatarUrl,
     loggedIn: !!user,
+    isSigningOut: logoutMutation.isPending || logoutAllMutation.isPending,
     signIn,
     signUp,
     signOut,

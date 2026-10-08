@@ -20,6 +20,13 @@ export default function AppLayout() {
   const { dark, toggle: toggleTheme } = useTheme()
   const isServerUnavailable = useServerUnavailable()
   const previousPathname = useRef(location.pathname)
+  const backRowClass = location.pathname === '/search'
+    ? 'max-w-[920px] px-5 md:px-8'
+    : location.pathname === '/history'
+      ? 'max-w-[850px] px-5 md:px-8'
+      : matchPath('/author/:handle', location.pathname)
+        ? 'max-w-[1080px] px-6 md:px-8'
+        : 'max-w-[1120px] px-4 sm:px-5 md:px-8'
 
   useEffect(() => {
     if (previousPathname.current === location.pathname) return
@@ -61,8 +68,8 @@ export default function AppLayout() {
 
         {/* Main — scrolls independently */}
         <div id="main-content" tabIndex={-1} data-app-scroll="true" className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden focus:outline-none max-md:pb-[calc(72px_+_env(safe-area-inset-bottom))]">
-          {BACK_ROUTES.some(path => matchPath({ path, end: true }, location.pathname)) && <div data-page-back="true" className="mx-auto w-full max-w-[1120px] px-4 pt-4 sm:px-5 md:px-8">
-            <BackButton />
+          {BACK_ROUTES.some(path => matchPath({ path, end: true }, location.pathname)) && <div data-page-back="true" className={`mx-auto w-full pt-4 ${backRowClass}`}>
+            <BackButton className="-ml-2" />
           </div>}
           <Outlet context={{ dark, toggleTheme }} />
         </div>

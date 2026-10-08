@@ -6,6 +6,7 @@ const postCacheRoots = new Set([
   'search-suggestions',
   'me',
   'collection',
+  'writer',
 ])
 
 export const isPostCacheQuery = query => postCacheRoots.has(query.queryKey[0])

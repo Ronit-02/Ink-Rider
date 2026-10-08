@@ -16,7 +16,6 @@ export default function MobileProfileSheet({ onClose }: { onClose: () => void })
   const [closing, setClosing] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const destination = useRef<string | null>(null)
-  const afterClose = useRef<(() => void) | null>(null)
   const finished = useRef(false)
   const requestClose = useCallback(() => setClosing(true), [])
   const viewportStyle = useOverlayViewport()
@@ -41,7 +40,6 @@ export default function MobileProfileSheet({ onClose }: { onClose: () => void })
     finished.current = true
     onClose()
     if (destination.current) navigate(destination.current)
-    afterClose.current?.()
   }
 
   const followLink = (event: MouseEvent<HTMLAnchorElement>, path: string) => {
@@ -87,7 +85,7 @@ export default function MobileProfileSheet({ onClose }: { onClose: () => void })
             <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-full border border-[var(--color-border)] px-4 text-[13px]">LinkedIn <span aria-hidden="true" className="ml-2">↗</span></a>
           </div>
         </section>
-        {auth.loggedIn && <button type="button" onClick={() => { afterClose.current = auth.signOut; requestClose() }} className="mt-5 flex min-h-11 items-center gap-3 text-[13px] text-[var(--color-text-secondary)]"><UserIcon />Sign Out</button>}
+        {auth.loggedIn && <button type="button" disabled={auth.isSigningOut} aria-busy={auth.isSigningOut} onClick={auth.signOut} className="mt-5 flex min-h-11 items-center gap-3 text-[13px] text-[var(--color-text-secondary)]"><UserIcon />Sign Out</button>}
       </div>
     </motion.section>
   </dialog>, document.body)

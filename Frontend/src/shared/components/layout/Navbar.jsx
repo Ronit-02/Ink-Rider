@@ -15,7 +15,7 @@ import MobileSearchDialog from '@/features/discovery/components/MobileSearchDial
 
 
 export default function Navbar() {
-  const { user, avatarUrl, signIn, signUp, signOut, signOutAllDevices, loggedIn } = useAuth()
+  const { user, avatarUrl, signIn, signUp, signOut, signOutAllDevices, isSigningOut, loggedIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [openMenu, setOpenMenu] = useState(false)
@@ -207,8 +207,8 @@ export default function Navbar() {
             {[{ label: 'View Profile', path: '/profile' }, { label: 'Saved', path: '/saved' }].map(item =>
               <Link key={item.label} role="menuitem" to={item.path} onClick={() => setOpenMenu(false)} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus:bg-[var(--color-bg-alt)] focus:outline-none">{item.label}</Link>)}
             <div className="h-px bg-[var(--color-border)] my-1" />
-            <button type="button" role="menuitem" onClick={() => { setOpenMenu(false); signOut() }} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus:bg-[var(--color-bg-alt)] focus:outline-none">Sign Out</button>
-            <button type="button" role="menuitem" onClick={() => { setOpenMenu(false); signOutAllDevices() }} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus:bg-[var(--color-bg-alt)] focus:outline-none">Sign Out all Devices</button>
+            <button type="button" role="menuitem" disabled={isSigningOut} aria-busy={isSigningOut} onClick={signOut} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus:bg-[var(--color-bg-alt)] focus:outline-none">Sign Out</button>
+            <button type="button" role="menuitem" disabled={isSigningOut} aria-busy={isSigningOut} onClick={signOutAllDevices} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus:bg-[var(--color-bg-alt)] focus:outline-none">Sign Out all Devices</button>
           </ViewportPopover>}
         </div> : <><Button className="navbar-auth-action" variant="secondary" onClick={signIn}>Sign In</Button><Button className="navbar-auth-action" variant="primary" onClick={signUp}>Sign Up</Button></>}
       </div>

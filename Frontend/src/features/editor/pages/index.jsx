@@ -10,7 +10,6 @@ import useEntitlements from '@/features/membership/hooks/useEntitlements'
 import { createDraft, deleteDraft, fetchDraft, updateDraft } from '../api/drafts'
 import { updatePost } from '../api/updatePost'
 import fetchPost from '@/features/post/api/fetchPost'
-import { requestWritingAssistance } from '../api/writingAssistant'
 import useToast from '@/shared/hooks/useToast'
 import { useSelector } from 'react-redux'
 import PageFrame from '@/shared/components/layout/PageFrame'
@@ -75,8 +74,6 @@ function MemberEditor() {
   const [draftVersion, setDraftVersion] = useState(null)
   const [postRevision, setPostRevision] = useState(null)
   const [autosaveStatus, setAutosaveStatus] = useState(initialDraftId ? 'loading' : 'idle')
-  const [assistantOpen, setAssistantOpen] = useState(false)
-  const [assistantAction, setAssistantAction] = useState('improve_clarity')
   const [scheduleBounds] = useState(() => {
     const now = new Date()
     return {
@@ -95,8 +92,6 @@ function MemberEditor() {
   const depthOptions = useQuery({ queryKey: ['depth-options'], queryFn: fetchDepthOptions, enabled: format === 'short' })
   const entitlements = useEntitlements(true)
   const canScheduleEarlyAccess = entitlements.data?.capabilities?.includes('early_access')
-  const canUseWritingAssistant = entitlements.data?.capabilities?.includes('ai_writing_assistant')
-  const assistant = useMutation({ mutationFn: requestWritingAssistance, onSuccess: () => notify('Writing suggestion ready.'), onError: () => notify('The writing assistant is unavailable.', { tone: 'error' }) })
   const draftQuery = useQuery({ queryKey: ['draft', initialDraftId], queryFn: () => fetchDraft(initialDraftId), enabled: Boolean(initialDraftId), retry: false })
   const editQuery = useQuery({ queryKey: ['post', editPostId], queryFn: fetchPost, enabled: Boolean(editPostId), retry: false })
 
@@ -420,8 +415,8 @@ function MemberEditor() {
             variant="primary"
             className="!min-h-11"
             disabled={!title.trim() || !tags.length || (format === 'article' && !coverURL && !cover) || (format === 'short' && wordCount > 500) || isPending}
-            onClick={handleSubmit}>
-            {isPending ? (editPostId ? 'Updating…' : 'Publishing…') : editPostId ? 'Update' : 'Publish'}
+            onClick={handleSubmit} aria-busy={isPending}>
+            {editPostId ? 'Update' : 'Publish'}
           </Button>
       </header>
 
@@ -469,7 +464,7 @@ function MemberEditor() {
                 onTypeChange={(t) => changeType(bl.id, t)}
                 openSlashMenu={openSlashMenu}
                 closeSlashMenu={closeSlashMenu}
-                isSlashMenuOpen={slashMenu.open}
+                isSlashMenuOpen={slashMenu.open && slashMenu.blockId === bl.id}
                 moveFocus={moveFocus}
                 mergeToPrevBlock={mergeToPrevBlock}
                 copyPasteContent={copyPasteContent}
@@ -493,9 +488,6 @@ function MemberEditor() {
             <p className={format === 'short' && wordCount > 500 ? 'text-[var(--color-danger)]' : ''}>{format === 'short' ? `${wordCount}/500 words` : `${wordCount} ${wordCount === 1 ? 'word' : 'words'}`}</p>
           </div>
 
-          <div className="border-t border-[var(--color-border)] pt-6">
-            <section className="mb-2"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-[13px] font-semibold text-[var(--color-text)]">Writing assistant</h2><p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">Suggestions never replace your draft automatically.</p></div><Button variant="secondary" className="!min-h-11" aria-expanded={assistantOpen} aria-controls="writing-assistant-content" onClick={() => setAssistantOpen(value => !value)}>{assistantOpen ? 'Close' : 'Open assistant'}</Button></div>{assistantOpen && <div id="writing-assistant-content">{!canUseWritingAssistant ? <p className="mt-4 text-[12px] text-[var(--color-text-secondary)]">AI writing assistance is available with membership.</p> : <div className="mt-4"><div className="flex flex-wrap gap-2"><select aria-label="Writing assistance action" value={assistantAction} onChange={event => setAssistantAction(event.target.value)} className="min-h-11 min-w-0 flex-1 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px]"><option value="improve_clarity">Improve clarity</option><option value="tighten">Tighten prose</option><option value="create_outline">Create outline</option><option value="suggest_titles">Suggest titles</option><option value="find_gaps">Find reasoning gaps</option></select><Button disabled={assistant.isPending || blocks.map(block => block.content).join(' ').trim().length < 20} onClick={() => assistant.mutate({ action: assistantAction, text: blocks.map(block => block.content).join('\n').slice(0, 12000) })}>{assistant.isPending ? 'Thinking…' : 'Generate'}</Button></div>{assistant.isError && <p role="alert" className="mt-3 text-[11px] text-[var(--color-danger)]">{assistant.error?.response?.data?.message || 'The assistant is unavailable.'}</p>}{assistant.data && <div className="mt-4 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"><p className="whitespace-pre-wrap text-[13px] leading-[1.7] text-[var(--color-text-secondary)]">{assistant.data.data.suggestion}</p><div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p className="text-[10px] text-[var(--color-text-muted)]">{assistant.data.data.disclosure}</p><Button variant="secondary" onClick={() => addAfter(blocks.at(-1).id, assistant.data.data.suggestion)}>Add as new block</Button></div></div>}</div>}</div>}</section>
-          </div>
         </section>
         <aside aria-label="Publishing details" className="min-w-0 lg:sticky lg:top-6">
           <details open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)} className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)]">

@@ -133,7 +133,7 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
           <h2 id={`${listId}-trending`} className="text-[15px] font-semibold">Trending searches</h2>
           <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">Suggestions from popular stories on Ink Rider.</p>
           {popular.isPending ? <p role="status" className="py-4 text-[13px] text-[var(--color-text-muted)]">Loading suggestions…</p>
-            : popular.isError ? <div className="py-4 text-[13px] text-[var(--color-text-muted)]"><p>Trending suggestions are unavailable.</p><button type="button" onClick={() => popular.refetch()} className="min-h-11 underline underline-offset-2">Try again</button></div>
+            : popular.isError ? <div className="py-4 text-[13px] text-[var(--color-text-muted)]"><p>Trending suggestions are unavailable.</p><button type="button" onClick={() => popular.refetch()} className="min-h-11 underline underline-offset-2" aria-busy={popular.isFetching} disabled={popular.isFetching}>Try again</button></div>
               : !trendingSearches.length ? <p className="py-4 text-[13px] text-[var(--color-text-muted)]">Explore a topic below while popular stories build up.</p>
                 : <ul aria-label="Trending searches" className="mt-3 list-none p-0">{trendingSearches.map(title => <li key={title}><button type="button" onClick={() => { setInput(title.slice(0, 100)); setActiveIndex(-1); inputRef.current?.focus() }} className="flex min-h-11 w-full items-center gap-3 border-b border-[var(--color-border-light)] py-3 text-left text-[13px] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"><span aria-hidden="true" className="shrink-0"><SearchIcon /></span><span>{title}</span></button></li>)}</ul>}
         </section>
@@ -154,7 +154,7 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
               <span className="shrink-0 text-[11px] text-[var(--color-text-muted)]">{suggestion.kind === 'post' ? 'Article' : 'Writer'}</span>
             </button>)}
           </div>
-          {result.isError && <button type="button" onClick={() => result.refetch()} className="mt-4 min-h-11 text-[13px] underline underline-offset-2">Try again</button>}
+          {result.isError && <button type="button" onClick={() => result.refetch()} className="mt-4 min-h-11 text-[13px] underline underline-offset-2" aria-busy={result.isFetching} disabled={result.isFetching}>Try again</button>}
         </>}
       </motion.div>
     </motion.dialog>, document.body,

@@ -35,7 +35,8 @@ for (const width of [320, 1280]) {
       await expect(page).not.toHaveURL(/\/login/)
       expect((await back.boundingBox()).height, path).toBeGreaterThanOrEqual(44)
       await expect(back).toHaveCSS('font-size', '13px')
-      expect(await back.evaluate(node => parseFloat(getComputedStyle(node).borderRadius))).toBeGreaterThanOrEqual(22)
+      await expect(back).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+      await expect(back).toHaveCSS('border-top-width', '0px')
       await expect(back).toHaveAttribute('type', 'button')
     }
     for (const path of primaryRoutes) {

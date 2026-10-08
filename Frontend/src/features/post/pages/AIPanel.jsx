@@ -42,8 +42,8 @@ export function AccessPanel({ capability }) {
       <p className="mt-2 text-[13px] leading-[1.65] text-[var(--color-text-secondary)]">
         {isSummary ? 'Article overviews' : 'Read aloud'} is included with an Ink-Rider membership. The full article always remains free to read.
       </p>
-      <button type="button" disabled={checkout.isPending} onClick={() => checkout.mutate()} className="mt-4 px-4 py-2 rounded-full bg-[var(--color-accent)] text-white text-[12px] font-semibold disabled:opacity-70">
-        {checkout.isPending ? 'Opening checkout…' : 'Become a member'}
+      <button type="button" disabled={checkout.isPending} onClick={() => checkout.mutate()} className="mt-4 px-4 py-2 rounded-full bg-[var(--color-accent)] text-white text-[12px] font-semibold disabled:opacity-70" aria-busy={checkout.isPending}>
+        {'Become a member'}
       </button>
       {checkout.isError && <p role="alert" className="mt-3 text-[11px] text-[var(--color-danger)]">{checkout.error?.response?.data?.message || 'Billing is temporarily unavailable.'}</p>}
     </section>

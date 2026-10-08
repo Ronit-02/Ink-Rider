@@ -47,6 +47,8 @@ Recommendation learning distinguishes viewed content from intentional interactio
 
 ## Public contract principles
 
+Public writer-profile article summaries include the viewer's `isLiked` state, resolved with one batch read of the existing like relationships. Guests receive false without a relationship lookup. The frontend waits for session restoration and partitions writer queries by authenticated/anonymous state; shared post-cache updates also cover writer articles for appreciation and comment-count changes. Existing response fields, routes, and persistence models are preserved.
+
 - Version public APIs and maintain a clear compatibility path for breaking changes.
 - Validate identifiers, allowlist client-controlled filters and sort keys, and paginate unstable result sets.
 - Use stable success and failure response shapes.

@@ -250,6 +250,37 @@ test('expired OTP records have a TTL index', () => {
   assert.equal(ttlIndex[1].expireAfterSeconds, 0);
 });
 
+test('writer article cards include viewer appreciation state in one batch read', async t => {
+  const Profile = require('../schemas/profile.schema');
+  const Post = require('../schemas/post.schema');
+  const Follow = require('../schemas/follow.schema');
+  const Like = require('../schemas/like.schema');
+  const { getWriterByHandle } = require('../controllers/writer.controller');
+  const authorId = new mongoose.Types.ObjectId();
+  const postIds = [new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()];
+  const posts = postIds.map(_id => ({ _id, title: 'A useful idea', tags: ['science'], likesCount: 9, commentsCount: 2, body: '[]' }));
+  t.mock.method(Profile, 'findOne', () => ({ populate: async () => ({ handle: 'maya-sen', displayName: 'Maya Sen', userId: { _id: authorId } }) }));
+  t.mock.method(Post, 'find', () => ({ sort: () => ({ select: async () => posts }) }));
+  t.mock.method(Follow, 'exists', async () => null);
+  const reads = [];
+  t.mock.method(Like, 'find', filter => {
+    reads.push(filter);
+    return { select: () => ({ lean: async () => [{ postId: postIds[0] }] }) };
+  });
+  const viewerId = new mongoose.Types.ObjectId().toString();
+  const member = createResponse();
+  await getWriterByHandle({ params: { handle: 'maya-sen' }, auth: { userId: viewerId } }, member);
+  assert.equal(member.statusCode, 200);
+  assert.deepEqual(member.payload.data.posts.map(post => post.isLiked), [true, false]);
+  assert.equal(member.payload.data.posts[0].likesCount, 9);
+  assert.equal(reads.length, 1);
+  assert.deepEqual(reads[0], { userId: viewerId, postId: { $in: postIds } });
+  const guest = createResponse();
+  await getWriterByHandle({ params: { handle: 'maya-sen' } }, guest);
+  assert.deepEqual(guest.payload.data.posts.map(post => post.isLiked), [false, false]);
+  assert.equal(reads.length, 1);
+});
+
 test('writer handles normalize into durable URL identifiers', () => {
   assert.equal(normalizeHandle("Élodie O'Connor"), 'elodie-o-connor');
   assert.equal(normalizeHandle('  '), 'writer');

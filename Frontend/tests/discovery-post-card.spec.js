@@ -14,7 +14,7 @@ async function mockApi(page, { signedIn = true, failLike = false, article = post
   await page.route(url => url.pathname.startsWith('/api/'), route => {
     const path = new URL(route.request().url()).pathname
     if (path === '/api/auth/refresh-token') return route.fulfill({ status: signedIn ? 200 : 401, json: signedIn ? { accessToken: 'card-test-token', user: 'Reader', email: 'reader@example.test', role: 'regular' } : { message: 'Signed out' } })
-    if (path === '/api/search') return route.fulfill({ json: { data: { posts: [article], writers: [], shorts: [] } } })
+    if (path === '/api/search') return route.fulfill({ json: { data: { posts: [article], writers: [], shorts: [article] } } })
     if (path === '/api/post/shorts' || path === '/api/post/feed') return route.fulfill({ json: { data: [article], meta: { nextCursor: null } } })
     if (path.endsWith('/like')) {
       const isLiked = route.request().method() === 'PUT'
@@ -22,6 +22,57 @@ async function mockApi(page, { signedIn = true, failLike = false, article = post
     }
     if (path.endsWith('/comments')) return route.fulfill({ json: route.request().method() === 'POST' ? { data: { id: 'comment-1', content: route.request().postDataJSON().text, author: { name: 'Reader' }, createdAt: '2026-10-06T00:00:00Z' } } : { data: [], meta: { nextCursor: null } } })
     return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+  })
+}
+
+for (const width of [320, 1280]) {
+  test(`short detail author and share options work at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 })
+    await mockApi(page)
+    await page.route(`**/api/post/${post.id}`, route => route.fulfill({ json: { postData: { ...post, _id: post.id, body: JSON.stringify([{ id: 'text', type: 'text', content: post.excerpt }]) } } }))
+    await page.addInitScript(() => {
+      window.__copiedLink = null
+      window.__sharedWindow = null
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async value => { window.__copiedLink = value } } })
+      window.open = (...args) => { window.__sharedWindow = args; return null }
+    })
+    await page.goto('/shorts')
+    const openShort = () => page.getByRole('article').first().getByRole('link', { name: post.title, exact: true }).click()
+    await openShort()
+    const reader = page.getByRole('dialog', { name: post.title, exact: true })
+    await expect(reader.getByRole('button', { name: /^View .* comments$/ })).toHaveCount(0)
+    await expect(reader.getByRole('heading', { name: 'Comments (0)' })).toBeVisible()
+    const share = reader.getByRole('button', { name: 'Share this short read' })
+    await share.click()
+    const options = page.getByRole('dialog', { name: 'Share short read', exact: true })
+    const copy = options.getByRole('button', { name: 'Copy Link', exact: true })
+    await expect(copy).toBeFocused()
+    await options.screenshot({ path: testInfo.outputPath(`share-${width}.png`) })
+    await expect.poll(() => page.evaluate(() => window.__copiedLink)).toBe(null)
+    await copy.press('Tab')
+    await expect(options.getByRole('button', { name: 'Share on X' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(options).toHaveCount(0)
+    await expect(share).toBeFocused()
+    await expect(reader).toBeVisible()
+    await share.click()
+    await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw new Error('Clipboard unavailable') } })
+    await copy.click()
+    await expect(options).toBeVisible()
+    await expect(page.getByText('The short read link could not be copied.', { exact: true })).toBeVisible()
+    await page.evaluate(() => { navigator.clipboard.writeText = async value => { window.__copiedLink = value } })
+    await copy.press('Escape')
+    await share.click()
+    await copy.click()
+    await expect.poll(() => page.evaluate(() => window.__copiedLink)).toBe(`${new URL(page.url()).origin}/post/${post.id}`)
+    await expect(share).toBeFocused()
+    await share.click()
+    await options.getByRole('button', { name: 'Share on X' }).click()
+    await expect.poll(() => page.evaluate(() => window.__sharedWindow)).toEqual([`https://x.com/intent/tweet?url=${encodeURIComponent(`${new URL(page.url()).origin}/post/${post.id}`)}`, '_blank', 'noopener,noreferrer'])
+    await expect(options).toHaveCount(0)
+    await reader.getByRole('link', { name: "View Leila Noor's profile" }).click()
+    await expect(page).toHaveURL('/author/leila-noor')
+    await expect(reader).toHaveCount(0)
   })
 }
 
@@ -103,8 +154,15 @@ test('short-card category and background preserve search and modal destinations'
   await page.route(`**/api/post/${post.id}`, route => route.fulfill({ json: { postData: { ...post, _id: post.id, body: JSON.stringify([{ id: 'text', type: 'text', content: post.excerpt }]) } } }))
   await page.goto('/shorts')
   const card = page.getByRole('article').first()
+  const searchRequest = page.waitForRequest(request => {
+    const url = new URL(request.url())
+    return url.pathname === '/api/search' && url.searchParams.get('q') === 'science' && url.searchParams.get('type') === 'shorts'
+  })
   await card.getByRole('link', { name: 'science', exact: true }).click()
-  await expect(page).toHaveURL('/search?q=science')
+  await searchRequest
+  await expect(page).toHaveURL('/search?q=science&type=shorts')
+  await expect(page.getByRole('tab', { name: 'Shorts', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(card.getByRole('heading', { name: post.title })).toBeVisible()
   await page.goto('/shorts')
   await card.getByText(post.excerpt, { exact: true }).scrollIntoViewIfNeeded()
   const excerpt = await card.getByText(post.excerpt, { exact: true }).boundingBox()
@@ -114,6 +172,46 @@ test('short-card category and background preserve search and modal destinations'
   await page.getByRole('button', { name: 'Close short read' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
+
+for (const width of [320, 390, 1280]) {
+  test(`short cards fit their content at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript(() => {
+      if (!localStorage.getItem('ink-theme')) localStorage.setItem('ink-theme', 'light')
+    })
+    await mockApi(page, { article: { ...post, image: null } })
+    await page.goto('/shorts')
+    const card = page.getByRole('article').first()
+    await expect(card.getByRole('heading', { name: post.title })).toBeVisible()
+    const assertSpacing = async () => {
+      const layout = await card.evaluate(element => {
+        const body = element.firstElementChild
+        const [metadata, heading, excerpt, footer] = body.children
+        const box = node => node.getBoundingClientRect()
+        return {
+          titleGap: box(heading).top - box(metadata).bottom,
+          excerptGap: box(excerpt).top - box(heading).bottom,
+          footerGap: box(footer).top - box(excerpt).bottom,
+          bottomGap: box(element).bottom - box(footer).bottom,
+          overflow: element.scrollWidth > element.clientWidth,
+        }
+      })
+      expect(layout.titleGap).toBeCloseTo(20, 0)
+      expect(layout.excerptGap).toBeCloseTo(12, 0)
+      expect(layout.footerGap).toBeCloseTo(20, 0)
+      expect(layout.bottomGap).toBeCloseTo(21, 0)
+      expect(layout.overflow).toBe(false)
+    }
+    await assertSpacing()
+    await card.screenshot({ path: testInfo.outputPath(`short-${width}-light.png`) })
+    await page.evaluate(() => { localStorage.setItem('ink-theme', 'dark') })
+    await page.reload()
+    await expect(page.locator('html')).toHaveClass(/dark/)
+    await expect(card.getByRole('heading', { name: post.title })).toBeVisible()
+    await assertSpacing()
+    await card.screenshot({ path: testInfo.outputPath(`short-${width}-dark.png`) })
+  })
+}
 
 for (const width of [320, 350, 390, 767, 768, 1280]) {
   test(`card actions, comment modal, and menu fit at ${width}px`, async ({ page }) => {

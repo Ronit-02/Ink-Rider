@@ -12,6 +12,7 @@ export default function AppreciationButton({ isLiked = false, count = 0, label, 
     aria-label={label}
     aria-pressed={isLiked}
     disabled={disabled}
+    aria-busy={disabled}
     onClick={onClick}
     className={`flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-[var(--color-border)] px-3 text-[12px] tabular-nums transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 disabled:opacity-60 ${isLiked ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)] hover:bg-[var(--color-accent-hover)]' : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)]'}`}
   >

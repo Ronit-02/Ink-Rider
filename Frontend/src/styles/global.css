@@ -70,6 +70,27 @@ body {
 
 /* Element defaults */
 button { cursor: pointer; font-family: inherit; }
+/* Back owns a separate row. Keep its following content close but clear of the
+   control/focus ring without changing primary-page spacing. */
+[data-page-back] + main,
+[data-page-back] + div > main {
+  padding-top: 1rem;
+}
+@media (min-width: 768px) {
+  [data-page-back] + main,
+  [data-page-back] + div > main {
+    padding-top: 1.5rem;
+  }
+}
+/* Async actions retain their content and dimensions while using one muted fill.
+   Busy is separate from validation/permission-disabled state. */
+button[aria-busy="true"] {
+  background: color-mix(in srgb, var(--color-accent) 60%, var(--color-surface)) !important;
+  border-color: color-mix(in srgb, var(--color-accent) 60%, var(--color-surface)) !important;
+  color: var(--color-text-inverted) !important;
+  opacity: 1 !important;
+  cursor: wait;
+}
 input, textarea { font-family: inherit; }
 img { display: block; max-width: 100%; }
 a { text-decoration: none; color: inherit; }

@@ -59,6 +59,35 @@ const mockMemberProfileApi = async page => {
 }
 
 test.describe('public writer profile discovery', () => {
+  test('writer follow updates authenticated state and rolls back a failed unfollow', async ({ page }) => {
+    const methods = []
+    await page.route(url => url.pathname.startsWith('/api/'), route => {
+      const path = new URL(route.request().url()).pathname
+      if (path === '/api/auth/refresh-token') return route.fulfill({ json: { accessToken: 'follow-test', user: 'Reader', email: 'reader@example.test', role: 'regular' } })
+      if (path === '/api/writer/maya-sen') return route.fulfill({ json: { data: writer } })
+      if (path === `/api/writer/${writer.id}/follow`) {
+        const method = route.request().method()
+        methods.push(method)
+        return route.fulfill({ status: methods.length === 2 ? 500 : 200, json: methods.length === 2 ? { message: 'Unavailable' } : { isFollowing: method === 'PUT', followersCount: method === 'PUT' ? 43 : 42 } })
+      }
+      return route.fulfill({ json: { data: { capabilities: [] }, meta: { unreadCount: 0 } } })
+    })
+    await page.goto('/author/maya-sen')
+    const follow = page.getByRole('button', { name: 'Follow', exact: true })
+    const following = page.getByRole('button', { name: 'Following', exact: true })
+    await follow.click()
+    await expect(following).toBeEnabled()
+    await expect(page.getByText('43 followers', { exact: true })).toBeVisible()
+    await following.click()
+    await expect(page.locator('main').getByRole('alert')).toContainText("We couldn't update your follow.")
+    await expect(following).toBeEnabled()
+    await expect(page.getByText('43 followers', { exact: true })).toBeVisible()
+    await following.click()
+    await expect(follow).toBeEnabled()
+    await expect(page.getByText('42 followers', { exact: true })).toBeVisible()
+    expect(methods).toEqual(['PUT', 'DELETE', 'DELETE'])
+  })
+
   test('writer loading exposes a named status region on phone', async ({ page }) => {
     await page.route(url => url.pathname.startsWith('/api/'), async route => {
       const url = new URL(route.request().url())
@@ -108,6 +137,9 @@ test.describe('public writer profile discovery', () => {
     const requestButton = page.getByRole('button', { name: 'Request an article' })
     await requestButton.click()
     await expect(requestButton).toHaveAttribute('aria-expanded', 'true')
+    const dialog = page.getByRole('dialog', { name: 'Direct request to Maya Sen' })
+    await expect(dialog).toBeVisible()
+    expect(await dialog.evaluate(node => node.matches(':modal'))).toBe(true)
 
     const subject = page.getByLabel('Request subject')
     const details = page.getByLabel('Request details')
@@ -126,7 +158,71 @@ test.describe('public writer profile discovery', () => {
       document.documentElement.scrollWidth > document.documentElement.clientWidth
     ))
     expect(hasHorizontalOverflow).toBe(false)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await expect(requestButton).toBeFocused()
+    await requestButton.click()
+    await expect(page.getByLabel('Request subject')).toHaveValue('A labelled request')
+    await expect(page.getByLabel('Request details')).toHaveValue('Useful context for the writer.')
   })
+
+  for (const width of [320, 1280]) {
+    for (const access of ['member', 'free', 'expired']) {
+      test(`article request modal handles ${access} access at ${width}px`, async ({ page }, testInfo) => {
+        let submissions = 0
+        await page.route(url => url.pathname.startsWith('/api/'), route => {
+          const path = new URL(route.request().url()).pathname
+          if (path === '/api/auth/refresh-token') return route.fulfill({ json: { accessToken: 'request-test', user: 'Reader', email: 'reader@example.test', role: 'regular' } })
+          if (path === '/api/writer/maya-sen') return route.fulfill({ json: { data: writer } })
+          if (path === '/api/v1/me/entitlements') return route.fulfill({ json: { data: { capabilities: access === 'free' ? [] : ['direct_creator_requests'] } } })
+          if (path === `/api/v1/creators/${writer.id}/requests`) {
+            submissions++
+            expect(route.request().postDataJSON()).toEqual({ subject: 'Article idea', details: 'Useful context' })
+            return route.fulfill({ status: access === 'expired' ? 403 : submissions === 1 ? 500 : 201, json: access === 'expired' ? { code: 'ENTITLEMENT_REQUIRED', message: 'An active membership is required' } : submissions === 1 ? { message: 'Unavailable' } : { data: {}, remainingThisMonth: 2 } })
+          }
+          return route.fulfill({ json: { data: [], meta: { unreadCount: 0 } } })
+        })
+        await page.setViewportSize({ width, height: 600 })
+        await page.goto('/author/maya-sen')
+        const trigger = page.getByRole('button', { name: 'Request an article' })
+        await trigger.click()
+        const dialog = page.getByRole('dialog', { name: 'Direct request to Maya Sen' })
+        await expect(dialog).toBeVisible()
+        expect(await dialog.evaluate(node => node.matches(':modal') && node.parentElement === document.body)).toBe(true)
+        for (let i = 0; i < 8; i++) {
+          await page.keyboard.press(i < 4 ? 'Tab' : 'Shift+Tab')
+          expect(await dialog.evaluate(node => node.contains(document.activeElement))).toBe(true)
+        }
+        if (access !== 'free') {
+          await dialog.getByLabel('Request subject').fill('Article idea')
+          await dialog.getByLabel('Request details').fill('Useful context')
+          await dialog.getByRole('button', { name: 'Send request' }).click()
+          await expect(dialog.getByRole('alert')).toBeVisible()
+          if (access === 'member') {
+            await expect(dialog.getByLabel('Request subject')).toHaveValue('Article idea')
+            await dialog.getByRole('button', { name: 'Send request' }).click()
+            await expect(dialog.getByRole('status')).toContainText('Request sent. You have 2 left this month.')
+          }
+        }
+        if (access !== 'member') {
+          await expect(dialog.getByRole('alert')).toHaveText('Direct creator requests are available to members.')
+          const join = dialog.getByRole('link', { name: 'Become a member' })
+          await expect(join).toHaveAttribute('href', '/membership')
+          await dialog.screenshot({ path: testInfo.outputPath('membership-request.png') })
+          await join.click()
+          await expect(page).toHaveURL(/\/membership$/)
+        } else {
+          await dialog.getByRole('button', { name: 'Close article request' }).click()
+          await expect(trigger).toBeFocused()
+          await trigger.click()
+          await expect(dialog.getByLabel('Request subject')).toHaveValue('')
+          await page.keyboard.press('Escape')
+          await expect(trigger).toBeFocused()
+        }
+        expect(submissions).toBe(access === 'free' ? 0 : access === 'expired' ? 1 : 2)
+      })
+    }
+  }
 
   test('profile library tabs restore from a shareable URL state', async ({ page }) => {
     await page.route(url => url.pathname.startsWith('/api/'), async route => {

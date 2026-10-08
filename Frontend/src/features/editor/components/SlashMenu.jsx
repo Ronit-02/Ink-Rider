@@ -20,44 +20,54 @@ export default function SlashMenu({
       opt.type.toLowerCase().includes(filter.toLowerCase())
   )
 
+  // Parent renders (including autosave) recreate the array without changing choices.
+  const optionTypes = options.map(option => option.type).join(',')
   useEffect(() => {
     setSelected(0)
-  }, [filter, options])
+  }, [filter, optionTypes])
 
   useEffect(() => {
     function handleKey(e) {
+      if (e.isComposing || (!anchorRef.current?.contains(e.target) && !menuRef.current?.contains(e.target))) return
+      if (e.key === 'Tab') {
+        onClose()
+        return
+      }
+      if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key)) return
+      // Own these keys before the editor can move focus to a different block.
+      e.preventDefault()
+      e.stopPropagation()
       if (e.key === 'ArrowDown') {
-        setSelected((s) => (s + 1) % filtered.length)
-        e.preventDefault()
+        if (filtered.length) setSelected((s) => (s + 1) % filtered.length)
       } else if (e.key === 'ArrowUp') {
-        setSelected((s) => (s - 1 + filtered.length) % filtered.length)
-        e.preventDefault()
+        if (filtered.length) setSelected((s) => (s - 1 + filtered.length) % filtered.length)
       } else if (e.key === 'Enter') {
         if (filtered[selected]) {
           onSelect(filtered[selected])
         }
-        e.preventDefault()
       } else if (e.key === 'Escape') {
         onClose()
       }
     }
     
-    document.addEventListener('keydown', handleKey)
+    document.addEventListener('keydown', handleKey, true)
     
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [filtered, selected, onSelect, onClose])
+    return () => document.removeEventListener('keydown', handleKey, true)
+  }, [anchorRef, filtered, selected, onSelect, onClose])
 
   // Auto scroll selected item into view
   useEffect(() => {
     const selectedItem = itemRefs.current[selected]
 
-    if (selectedItem) {
-      selectedItem.scrollIntoView({
-        block: 'nearest',
-         behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-      })
+    const menu = menuRef.current
+    if (selectedItem && menu) {
+      // Scroll only this panel, immediately; scrollIntoView also moves ancestors.
+      const top = selectedItem.offsetTop
+      const bottom = top + selectedItem.offsetHeight
+      if (top < menu.scrollTop) menu.scrollTop = top
+      else if (bottom > menu.scrollTop + menu.clientHeight) menu.scrollTop = bottom - menu.clientHeight
     }
-  }, [selected])
+  }, [selected, filter, optionTypes])
 
   useEffect(() => {
     function handleClick(e) {
@@ -84,6 +94,7 @@ export default function SlashMenu({
         maxHeight: 200,
         height: 'auto',
         overflowY: 'auto',
+        scrollBehavior: 'auto',
         background: 'var(--color-bg)',
         border: '1px solid var(--color-border)',
         borderRadius: 10,

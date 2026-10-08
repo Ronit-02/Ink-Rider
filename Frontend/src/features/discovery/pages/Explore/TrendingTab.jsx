@@ -1,3 +1,4 @@
+import ShareMenu from '@/shared/components/ui/ShareMenu'
 import ViewportPopover from '@/shared/components/ui/ViewportPopover'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
@@ -22,6 +23,7 @@ function ArticleDayMenu({ post }) {
   const triggerRef = useRef(null)
   const menuRef = useRef(null)
   const [open, setOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const menuId = `article-day-menu-${post.id}`
   const closeMenu = ({ restoreFocus = false } = {}) => {
     setOpen(false)
@@ -34,13 +36,17 @@ function ArticleDayMenu({ post }) {
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
   }, [open])
-  const auth = action => loggedIn ? action() : signIn()
-  const finishAction = action => event => {
+  const handleLike = event => {
     event.stopPropagation()
-    auth(action)
-    closeMenu({ restoreFocus: true })
+    if (!loggedIn) return signIn()
+    like.mutate(!post.isLiked, { onSuccess: () => closeMenu({ restoreFocus: true }) })
   }
-  const share = async event => { event.stopPropagation(); try { await navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`) } catch { /* clipboard is optional */ }; closeMenu({ restoreFocus: true }) }
+  const handleSave = event => {
+    event.stopPropagation()
+    if (!loggedIn) return signIn()
+    save.mutate(!post.isBookmarked, { onSuccess: () => closeMenu({ restoreFocus: true }) })
+  }
+  const share = event => { event.stopPropagation(); closeMenu(); setShareOpen(true) }
   const handleMenuKeyDown = event => {
     const items = [...menuRef.current?.querySelectorAll('[role="menuitem"]') || []]
     const index = items.indexOf(document.activeElement)
@@ -60,9 +66,10 @@ function ArticleDayMenu({ post }) {
   }
   return <div ref={ref} className="relative z-10 shrink-0">
     <button ref={triggerRef} type="button" aria-label={`More options for ${post.title}`} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? menuId : undefined} onClick={event => { event.preventDefault(); event.stopPropagation(); setOpen(value => !value) }} className="flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"><span aria-hidden="true" className="-mt-2 text-[20px] leading-none">…</span></button>
+    {shareOpen && <ShareMenu anchorRef={triggerRef} id={`featured-share-${post.id}`} label="Share article" contentName="Article" url={`${window.location.origin}/post/${post.id}`} onClose={({ restoreFocus = false } = {}) => { setShareOpen(false); if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus()) }} />}
     {open && <ViewportPopover ref={menuRef} anchorRef={triggerRef} onAnchorHidden={() => closeMenu()} id={menuId} role="menu" tabIndex={-1} aria-label={`Options for ${post.title}`} onKeyDown={handleMenuKeyDown} className="absolute right-0 top-10 w-52 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface)] p-1 shadow-[var(--shadow-menu)]">
-       <button type="button" role="menuitem" onClick={finishAction(() => like.mutate(!post.isLiked))} className="min-h-10 sm:min-h-0 block w-full rounded-[8px] px-3 py-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">{post.isLiked ? 'Remove appreciation' : 'Appreciate story'}</button>
-       <button type="button" role="menuitem" onClick={finishAction(() => save.mutate(!post.isBookmarked))} className="min-h-10 sm:min-h-0 block w-full rounded-[8px] px-3 py-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">{post.isBookmarked ? 'Remove from saved' : 'Save story'}</button>
+       <button type="button" role="menuitem" disabled={like.isPending} aria-busy={like.isPending} onClick={handleLike} className="min-h-10 sm:min-h-0 block w-full rounded-[8px] px-3 py-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">{post.isLiked ? 'Remove appreciation' : 'Appreciate story'}</button>
+       <button type="button" role="menuitem" disabled={save.isPending} aria-busy={save.isPending} onClick={handleSave} className="min-h-10 sm:min-h-0 block w-full rounded-[8px] px-3 py-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">{post.isBookmarked ? 'Remove from saved' : 'Save story'}</button>
        <button type="button" role="menuitem" onClick={share} className="min-h-10 sm:min-h-0 block w-full rounded-[8px] px-3 py-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">Share link</button>
     </ViewportPopover>}
   </div>
@@ -129,10 +136,10 @@ export default function TrendingTab() {
       </section>}
       <div className="mb-4 mt-5 flex flex-wrap items-center justify-between gap-4"><SectionHeading>Trending stories</SectionHeading><FilterBar label="Topic" value={topic} onReset={resetFilters} onChange={value => updateFilter('trendingTopic', value, 'all')} options={[{ id: 'all', label: 'All' }, { id: 'science', label: 'Science' }, { id: 'design', label: 'Design' }, { id: 'wellness', label: 'Wellness' }, { id: 'career', label: 'Career' }]} sortOptions={[{ id: 'popular', label: 'Most appreciated' }, { id: 'latest', label: 'Latest' }]} sortValue={sort} onSortChange={value => updateFilter('trendingSort', value, 'popular')} /></div>
       {feed.isPending && <PostFeedSkeleton count={3} label="Loading trending stories" />}
-      {feed.isError && <div role="alert" className="py-12"><p className="text-[13px] text-[var(--color-danger)]">Popular stories are unavailable.</p><button type="button" onClick={() => feed.refetch()} className="mt-3 inline-flex min-h-10 items-center text-[12px] font-semibold underline sm:min-h-0">Try again</button></div>}
+      {feed.isError && <div role="alert" className="py-12"><p className="text-[13px] text-[var(--color-danger)]">Popular stories are unavailable.</p><button type="button" onClick={() => feed.refetch()} className="mt-3 inline-flex min-h-10 items-center text-[12px] font-semibold underline sm:min-h-0" aria-busy={feed.isFetching} disabled={feed.isFetching}>Try again</button></div>}
       {!feed.isPending && !feed.isError && posts.length === 0 && <p className="py-12 text-[13px] text-[var(--color-text-muted)]">Popular stories will appear as readers begin responding.</p>}
       {filteredPosts.filter(post => post.id !== articleOfDay?.id).map(post => <DiscoveryPostCard key={post.id} post={post} />)}
-      {feed.hasNextPage && <button type="button" onClick={() => feed.fetchNextPage()} disabled={feed.isFetchingNextPage} className="mt-8 px-5 py-2.5 rounded-full border border-[var(--color-border)] text-[12px] font-semibold disabled:opacity-50">{feed.isFetchingNextPage ? 'Loading…' : 'Load more'}</button>}
+      {feed.hasNextPage && <button type="button" onClick={() => feed.fetchNextPage()} disabled={feed.isFetchingNextPage} className="mt-8 px-5 py-2.5 rounded-full border border-[var(--color-border)] text-[12px] font-semibold disabled:opacity-50" aria-busy={feed.isFetchingNextPage}>{'Load more'}</button>}
     </section>
   )
 }

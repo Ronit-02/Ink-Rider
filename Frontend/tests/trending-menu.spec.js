@@ -116,14 +116,16 @@ test('discovery-card menu keeps nested controls safe while navigating menu items
   const save = menu.getByRole('menuitem', { name: 'Save story' })
   const why = menu.getByRole('menuitem', { name: 'Why you’re seeing this' })
   const hide = menu.getByRole('menuitem', { name: 'Not interested' })
-  const report = menu.getByRole('menuitem', { name: 'Report story' })
+  const report = menu.getByRole('menuitem', { name: 'Report this post' })
   await expect(save).toBeFocused()
 
   await save.press('End')
   await expect(report).toBeFocused()
   await report.press('Enter')
 
-  const reason = menu.getByLabel('Report reason')
+  const dialog = page.getByRole('dialog', { name: 'Report this post' })
+  await expect(menu).toHaveCount(0)
+  const reason = dialog.getByLabel('Reason', { exact: true })
   await expect(reason).toBeVisible()
   await reason.focus()
   await reason.press('ArrowDown')

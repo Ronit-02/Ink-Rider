@@ -37,12 +37,12 @@ const SORT_OPTIONS = [
   { id: 'latest', label: 'Latest' },
 ]
 
-function SearchState({ title, detail, onRetry, isError = false }) {
+function SearchState({ title, detail, onRetry, isError = false, busy = false }) {
   return (
     <div role={isError ? 'alert' : undefined} className="py-16 text-center border-y border-[var(--color-border)]">
       <h2 className="text-[17px] font-semibold text-[var(--color-text)]">{title}</h2>
       <p className="mt-2 text-[13px] text-[var(--color-text-secondary)]">{detail}</p>
-      {onRetry && <button type="button" onClick={onRetry} className="mt-5 inline-flex min-h-10 items-center justify-center px-4 py-2 rounded-full bg-[var(--color-accent)] text-[var(--color-text-inverted)] text-[12px] font-semibold sm:min-h-0">Try again</button>}
+      {onRetry && <button type="button" onClick={onRetry} disabled={busy} aria-busy={busy} className="mt-5 inline-flex min-h-10 items-center justify-center px-4 py-2 rounded-full bg-[var(--color-accent)] text-[var(--color-text-inverted)] text-[12px] font-semibold sm:min-h-0">Try again</button>}
     </div>
   )
 }
@@ -140,7 +140,7 @@ export default function SearchPage() {
       <div id="search-results-panel" role="tabpanel" aria-labelledby={`search-tab-${activeTab}`}>
       {query.trim().length < 1 && <SearchState title="What are you curious about?" detail="Use the search bar above to find published stories and writer profiles." />}
       {result.isPending && query.trim().length >= 1 && (activeTab === 'writers' ? <ListSkeleton count={4} label="Loading writer results" /> : <PostFeedSkeleton count={3} label={`Loading ${activeTab === 'shorts' ? 'short-read' : 'article'} search results`} />)}
-      {result.isError && <SearchState isError title="Search is unavailable" detail="Please check your connection and try again." onRetry={() => result.refetch()} />}
+      {result.isError && <SearchState isError busy={result.isFetching} title="Search is unavailable" detail="Please check your connection and try again." onRetry={() => result.refetch()} />}
       {!result.isPending && !result.isError && query.trim().length >= 1 && items.length === 0 && (
         <SearchState title={`No ${activeTab} found`} detail="Try a broader phrase or a different spelling." />
       )}

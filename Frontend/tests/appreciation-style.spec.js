@@ -45,7 +45,15 @@ for (const theme of ['light', 'dark']) {
       await expect(selected.locator('svg')).toHaveAttribute('fill', 'currentColor')
       await page.mouse.move(0, 0)
       await expect(selected).toHaveCSS('background-color', theme === 'light' ? 'rgb(25, 25, 25)' : 'rgb(238, 236, 232)')
-      await expect(selected).toHaveCSS('color', theme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(17, 17, 16)')
+      const invertedColor = await selected.evaluate(element => {
+        const probe = document.createElement('span')
+        probe.style.color = 'var(--color-text-inverted)'
+        element.appendChild(probe)
+        const color = getComputedStyle(probe).color
+        probe.remove()
+        return color
+      })
+      await expect(selected).toHaveCSS('color', invertedColor)
       expect(await selected.evaluate(element => parseFloat(getComputedStyle(element).borderRadius) >= element.clientHeight / 2)).toBe(true)
       await container.screenshot({ path: `test-results/appreciation-${surface.replace(' ', '-')}-${theme}.png` })
       await selected.click()

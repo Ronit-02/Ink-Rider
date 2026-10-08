@@ -15,6 +15,7 @@ async function mockCollections(page, loggedIn = true) {
     const url = new URL(route.request().url())
     if (url.pathname === '/api/auth/refresh-token') return route.fulfill({ status: loggedIn ? 200 : 401, json: loggedIn ? { accessToken: 'collection-layout-token', user: 'Priya Mehta', email: 'member@inkrider.local', role: 'regular' } : { message: 'Signed out' } })
     if (url.pathname === '/api/collection') return route.fulfill({ json: { data: [collection, { ...collection, id: '507f1f77bcf86cd799439031', title: 'AnUnbrokenCollectionTitleThatMustStayWithinTheCardAtPhoneWidths', author: { username: 'AnUnbrokenCuratorNameThatMustWrapWithoutOverflow' }, coverImage: '/logo/logo-dark.png' }], meta: { nextCursor: null } } })
+    if (url.pathname === `/api/collection/${collection.id}`) return route.fulfill({ json: { data: { ...collection, posts: [], savedCount: 0, followersCount: 0 } } })
     return route.fulfill({ json: { data: [], meta: { nextCursor: null, unreadCount: 0 } } })
   })
 }
@@ -91,3 +92,41 @@ test('guest collections and dark narrow cards retain navigation', async ({ page 
   await page.getByRole('link', { name: collection.title, exact: true }).click()
   await expect(page).toHaveURL(`/collections/${collection.id}`)
 })
+
+for (const width of [320, 1280]) {
+  test(`collection card opens details from its full surface at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await mockCollections(page, false)
+    for (const target of ['description', 'cover', 'count', 'curator', 'padding', 'keyboard']) {
+      await page.goto('/collections')
+      const card = page.getByRole('article').first()
+      await expect(card).toBeVisible()
+      const clickCardArea = async (area, offset = null) => {
+        await card.scrollIntoViewIfNeeded()
+        const areaBounds = await area.boundingBox()
+        const cardBounds = await card.boundingBox()
+        await card.click({ position: { x: areaBounds.x - cardBounds.x + (offset?.x ?? 5), y: areaBounds.y - cardBounds.y + (offset?.y ?? areaBounds.height / 2) } })
+      }
+      if (target === 'description') await clickCardArea(card.getByText(collection.description, { exact: true }))
+      if (target === 'cover') await clickCardArea(card.locator('.grid > div').last(), { x: 10, y: 100 })
+      if (target === 'count') await clickCardArea(card.getByText('3 stories', { exact: true }))
+      if (target === 'curator') await clickCardArea(card.getByText(`by ${collection.author.username}`))
+      if (target === 'padding') await card.click({ position: { x: 5, y: 5 } })
+      if (target === 'keyboard') await card.getByRole('link', { name: collection.title, exact: true }).press('Enter')
+      await expect(page, `Detail navigation from ${target}`).toHaveURL(`/collections/${collection.id}`)
+      await expect(page.getByRole('heading', { level: 1, name: collection.title, exact: true })).toBeVisible()
+    }
+    await page.goto('/collections')
+    const trigger = page.getByRole('button', { name: `More options for ${collection.title}` })
+    await trigger.click()
+    await expect(page).toHaveURL('/collections')
+    const menu = page.getByRole('menu', { name: `Options for ${collection.title}` })
+    await expect(menu).toBeVisible()
+    await menu.getByRole('menuitem', { name: 'Save collection' }).press('Escape')
+    await expect(trigger).toBeFocused()
+    await trigger.click()
+    await menu.getByRole('menuitem', { name: 'Not interested' }).click()
+    await expect(page.getByRole('article')).toHaveCount(1)
+    await expect(page).toHaveURL('/collections')
+  })
+}

@@ -34,7 +34,7 @@ function QuestionCard({ question, sort }) {
           <AuthorMeta author={question.author} date={question.createdAt} size="sm" stacked />
         </div>
         <button type="button" onClick={toggleVote} disabled={vote.isPending} aria-pressed={question.isUpvoted} aria-label={`${question.isUpvoted ? 'Remove upvote from' : 'Upvote'} question`}
-          className={`relative z-10 shrink-0 min-h-11 min-w-12 px-2 py-2 rounded-[12px] border text-center disabled:opacity-50 ${question.isUpvoted ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)] border-[var(--color-accent)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}>
+          className={`relative z-10 shrink-0 min-h-11 min-w-12 px-2 py-2 rounded-[12px] border text-center disabled:opacity-50 ${question.isUpvoted ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)] border-[var(--color-accent)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'}`} aria-busy={vote.isPending}>
           <span aria-hidden="true" className="block text-[11px]">▲</span><span className="block text-[12px] font-semibold tabular-nums">{question.upvotesCount}</span>
         </button>
       </div>
@@ -99,7 +99,7 @@ function AskModal({ onClose }) {
         {targetWriters.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{targetWriters.map(writer => <button key={writer.id} type="button" onClick={() => setTargetWriters(current => current.filter(item => item.id !== writer.id))} className="min-h-10 rounded-full bg-[var(--color-text)] px-3 text-[11px] text-[var(--color-text-inverted)]">{writer.displayName} ×</button>)}</div>}
         {writerSuggestions.data?.data?.writers?.filter(writer => !targetWriters.some(selected => selected.id === writer.id)).length > 0 && <div className="mt-2 rounded-[12px] border border-[var(--color-border)] p-2">{writerSuggestions.data.data.writers.filter(writer => !targetWriters.some(selected => selected.id === writer.id)).map(writer => <button key={writer.id} type="button" disabled={targetWriters.length >= 5} onClick={() => { setTargetWriters(current => [...current, writer]); setTargetWriterText('') }} className="block min-h-10 w-full rounded-[8px] px-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] disabled:opacity-50">{writer.displayName} <span className="text-[var(--color-text-muted)]">@{writer.handle}</span></button>)}</div>}
         {create.isError && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">{create.error?.response?.data?.message || 'The question could not be posted.'}</p>}
-        <div className="mt-5 flex justify-end gap-2"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" disabled={text.trim().length < 10 || create.isPending}>{create.isPending ? 'Posting…' : 'Post question'}</Button></div>
+        <div className="mt-5 flex justify-end gap-2"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" disabled={text.trim().length < 10 || create.isPending} aria-busy={create.isPending}>{'Post question'}</Button></div>
       </form>}
     </section>
   </ModalLayer>
@@ -138,10 +138,10 @@ export default function QuestionsTab() {
   return <div>
     <PageHeader eyebrow="Reader demand" title="What should writers explore next?" description="Ask for the article you wish existed. Duplicate requests become upvotes, helping writers see real demand." actions={<div className="flex flex-wrap items-center gap-3"><Button onClick={() => loggedIn ? setShowAsk(true) : signIn()}><span aria-hidden="true" className="mr-1 text-[17px] leading-none">+</span>Ask a question</Button><FilterBar label="Topic" value={topic} onReset={resetFilters} onChange={value => updateFilter('questionTopic', value, 'all')} options={topicOptions} sortOptions={[{ id: 'hot', label: 'Most upvoted' }, { id: 'newest', label: 'Newest' }]} sortValue={sort} onSortChange={value => updateFilter('questionSort', value, 'hot')} /></div>} />
     {query.isPending && <ListSkeleton count={4} label="Loading reader questions" />}
-    {query.isError && <div role="alert" className="py-12 text-center"><p className="text-[13px] text-[var(--color-danger)]">Questions could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => query.refetch()}>Try again</Button></div>}
+    {query.isError && <div role="alert" className="py-12 text-center"><p className="text-[13px] text-[var(--color-danger)]">Questions could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => query.refetch()} aria-busy={query.isFetching} disabled={query.isFetching}>Try again</Button></div>}
     {!query.isPending && !query.isError && filteredQuestions.length === 0 && <p className="py-12 text-center text-[13px] text-[var(--color-text-muted)]">No questions match this topic.</p>}
     {filteredQuestions.map(question => <QuestionCard key={question.id} question={question} sort={sort} />)}
-    {query.hasNextPage && <div className="pt-8 text-center"><Button variant="secondary" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage}>{query.isFetchingNextPage ? 'Loading…' : 'Load more'}</Button></div>}
+    {query.hasNextPage && <div className="pt-8 text-center"><Button variant="secondary" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage} aria-busy={query.isFetchingNextPage}>{'Load more'}</Button></div>}
     {showAsk && <AskModal onClose={() => setShowAsk(false)} />}
   </div>
 }

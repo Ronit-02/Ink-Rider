@@ -49,7 +49,7 @@ export default function OnboardingPage() {
   }
 
   if (options.isPending) return <main className="min-h-screen grid place-items-center bg-[var(--color-bg)] text-[13px] text-[var(--color-text-secondary)]">Preparing your Ink Rider…</main>
-  if (options.isError) return <main className="min-h-screen grid place-items-center bg-[var(--color-bg)] px-6"><div className="text-center"><h1 className="text-[20px] font-semibold text-[var(--color-text)]">Onboarding could not be loaded</h1><p className="mt-2 text-[13px] text-[var(--color-text-secondary)]">Your account is safe. Try loading the choices again.</p><Button className="mt-5" onClick={() => options.refetch()}>Try again</Button></div></main>
+  if (options.isError) return <main className="min-h-screen grid place-items-center bg-[var(--color-bg)] px-6"><div className="text-center"><h1 className="text-[20px] font-semibold text-[var(--color-text)]">Onboarding could not be loaded</h1><p className="mt-2 text-[13px] text-[var(--color-text-secondary)]">Your account is safe. Try loading the choices again.</p><Button className="mt-5" onClick={() => options.refetch()} aria-busy={options.isFetching} disabled={options.isFetching}>Try again</Button></div></main>
 
   const current = STEPS[step - 1]
   const nextDisabled = step === 1 && interests.length < 3
@@ -72,10 +72,10 @@ export default function OnboardingPage() {
         {save.isError && <p role="alert" className="mb-4 text-[12px] text-[var(--color-danger)]">Your choices could not be saved. Please try again.</p>}
         <div className="flex justify-between items-center gap-2">
           {step > 1 ? <BackButton ariaLabel="Back to previous step" onBack={() => setStep(value => value - 1)} disabled={save.isPending} /> : <div />}
-          <Button variant="ghost" onClick={finish} disabled={save.isPending}>Skip</Button>
+          <Button variant="ghost" onClick={finish} disabled={save.isPending} aria-busy={save.isPending}>Skip</Button>
           <Button variant="primary" disabled={nextDisabled || save.isPending}
-            onClick={() => step < STEPS.length ? setStep(value => value + 1) : finish()}>
-            {save.isPending ? 'Saving…' : step === STEPS.length ? 'Get Started' : 'Next →'}
+            onClick={() => step < STEPS.length ? setStep(value => value + 1) : finish()} aria-busy={save.isPending}>
+            {step === STEPS.length ? 'Get Started' : 'Next →'}
           </Button>
         </div>
       </div>

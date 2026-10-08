@@ -51,7 +51,7 @@ function MemberSettings() {
         {options.isError && <p role="alert" className="text-[13px] text-[var(--color-danger)]">Topics could not be loaded.</p>}
         {options.data && <StepInterests topics={options.data.topics} selected={selected} onToggle={toggle} />}
         <div className="mt-6 flex items-center gap-3">
-          <Button onClick={saveTopics} disabled={save.isPending || options.isPending}>{save.isPending ? 'Saving…' : 'Save interests'}</Button>
+          <Button onClick={saveTopics} disabled={save.isPending || options.isPending} aria-busy={save.isPending}>{'Save interests'}</Button>
           {save.isSuccess && <span className="text-[12px] text-[var(--color-text-secondary)]">Saved</span>}
           {save.isError && <span role="alert" className="text-[12px] text-[var(--color-danger)]">Could not save</span>}
         </div>
@@ -60,7 +60,7 @@ function MemberSettings() {
       <section className="py-7 border-b border-[var(--color-border)]">
         <h2 className="text-[18px] font-semibold text-[var(--color-text)]">Inferred interests</h2>
         <p className="mt-2 mb-5 text-[13px] leading-6 text-[var(--color-text-secondary)]">Ink Rider can learn from reading interactions. Resetting removes those learned weights without changing the topics you selected above.</p>
-        <Button variant="secondary" onClick={() => reset.mutate()} disabled={reset.isPending}>{reset.isPending ? 'Resetting…' : 'Reset inferred interests'}</Button>
+        <Button variant="secondary" onClick={() => reset.mutate()} disabled={reset.isPending} aria-busy={reset.isPending}>{'Reset inferred interests'}</Button>
         {reset.isSuccess && <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">Inferred interests reset.</p>}
         {reset.isError && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">Could not reset inferred interests.</p>}
       </section>
