@@ -841,6 +841,128 @@ test('comment listing validates post identifiers before database access', async 
   assert.equal(body.message, 'Invalid post id');
 });
 
+test('comment presenter batches relationships, separates viewers, and hides deleted content', async t => {
+  const Comment = require('../schemas/comment.schema');
+  const CommentLike = require('../schemas/comment-like.schema');
+  const { presentComments } = require('../services/engagement.service');
+  const userId = new mongoose.Types.ObjectId();
+  const id = new mongoose.Types.ObjectId();
+  t.mock.method(CommentLike, 'aggregate', async () => [{ _id: id, count: 2 }]);
+  t.mock.method(Comment, 'aggregate', async () => [{ _id: id, count: 3 }]);
+  const lookup = t.mock.method(CommentLike, 'find', () => ({ select: () => ({ lean: async () => [{ commentId: id }] }) }));
+  const comment = { _id: id, content: 'Original', createdAt: new Date(), userId: { _id: userId, username: 'Reader' } };
+  const member = (await presentComments([comment], String(userId)))[0];
+  assert.equal(member.canEdit, true);
+  assert.equal(member.canDelete, true);
+  assert.equal(member.isLiked, true);
+  assert.equal(member.likesCount, 2);
+  assert.equal(member.repliesCount, 3);
+  const guest = (await presentComments([comment], null))[0];
+  assert.equal(guest.canEdit, false);
+  assert.equal(guest.isLiked, false);
+  assert.equal(lookup.mock.callCount(), 1);
+  const deleted = (await presentComments([{ ...comment, deletedAt: new Date() }], String(userId)))[0];
+  assert.equal(deleted.content, '');
+  assert.equal(deleted.author, null);
+  assert.equal(deleted.canEdit, false);
+  assert.equal(deleted.isLiked, false);
+  assert.equal(deleted.repliesCount, 3);
+});
+
+test('comment editing and deletion enforce ownership and post scoping before writes', async t => {
+  const Comment = require('../schemas/comment.schema');
+  const { editComment, deleteComment, likeComment } = require('../controllers/engagement.controller');
+  const postId = new mongoose.Types.ObjectId();
+  const commentId = new mongoose.Types.ObjectId();
+  const userId = new mongoose.Types.ObjectId().toString();
+  const otherId = new mongoose.Types.ObjectId();
+  t.mock.method(Post, 'findById', () => ({ select: async () => ({ _id: postId, author: otherId }) }));
+  t.mock.method(Membership, 'findOne', () => ({ select: async () => null }));
+  t.mock.method(Entitlement, 'find', () => ({ select: async () => [] }));
+  t.mock.method(User, 'findById', () => ({ select: async () => ({ role: 'regular' }) }));
+  const read = t.mock.method(Comment, 'findOne', async filter => {
+    assert.deepEqual(filter, { _id: String(commentId), postId: String(postId) });
+    return { _id: commentId, userId: otherId };
+  });
+  const write = t.mock.method(Comment, 'updateOne', async () => { throw new Error('Unexpected write'); });
+  const edit = t.mock.method(Comment, 'findOneAndUpdate', async () => { throw new Error('Unexpected write'); });
+  const req = { params: { postId: String(postId), commentId: String(commentId) }, auth: { userId }, body: { text: 'Edited' } };
+  for (const handler of [editComment, deleteComment]) {
+    const res = createResponse();
+    await handler(req, res);
+    assert.equal(res.statusCode, 403);
+  }
+  assert.equal(write.mock.callCount(), 0);
+  assert.equal(edit.mock.callCount(), 0);
+  read.mock.mockImplementation(async () => null);
+  const missing = createResponse();
+  await likeComment({ ...req, method: 'PUT' }, missing);
+  assert.equal(missing.statusCode, 404);
+});
+
+test('comment likes use a unique relationship and explicit retry-safe set/unset actions', async t => {
+  const CommentLike = require('../schemas/comment-like.schema');
+  const { setCommentLike } = require('../services/engagement.service');
+  assert.ok(CommentLike.schema.indexes().some(([fields, options]) => fields.commentId === 1 && fields.userId === 1 && options.unique));
+  const upsert = t.mock.method(CommentLike, 'updateOne', async () => ({ upsertedCount: 0 }));
+  const remove = t.mock.method(CommentLike, 'deleteOne', async () => ({ deletedCount: 0 }));
+  t.mock.method(CommentLike, 'countDocuments', async () => 1);
+  for (let retry = 0; retry < 2; retry++) assert.equal((await setCommentLike({ commentId: 'comment', userId: 'reader', liked: true })).isLiked, true);
+  assert.equal(upsert.mock.calls[0].arguments[2].upsert, true);
+  assert.equal((await setCommentLike({ commentId: 'comment', userId: 'reader', liked: false })).isLiked, false);
+  assert.equal(remove.mock.callCount(), 1);
+});
+
+test('new comment mutation routes require authentication', async t => {
+  const server = app.listen(0);
+  t.after(() => server.close());
+  await new Promise(resolve => server.once('listening', resolve));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  for (const [method, suffix] of [['PATCH', ''], ['DELETE', ''], ['PUT', '/like'], ['DELETE', '/like']]) {
+    assert.equal((await fetch(`${origin}/api/v1/posts/invalid/comments/invalid${suffix}`, { method })).status, 401);
+  }
+});
+
+test('comment deletion clears content once, retains replies, and rejects edits and likes afterwards', async t => {
+  const Comment = require('../schemas/comment.schema');
+  const { deleteComment, editComment, likeComment } = require('../controllers/engagement.controller');
+  const postId = new mongoose.Types.ObjectId();
+  const commentId = new mongoose.Types.ObjectId();
+  const userId = new mongoose.Types.ObjectId().toString();
+  const comment = { _id: commentId, userId, deletedAt: null };
+  t.mock.method(Post, 'findById', () => ({ select: async () => ({ _id: postId, author: userId }) }));
+  t.mock.method(Membership, 'findOne', () => ({ select: async () => null }));
+  t.mock.method(Entitlement, 'find', () => ({ select: async () => [] }));
+  t.mock.method(User, 'findById', () => ({ select: async () => ({ role: 'regular' }) }));
+  t.mock.method(Comment, 'findOne', async () => comment);
+  t.mock.method(mongoose, 'startSession', async () => ({ withTransaction: work => work(), endSession: async () => {} }));
+  t.mock.method(Comment, 'updateOne', async (filter, update) => {
+    assert.equal(filter.deletedAt, null);
+    assert.equal(update.$set.content, '');
+    const changed = !comment.deletedAt;
+    comment.deletedAt = update.$set.deletedAt;
+    return { modifiedCount: changed ? 1 : 0 };
+  });
+  const counter = t.mock.method(Post, 'updateOne', async (_filter, update) => {
+    assert.deepEqual(update, { $inc: { commentsCount: -1 } });
+  });
+  const remove = t.mock.method(Comment, 'deleteMany', async () => { throw new Error('Replies must remain'); });
+  const req = { params: { postId: String(postId), commentId: String(commentId) }, auth: { userId }, body: { text: 'New text' } };
+  for (let retry = 0; retry < 2; retry++) {
+    const res = createResponse();
+    await deleteComment(req, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.payload.data.deleted, retry === 0);
+  }
+  assert.equal(counter.mock.callCount(), 1);
+  assert.equal(remove.mock.callCount(), 0);
+  for (const handler of [editComment, likeComment]) {
+    const res = createResponse();
+    await handler({ ...req, method: 'PUT' }, res);
+    assert.equal(res.statusCode, 409);
+  }
+});
+
 test('idempotent engagement routes authenticate before mutation', async t => {
   const server = app.listen(0);
   t.after(() => server.close());
@@ -1233,6 +1355,122 @@ test('unified search validates query and type before database access', async t =
   assert.equal((await emptyQuery.json()).message, 'Search query must be between 1 and 100 characters');
   assert.equal(invalidType.status, 400);
   assert.equal((await invalidType.json()).message, 'Invalid search type');
+});
+
+test('question search matches text, context, and tags with bounded public results', async t => {
+  const { search } = require('../controllers/search.controller');
+  const authorId = '507f1f77bcf86cd799439013';
+  const records = [{
+    _id: '507f1f77bcf86cd799439011', text: 'How can coastal cities adapt?',
+    context: 'A reader request', tags: ['coastal resilience'], status: 'open',
+    createdAt: new Date(), upvotesCount: 4, upvotes: [authorId], answers: [{ _id: 'answer' }],
+    relatedArticles: [{ _id: 'visible-response', title: 'Public response' }],
+    author: { _id: authorId, username: 'Reader', picture: null },
+    followers: [authorId], targetWriterIds: [authorId], declinedBy: [authorId],
+  }];
+  const reads = [];
+  t.mock.method(Question, 'find', filter => {
+    const read = { filter, populations: [] };
+    reads.push(read);
+    const chain = {
+      select: fields => { read.fields = fields; return chain; },
+      populate: population => { read.populations.push(population); return chain; },
+      sort: order => { read.order = order; return chain; },
+      limit: limit => { read.limit = limit; return Promise.resolve(records); },
+    };
+    return chain;
+  });
+  let profileReads = 0;
+  t.mock.method(Profile, 'find', filter => {
+    profileReads += 1;
+    assert.deepEqual(filter, { userId: { $in: [authorId] } });
+    return { select: async () => [{ userId: authorId, handle: 'reader-handle' }] };
+  });
+  t.mock.method(Post, 'find', () => { throw new Error('Question-only search must not query posts'); });
+  const run = async query => {
+    const response = { status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+    await search({ query, requestId: 'question-search-test' }, response);
+    assert.equal(response.statusCode, 200);
+    return response.body;
+  };
+  const result = await run({ q: 'coastal resilience', type: 'questions', limit: '999', topic: 'science', time: 'week', sort: 'latest' });
+  assert.equal(result.data.questions.length, 1);
+  assert.deepEqual(result.data.posts, []);
+  assert.deepEqual(result.data.writers, []);
+  assert.deepEqual(result.data.shorts, []);
+  const question = result.data.questions[0];
+  assert.equal(question.author.handle, 'reader-handle');
+  assert.equal(question.answersCount, 1);
+  assert.equal(question.isUpvoted, false);
+  assert.equal(question.followers, undefined);
+  assert.equal(question.targetWriterIds, undefined);
+  assert.equal(question.declinedBy, undefined);
+  assert.equal(question.answers, undefined);
+  assert.equal(question.upvotes, undefined);
+  assert.deepEqual(reads[0].filter.$and[0], { status: { $ne: 'closed' } });
+  const terms = reads[0].filter.$and[1].$and;
+  assert.deepEqual(terms.map(term => term.$or.map(field => Object.keys(field)[0])), [['text', 'context', 'tags'], ['text', 'context', 'tags']]);
+  assert.deepEqual(reads[0].filter.$and[2], { tags: { $in: ['science'] } });
+  assert.ok(reads[0].filter.$and[3].createdAt.$gte instanceof Date);
+  assert.equal(reads[0].limit, 24);
+  assert.deepEqual(reads[0].order, { createdAt: -1, _id: -1 });
+  const responsePopulation = reads[0].populations.find(item => item.path === 'relatedArticles');
+  assert.equal(responsePopulation.match.$or[0].publicationStatus.$ne, 'unpublished');
+  await run({ q: 'c++', type: 'questions', limit: '2' });
+  assert.equal(reads[1].filter.$and[1].$and[0].$or[0].text.$regex, 'c\\+\\+');
+  assert.deepEqual(reads[1].order, { upvotesCount: -1, createdAt: -1, _id: -1 });
+  assert.equal(reads[1].limit, 2);
+  assert.equal(profileReads, 2);
+  const { presentQuestions } = require('../controllers/question.controller');
+  assert.equal((await presentQuestions(records, authorId))[0].isUpvoted, true);
+});
+
+test('content suggestions use public metadata, bounded independent groups, and literal query matching', async t => {
+  const { search } = require('../controllers/search.controller');
+  const pipelines = [];
+  t.mock.method(Post, 'aggregate', async pipeline => {
+    pipelines.push(pipeline);
+    return [{ text: 'writing dialogue', articleCount: 3 }];
+  });
+  t.mock.method(Post, 'find', () => { throw new Error('Suggestions must not load article bodies'); });
+  const profileReads = [];
+  t.mock.method(Profile, 'find', filter => {
+    const read = { filter };
+    profileReads.push(read);
+    const chain = {
+      select(fields) { read.fields = fields; return chain; },
+      populate() { return chain; },
+      sort() { return chain; },
+      limit(limit) { read.limit = limit; return Promise.resolve([{ userId: { _id: 'writer' }, handle: 'writer', displayName: 'Writer', avatarUrl: null }]); },
+    };
+    return chain;
+  });
+  const run = async query => {
+    const response = { status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+    await search({ query: { suggestions: 'true', ...query }, requestId: 'suggestions-test' }, response);
+    assert.equal(response.statusCode, 200);
+    return response.body;
+  };
+  const result = await run({ q: 'writing di', limit: '999' });
+  assert.deepEqual(result.data.suggestions, [{ text: 'writing dialogue', articleCount: 3 }]);
+  assert.equal(result.data.writers[0].handle, 'writer');
+  assert.deepEqual(result.data.posts, []);
+  assert.equal(profileReads[0].limit, 5);
+  assert.equal(profileReads[0].fields.includes('bio'), false);
+  assert.deepEqual(profileReads[0].filter.$and[0].$or.map(item => Object.keys(item)[0]), ['displayName', 'handle']);
+  assert.equal(pipelines[0][0].$match.$and[0].publicationStatus.$ne, 'unpublished');
+  assert.ok(pipelines[0][0].$match.$and[0].$or[0].publicAt.$lte instanceof Date);
+  assert.equal(pipelines[0].find(stage => stage.$limit).$limit, 5);
+  assert.equal(JSON.stringify(pipelines[0]).includes('$body'), false);
+  await run({ q: 'c++', type: 'posts', limit: '2', topic: 'science', time: 'week' });
+  assert.equal(pipelines[1].find(stage => stage.$match?.text).$match.text.$regex, '(^|\\s)c\\+\\+');
+  assert.equal(pipelines[1].find(stage => stage.$limit).$limit, 2);
+  assert.deepEqual(pipelines[1][0].$match.$and[3], { tags: { $in: ['science'] } });
+  assert.equal(profileReads.length, 1);
+  await run({ q: '$title' });
+  assert.deepEqual(pipelines[2].find(stage => stage.$addFields).$addFields.matchRank.$cond[0].$eq[1], { $literal: '$title' });
+  await run({ q: '-' });
+  assert.equal(pipelines[3].find(stage => stage.$match?.text).$match.text.$regex, '(?!)');
 });
 
 test('onboarding writes require authentication before validation', async t => {

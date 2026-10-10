@@ -8,6 +8,7 @@ const member = require('../controllers/member-experience.controller');
 const billing = require('../controllers/billing.controller');
 const notifications = require('../controllers/notification.controller');
 const { assistWriting } = require('../controllers/writing-assistant.controller');
+const { editComment, likeComment, deleteComment } = require('../controllers/engagement.controller');
 
 const router = express.Router();
 router.get('/onboarding', validateToken, getOnboarding);
@@ -35,5 +36,9 @@ router.get('/notifications', validateToken, notifications.listNotifications);
 router.put('/notifications/read-all', validateToken, notifications.markAllRead);
 router.put('/notifications/:notificationId/read', validateToken, notifications.markNotificationRead);
 router.post('/writing-assistant', validateToken, assistWriting);
+router.patch('/posts/:postId/comments/:commentId', validateToken, editComment);
+router.delete('/posts/:postId/comments/:commentId', validateToken, deleteComment);
+router.put('/posts/:postId/comments/:commentId/like', validateToken, likeComment);
+router.delete('/posts/:postId/comments/:commentId/like', validateToken, likeComment);
 
 module.exports = router;

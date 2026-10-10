@@ -115,7 +115,7 @@ export default function TrendingTab() {
             <div className="flex min-w-0 flex-col justify-between p-5 md:p-7">
               <div>
                 <div className="flex items-start justify-between gap-3">
-                <div className="relative z-10 min-w-0 flex-1 [&>div]:gap-2 [&>div>div]:flex-wrap [&>div>a]:after:absolute [&>div>a]:after:inset-0 [&>div>a]:after:content-[''] [&>div>a]:min-w-0 [&>div>a]:max-w-full [&>div>a>span]:min-w-0 [&>div>a>span]:break-words">
+                <div className="relative z-10 min-w-0 flex-1 [&>div]:gap-2 [&>div>div]:flex-wrap [&>div>a]:min-w-0 [&>div>a]:max-w-full [&>div>a>span]:min-w-0 [&>div>a>span]:break-words">
                   <AuthorMeta author={articleOfDay.author || { username: 'Ink Rider writer' }} date={articleOfDay.createdAt} readTime={articleOfDay.readTime} stacked />
                 </div>
                 <ArticleDayMenu post={articleOfDay} />

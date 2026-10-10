@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 
 const fixture = {
   data: {
+    suggestions: [{ text: 'a story about science', articleCount: 1 }],
     posts: [{ id: '507f1f77bcf86cd799439012', title: 'A story about science', author: { username: 'Maya Sen' } }],
     writers: [{ id: '507f1f77bcf86cd799439011', handle: 'maya-sen', displayName: 'Maya Sen' }],
   },
@@ -40,6 +41,8 @@ test('mobile search expands into a full-screen modal with topics, live results a
   await expect.poll(async () => (await dialog.getByRole('search').boundingBox()).width).toBeCloseTo(293, 0)
   await expect(page.locator('dialog')).toHaveJSProperty('open', true)
   await dialog.getByRole('button', { name: 'Career', exact: true }).focus()
+  await page.keyboard.press('Tab')
+  await expect(dialog.getByRole('button', { name: 'Close search' })).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(input).toBeFocused()
   await dialog.getByRole('button', { name: 'Science', exact: true }).click()
@@ -90,7 +93,7 @@ test('empty and failed suggestions remain recoverable; all results navigation wo
   const dialog = page.getByRole('dialog', { name: 'Search Ink Rider' })
   const input = dialog.getByRole('combobox')
   await input.fill('empty')
-  await expect(dialog.getByText('No matching stories or writers. Try another phrase.')).toBeVisible()
+  await expect(dialog.getByText('No matching searches or authors. Try another phrase.')).toBeVisible()
   await input.fill('failed')
   await expect(dialog.getByText('Suggestions are unavailable.', { exact: false })).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Try again' })).toBeVisible()

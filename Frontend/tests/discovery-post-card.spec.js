@@ -42,6 +42,10 @@ for (const width of [320, 1280]) {
     const reader = page.getByRole('dialog', { name: post.title, exact: true })
     await expect(reader.getByRole('button', { name: /^View .* comments$/ })).toHaveCount(0)
     await expect(reader.getByRole('heading', { name: 'Comments (0)' })).toBeVisible()
+    await reader.getByText(post.readTime, { exact: true }).click()
+    await expect(page).toHaveURL('/shorts')
+    await expect(reader).toBeVisible()
+    expect(await reader.getByText(post.readTime, { exact: true }).evaluate(node => node.closest('a'))).toBeNull()
     const share = reader.getByRole('button', { name: 'Share this short read' })
     await share.click()
     const options = page.getByRole('dialog', { name: 'Share short read', exact: true })
@@ -90,13 +94,19 @@ for (const width of [320, 390, 1280]) {
       }
       for (const target of [
         () => card.getByRole('link', { name: "View Leila Noor's profile" }),
-        () => card.getByText('8 September 2026', { exact: true }),
-        () => card.getByText(post.readTime, { exact: true }),
       ]) {
         await page.goto(origin)
         await expect(card.getByRole('heading', { name: post.title })).toBeVisible()
         await clickArea(target())
         await expect(page).toHaveURL('/author/leila-noor')
+      }
+      for (const label of ['8 September 2026', post.readTime]) {
+        await page.goto(origin)
+        const metadata = card.getByText(label, { exact: true })
+        await expect(metadata).toBeVisible()
+        expect(await metadata.evaluate(node => node.closest('a'))).toBeNull()
+        await clickArea(metadata)
+        await expect(page).toHaveURL(origin)
       }
       await page.goto(origin)
       const category = card.getByRole('link', { name: 'everyday curiosity', exact: true })
@@ -138,6 +148,8 @@ test('grid author links and remaining card area keep distinct destinations', asy
   await page.goto('/')
   const section = page.locator('section').filter({ has: page.getByRole('heading', { name: "Writer's picks", exact: true }) }).last()
   await section.scrollIntoViewIfNeeded()
+  await section.getByText(post.readTime, { exact: true }).click()
+  await expect(page).toHaveURL('/')
   await section.getByRole('link', { name: "View Leila Noor's profile" }).click()
   await expect(page).toHaveURL('/author/leila-noor')
   await page.goto('/')
@@ -299,7 +311,8 @@ test('guest card actions preserve sign-in and public comment access', async ({ p
   await expect(page.getByText('Sign in to join the conversation.')).toBeVisible()
   await page.getByRole('button', { name: 'Close comments' }).click()
   await page.getByRole('button', { name: `Appreciate ${post.title}`, exact: true }).click()
-  await expect(page).toHaveURL(/\/login/)
+  await expect(page.getByRole('dialog', { name: 'Sign in to Ink Rider' })).toBeVisible()
+  await expect(page).not.toHaveURL(/\/login/)
 })
 
 test('short-card actions do not open the reading modal', async ({ page }) => {

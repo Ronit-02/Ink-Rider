@@ -1,3 +1,4 @@
+import PageFrame from '@/shared/components/layout/PageFrame'
 import retainRetryView from '@/shared/utils/retainRetryView'
 /* eslint-disable jsx-a11y/no-noninteractive-element-to-interactive-role -- The navigation container correctly owns tab semantics. */
 import { useState } from 'react'
@@ -39,12 +40,12 @@ export default function StaffConsole() {
     requestAnimationFrame(() => document.querySelector(`[role="tab"][aria-controls="staff-${nextTab}-panel"]`)?.focus())
   }
 
-  if (me.isLoading) return <main role="status" className="p-10 text-[13px] text-[var(--color-text-muted)]">Verifying staff access…</main>
-  if (!isStaff) return <main className="max-w-[680px] mx-auto p-10 text-center"><h1 className="text-[28px] font-bold text-[var(--color-text)]">Staff access required</h1><p className="mt-3 text-[13px] text-[var(--color-text-secondary)]">This workspace is available only to authorized moderators and administrators.</p></main>
+  if (me.isLoading) return <PageFrame><p role="status" className="text-[13px] text-[var(--color-text-muted)]">Verifying staff access…</p></PageFrame>
+  if (!isStaff) return <PageFrame className="text-center"><h1 className="text-[28px] font-bold text-[var(--color-text)]">Staff access required</h1><p className="mt-3 text-[13px] text-[var(--color-text-secondary)]">This workspace is available only to authorized moderators and administrators.</p></PageFrame>
 
-  return <main className="max-w-[1060px] mx-auto px-6 md:px-8 pt-10 pb-20">
+  return <PageFrame className="!pt-10 !pb-20">
     <header><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent)]">Operations</p><h1 className="mt-2 text-[30px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>Staff console</h1></header>
-    <nav className="flex gap-2 my-8" aria-label="Staff console sections" role="tablist">
+    <nav className="flex flex-wrap gap-2 my-8" aria-label="Staff console sections" role="tablist">
       <Pill label="Moderation" role="tab" ariaControls="staff-moderation-panel" tabIndex={tab === 'moderation' ? 0 : -1} active={tab === 'moderation'} onClick={() => setTab('moderation')} onKeyDown={handleTabKeyDown} />
       <Pill label="Competitions" role="tab" ariaControls="staff-competitions-panel" tabIndex={tab === 'competitions' ? 0 : -1} active={tab === 'competitions'} onClick={() => setTab('competitions')} onKeyDown={handleTabKeyDown} />
       <Pill label="Vote review" role="tab" ariaControls="staff-fraud-panel" tabIndex={tab === 'fraud' ? 0 : -1} active={tab === 'fraud'} onClick={() => setTab('fraud')} onKeyDown={handleTabKeyDown} />
@@ -52,7 +53,7 @@ export default function StaffConsole() {
     {tab === 'moderation' && <div id="staff-moderation-panel" role="tabpanel" aria-label="Moderation content"><ModerationQueue reports={reports} status={reportStatus} setStatus={setReportStatus} notes={notes} setNotes={setNotes} review={review} /></div>}
     {tab === 'competitions' && <div id="staff-competitions-panel" role="tabpanel" aria-label="Competitions content" className="grid lg:grid-cols-2 gap-6"><CompetitionCreation form={form} setForm={setForm} mutation={competition} isAdmin={me.data.role === 'admin'} /><CompetitionOperations isAdmin={me.data.role === 'admin'} /></div>}
     {tab === 'fraud' && <div id="staff-fraud-panel" role="tabpanel" aria-label="Vote review content"><CompetitionFraudReview query={fraud} minutes={fraudMinutes} setMinutes={setFraudMinutes} notes={fraudNotes} setNotes={setFraudNotes} review={fraudReview} /></div>}
-  </main>
+  </PageFrame>
 }
 
 function ModerationQueue({ reports, status, setStatus, notes, setNotes, review }) {

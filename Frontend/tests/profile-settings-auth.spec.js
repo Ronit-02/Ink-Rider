@@ -37,38 +37,52 @@ test('Google sign-in control follows the available form width on resize', async 
 })
 
 for (const width of [320, 390, 1280]) {
-  test(`guest profile and write prompts and settings at ${width}px`, async ({ page }) => {
+  test(`guest profile, private draft prompts, and settings at ${width}px`, async ({ page }) => {
     const privateReads = []
     page.on('request', request => { if (/^\/api\/(user|drafts|v1\/me)/.test(new URL(request.url()).pathname)) privateReads.push(request.url()) })
     await page.setViewportSize({ width, height: 735 })
     await page.goto('/profile')
     const main = page.getByRole('main')
-    await expect(main.getByRole('link', { name: 'Sign In', exact: true })).toHaveCount(1)
+    await expect(main.getByRole('button', { name: 'Sign In', exact: true })).toHaveCount(1)
     await expect(main.getByText('Sign in to view your profile.')).toBeVisible()
-    expect(await main.getByRole('link', { name: 'Sign In', exact: true }).evaluate(element => getComputedStyle(element).color !== getComputedStyle(element).backgroundColor)).toBe(true)
+    expect(await main.getByRole('button', { name: 'Sign In', exact: true }).evaluate(element => getComputedStyle(element).color !== getComputedStyle(element).backgroundColor)).toBe(true)
     await expect(main.getByText('Sign Up', { exact: true })).toHaveCount(0)
     await expect(main.getByRole('button', { name: 'Open app settings' })).toHaveCount(0)
     await page.goto('/settings')
-    await expect(page.getByLabel('Language', { exact: true })).toBeDisabled()
-    await expect(page.getByLabel('Language', { exact: true }).locator('option')).toHaveText(['English'])
-    await page.getByLabel('Theme', { exact: true }).selectOption('dark')
+    await expect(main.getByText('to manage your reading interests.', { exact: false })).toHaveCount(0)
+    await expect(main.getByRole('button', { name: 'Sign In', exact: true })).toHaveCount(0)
+    await page.getByLabel('Language', { exact: true }).click()
+    await expect(page.getByRole('option', { name: 'English', exact: true })).toBeVisible()
+    await page.getByRole('option', { name: 'English', exact: true }).click()
+    await page.getByLabel('Theme', { exact: true }).click()
+    await page.getByRole('option', { name: 'Dark', exact: true }).click()
     await expect(page.locator('html')).toHaveClass(/dark/)
     await page.reload()
     await expect(page.locator('html')).toHaveClass(/dark/)
     await page.goto('/write?draft=private-draft')
     await expect(page).toHaveURL(/\/write\?draft=/)
-    await expect(main.getByText('Sign in to start writing.')).toBeVisible()
+    await expect(main.getByText('Sign in to access your saved story.')).toBeVisible()
     expect(privateReads).toEqual([])
-    await main.getByRole('link', { name: 'Sign In', exact: true }).click()
-    await expect(page).toHaveURL(/\/login$/)
+    await main.getByRole('button', { name: 'Sign In', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: 'Sign in to Ink Rider' })).toBeVisible()
+    await expect(page).toHaveURL(/\/write\?draft=private-draft$/)
   })
 }
 
-for (const size of [{ width: 320, height: 568 }, { width: 390, height: 360 }, { width: 768, height: 450 }]) {
+for (const size of [{ width: 320, height: 568 }, { width: 390, height: 360 }, { width: 768, height: 450 }, { width: 1024, height: 600 }, { width: 1280, height: 800 }, { width: 1920, height: 1080 }]) {
   test(`auth forms and verification fit ${size.width}x${size.height}`, async ({ page }) => {
     await page.setViewportSize(size)
     await page.goto('/login')
     await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0)
+    if (size.width >= 1024) {
+      const form = await page.locator('#auth-form').boundingBox()
+      expect(form.width).toBeGreaterThan(380)
+      expect(form.width).toBeLessThanOrEqual(448)
+      expect(form.x).toBeGreaterThanOrEqual(size.width / 2)
+      const column = await page.locator('#auth-form').evaluate(element => element.parentElement.getBoundingClientRect().toJSON())
+      expect(Math.abs(form.x + form.width / 2 - column.x - column.width / 2)).toBeLessThanOrEqual(1)
+    }
     await page.getByRole('tab', { name: 'Sign Up' }).click()
     await page.getByRole('textbox', { name: 'Full Name' }).fill('Test Reader')
     await page.getByRole('textbox', { name: 'Email', exact: true }).fill('reader@example.test')
@@ -76,6 +90,7 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 360 }, { 
     await page.getByRole('textbox', { name: 'Confirm Password' }).fill('Test-password-123')
     await page.getByRole('button', { name: 'Sign Up', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Enter Verification Code' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0)
     for (let digit = 1; digit <= 6; digit++) {
       const input = page.getByRole('textbox', { name: `Verification digit ${digit}` })
       const bounds = await input.boundingBox()

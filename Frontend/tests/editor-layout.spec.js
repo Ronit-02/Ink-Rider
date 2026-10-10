@@ -1,12 +1,16 @@
 import { test, expect } from '@playwright/test'
 
-async function mockEditor(page, { capabilities = [], saveStatus = 200 } = {}) {
+async function mockEditor(page, { capabilities = [], saveStatus = 200, guest = false } = {}) {
+  let authenticated = !guest
+  const privateRequests = []
   const saves = []
   const publications = []
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const request = route.request()
     const path = new URL(request.url()).pathname
-    if (path === '/api/auth/refresh-token') return route.fulfill({ json: { accessToken: 'editor-test-token', user: 'Test Writer', email: 'writer@example.test', role: 'regular' } })
+    if (path === '/api/auth/refresh-token') return route.fulfill(authenticated ? { json: { accessToken: 'editor-test-token', user: 'Test Writer', email: 'writer@example.test', role: 'regular' } } : { status: 401, json: { message: 'Signed out' } })
+    if (path === '/api/auth/login') { authenticated = true; return route.fulfill({ json: { token: 'editor-test-token', username: 'Test Writer', email: 'writer@example.test', role: 'regular' } }) }
+    if (path.startsWith('/api/drafts') || path === '/api/v1/me/entitlements' || path === '/api/post/depth-options' || path === '/api/post/' && request.method() === 'POST') privateRequests.push(path)
     if (path === '/api/v1/me/entitlements') return route.fulfill({ json: { data: { capabilities } } })
     if (path.startsWith('/api/drafts') && ['POST', 'PUT'].includes(request.method())) {
       saves.push(request.postDataJSON())
@@ -19,10 +23,10 @@ async function mockEditor(page, { capabilities = [], saveStatus = 200 } = {}) {
     }
     return route.fulfill({ json: { data: [], meta: { nextCursor: null, unreadCount: 0 } } })
   })
-  return { saves, publications }
+  return { saves, publications, privateRequests }
 }
 
-for (const size of [{ width: 320, height: 735 }, { width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 900 }]) {
+for (const size of [{ width: 320, height: 735 }, { width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1280, height: 900 }, { width: 1920, height: 1080 }, { width: 2560, height: 1440 }]) {
   test(`story details precede writing in one column at ${size.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(size)
     await page.emulateMedia({ colorScheme: size.width === 390 ? 'dark' : 'light' })
@@ -33,6 +37,26 @@ for (const size of [{ width: 320, height: 735 }, { width: 390, height: 844 }, { 
     await expect(title).toBeInViewport()
     await expect(body).toBeInViewport()
     expect((await body.boundingBox()).x).toBe((await title.boundingBox()).x)
+    await body.focus()
+    const addBlock = page.getByRole('button', { name: 'Add block after this block', exact: true })
+    const deleteBlock = page.getByRole('button', { name: 'Delete text block', exact: true })
+    const bodyBounds = await body.boundingBox()
+    for (const control of [addBlock, deleteBlock]) {
+      const bounds = await control.boundingBox()
+      expect(bounds.x + bounds.width).toBeLessThan(bodyBounds.x)
+      expect(bounds.width).toBeGreaterThanOrEqual(40)
+      expect(bounds.height).toBeGreaterThanOrEqual(40)
+    }
+    if (size.width >= 1920) {
+      const frame = await page.locator('main').boundingBox()
+      const scroll = await page.locator('#main-content').boundingBox()
+      expect(frame.width).toBe(1120)
+      expect(Math.abs(frame.x + frame.width / 2 - scroll.x - scroll.width / 2)).toBeLessThan(3)
+    }
+    await addBlock.click()
+    await expect(page.getByRole('textbox', { name: 'Paragraph block', exact: true })).toHaveCount(2)
+    await page.getByRole('button', { name: 'Delete text block', exact: true }).last().click()
+    await expect(body).toHaveCount(1)
     await page.screenshot({ path: testInfo.outputPath('editor-initial.png') })
     const details = page.locator('details')
     await expect(details).toHaveJSProperty('open', false)
@@ -111,3 +135,68 @@ test('draft load and save failures keep visible recovery feedback', async ({ pag
   await expect(page.getByRole('alert').filter({ hasText: 'This draft changed in another tab.' })).toBeVisible()
   await expect(page.getByRole('status').filter({ hasText: 'Draft conflict' })).toBeVisible()
 })
+
+for (const width of [320, 1280]) {
+  test(`guest writing survives Publish authentication without anonymous saves at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 735 })
+    const { saves, publications, privateRequests } = await mockEditor(page, { guest: true })
+    const origin = '/write?question=reader-question#draft'
+    await page.goto(origin)
+    const publish = page.getByRole('button', { name: 'Publish', exact: true })
+    const dialog = page.getByRole('dialog', { name: 'Sign in to Ink Rider' })
+    await expect(page.getByRole('heading', { name: 'Write', exact: true })).toBeVisible()
+    await expect(dialog).toHaveCount(0)
+    await expect(publish).toBeEnabled()
+    await publish.click()
+    await expect(dialog).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(publish).toBeFocused()
+    await page.getByRole('button', { name: 'Short read', exact: true }).click()
+    const title = page.getByRole('textbox', { name: 'Short title', exact: true })
+    const body = page.getByRole('textbox', { name: 'Paragraph block', exact: true })
+    await title.fill('Guest writing stays here')
+    await body.fill('My writing should survive authentication and become an authenticated draft.')
+    await page.locator('details summary').click()
+    await page.getByLabel('Add a tag', { exact: true }).fill('writing')
+    await page.getByRole('button', { name: 'Add', exact: true }).click()
+    const file = { name: 'cover.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZ94AAAAASUVORK5CYII=', 'base64') }
+    await page.locator('input[type=file]').setInputFiles(file)
+    // Wait beyond the authenticated autosave delay to prove guests stay local.
+    await expect(async () => {
+      await expect(page.getByText('Sign in to save your draft.', { exact: true })).toBeVisible()
+      expect(privateRequests).toEqual([])
+    }).toPass({ timeout: 3000 })
+    await page.waitForTimeout(1700)
+    expect(privateRequests).toEqual([])
+    await page.screenshot({ path: testInfo.outputPath('guest-editor.png') })
+    await publish.click()
+    await expect(dialog).toBeVisible()
+    await expect(page).toHaveURL(origin)
+    await dialog.getByRole('button', { name: 'Close sign-in dialog' }).click()
+    await expect(title).toHaveValue('Guest writing stays here')
+    await expect(body).toHaveValue('My writing should survive authentication and become an authenticated draft.')
+    await expect(page.getByRole('button', { name: 'Remove writing tag' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Remove cover image' })).toBeVisible()
+    expect(publications).toEqual([])
+    await page.route('**/api/auth/login', route => route.fulfill({ status: 401, json: { message: 'Unable to sign in.' } }), { times: 1 })
+    await publish.click()
+    await dialog.getByRole('textbox', { name: 'Email', exact: true }).fill('writer@example.test')
+    await dialog.getByRole('textbox', { name: 'Password', exact: true }).fill('test-password-123')
+    await dialog.getByRole('button', { name: 'Login', exact: true }).click()
+    await expect(dialog.getByRole('alert')).toHaveText('Unable to sign in.')
+    expect(privateRequests).toEqual([])
+    await dialog.getByRole('button', { name: 'Login', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(title).toHaveValue('Guest writing stays here')
+    await expect(body).toHaveValue('My writing should survive authentication and become an authenticated draft.')
+    await expect(page.getByRole('button', { name: 'Remove cover image' })).toBeVisible()
+    await expect.poll(() => saves.some(save => save.title === 'Guest writing stays here' && save.tags.includes('writing'))).toBe(true)
+    expect(publications).toEqual([])
+    await expect(page).toHaveURL(/\/write\?question=reader-question&draft=draft-layout#draft$/)
+    await publish.click()
+    await expect(page.locator('#main-content').getByRole('alert').filter({ hasText: 'Publication test: draft preserved.' })).toBeVisible()
+    expect(publications).toHaveLength(1)
+    expect(publications[0]).toContain('Guest writing stays here')
+    expect(publications[0]).toContain('reader-question')
+  })
+}

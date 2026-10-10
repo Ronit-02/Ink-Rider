@@ -13,7 +13,6 @@ const surfaces = [
   ['series', `/shorts/series/${id}`, 'Learning about cities'],
   ['search', '/search?q=memory', null], ['history', '/history', 'Reading history'],
   ['membership', '/membership', 'Go deeper with the writers you love'],
-  ['settings', '/settings', null], ['help', '/help', null],
   ['login', '/login', null], ['signup', '/signup', null],
   ['verification', '/login', 'Enter Verification Code'], ['onboarding', '/onboarding', 'Find your first writers'],
 ]
@@ -74,6 +73,39 @@ async function inspectBack(page) {
 }
 
 for (const width of [320, 1280]) for (const theme of ['light', 'dark']) {
+  test(`Back stays pinned while scrolling at ${width}px in ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 560 })
+    await page.addInitScript(value => localStorage.setItem('ink-theme', value), theme)
+    await mockApi(page, 'post')
+    await page.route(`**/api/post/${id}`, route => route.fulfill({ json: { postData: {
+      ...post,
+      body: JSON.stringify(Array.from({ length: 40 }, (_, index) => ({ id: `paragraph-${index}`, type: 'text', content: 'Take time to read and reflect on the stories that shape our cities and communities.' }))),
+    } } }))
+    await openSurface(page, 'post', `/post/${id}`, post.title)
+    const back = page.getByRole('button', { name: 'Back', exact: true })
+    const initial = await back.boundingBox()
+    const scroll = page.locator('[data-app-scroll]')
+    for (const top of [400, 1200, 2400]) {
+      await scroll.evaluate((element, value) => element.scrollTo({ top: value, behavior: 'instant' }), top)
+      await expect.poll(() => scroll.evaluate(element => element.scrollTop)).toBeGreaterThan(0)
+      const result = await inspectBack(page)
+      expect(result.covered).toBe(false)
+      expect(result.back.y).toBe(initial.y)
+      expect(result.back.x).toBe(initial.x)
+      expect(result.overflow).toBe(false)
+    }
+    await expect(page.locator('[data-page-back]')).toHaveCSS('background-color', theme === 'dark' ? 'rgb(26, 26, 27)' : 'rgb(255, 255, 255)')
+    await back.focus()
+    await expect(back).toBeFocused()
+    expect((await inspectBack(page)).covered).toBe(false)
+    await page.screenshot({ path: `node_modules/.cache/back-layout-audit/sticky-${width}-${theme}.png` })
+    await back.press('Enter')
+    await expect(page).toHaveURL('/')
+    await expect(back).toHaveCount(0)
+  })
+}
+
+for (const width of [320, 1280]) for (const theme of ['light', 'dark']) {
   test(`Back layout on every surface at ${width}px in ${theme}`, async ({ page }) => {
     test.setTimeout(120_000)
     await page.setViewportSize({ width, height: 900 })
@@ -88,6 +120,12 @@ for (const width of [320, 1280]) for (const theme of ['light', 'dark']) {
       await mockApi(page, name)
       await openSurface(page, name, url, heading)
       const back = page.getByRole('button', { name: /^(Back|Back to previous step)$/ })
+      if (['login', 'signup', 'verification'].includes(name)) {
+        await expect(back).toHaveCount(0)
+        await expect(page.getByRole('link', { name: 'Return to Ink-Rider home' })).toBeVisible()
+        await page.screenshot({ path: path.join(output, `${name}.png`) })
+        continue
+      }
       await expect(back).toHaveCount(1)
       await back.scrollIntoViewIfNeeded()
       const result = await inspectBack(page)
@@ -176,6 +214,12 @@ test('Back remains reachable on short forms and aligned through responsive break
     await mockApi(page, name)
     await openSurface(page, name, url, heading)
     const back = page.getByRole('button', { name: /^(Back|Back to previous step)$/ })
+    if (name !== 'onboarding') {
+      await expect(back).toHaveCount(0)
+      await page.getByRole('link', { name: 'Return to Ink-Rider home' }).click()
+      await expect(page).toHaveURL('/')
+      continue
+    }
     await back.scrollIntoViewIfNeeded()
     expect((await inspectBack(page)).covered, name).toBe(false)
     await back.click()

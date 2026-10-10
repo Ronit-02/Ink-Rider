@@ -1,5 +1,6 @@
 import { useDispatch, useSelector } from "react-redux"
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
+import useLoginPrompt from './useLoginPrompt'
 import { useMutation } from "@tanstack/react-query"
 import { logout } from "../store/authSlice"
 import { selectUser } from "../store/authSelector"
@@ -10,6 +11,8 @@ export default function useAuth() {
   const user = useSelector(selectUser)
   const avatarUrl = useSelector(state => state.auth.avatarUrl)
   const navigate = useNavigate()
+  const location = useLocation()
+  const signIn = useLoginPrompt()
   const dispatch = useDispatch()
 
   const logoutMutation = useMutation({
@@ -38,12 +41,8 @@ export default function useAuth() {
     }
   })
 
-  const signIn = () => {
-    navigate('/login')
-  }
-
   const signUp = () => {
-    navigate('/signup')
+    navigate('/signup', { state: { returnTo: `${location.pathname}${location.search}${location.hash}` } })
   }
 
   const signOut = async () => {

@@ -32,7 +32,7 @@ for (const width of [320, 1280]) {
     for (const target of [() => card.getByText('8 September 2026', { exact: true }), () => card.getByText(post.readTime, { exact: true })]) {
       await page.goto('/explore/trending')
       await clickArea(target())
-      await expect(page).toHaveURL('/author/leila-noor')
+      await expect(page).toHaveURL('/explore/trending')
     }
     for (const target of [() => card.getByText('Article of the day', { exact: true }), () => card.getByText(post.excerpt, { exact: true })]) {
       await page.goto('/explore/trending')
@@ -101,7 +101,8 @@ test('featured guest can read comments and is prompted to sign in to appreciate'
   await expect(page.getByText('Sign in to join the conversation.')).toBeVisible()
   await page.getByRole('button', { name: 'Close comments' }).click()
   await page.getByRole('button', { name: `Appreciate ${post.title}`, exact: true }).click()
-  await expect(page).toHaveURL(/\/login/)
+  await expect(page.getByRole('dialog', { name: 'Sign in to Ink Rider' })).toBeVisible()
+  await expect(page).not.toHaveURL(/\/login/)
 })
 
 test('featured appreciation failure restores count and state', async ({ page }) => {

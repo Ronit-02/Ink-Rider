@@ -1,3 +1,4 @@
+import PageFrame from '@/shared/components/layout/PageFrame'
 import retainRetryView from '@/shared/utils/retainRetryView'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -8,11 +9,13 @@ import ShortCard from '../../components/ShortCard'
 import ShortReadModal from '../../components/ShortReadModal'
 import useDiscoverySearch from '../../hooks/useDiscoverySearch'
 import { ListSkeleton, PostFeedSkeleton } from '@/shared/components/ui/Skeleton'
+import { QuestionCard } from '../Explore/QuestionsTab'
 
 const TABS = [
   { id: 'posts', label: 'Posts' },
   { id: 'writers', label: 'Writers' },
   { id: 'shorts', label: 'Shorts' },
+  { id: 'questions', label: 'Questions' },
 ]
 
 const TOPICS = [
@@ -117,7 +120,7 @@ export default function SearchPage() {
   }
 
   return (
-    <main className="max-w-[920px] mx-auto px-5 md:px-8 pt-10 md:pt-12 pb-24">
+    <PageFrame>
       <header className="mb-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -139,8 +142,8 @@ export default function SearchPage() {
       </div>
 
       <div id="search-results-panel" role="tabpanel" aria-labelledby={`search-tab-${activeTab}`}>
-      {query.trim().length < 1 && <SearchState title="What are you curious about?" detail="Use the search bar above to find published stories and writer profiles." />}
-      {result.isPending && query.trim().length >= 1 && (activeTab === 'writers' ? <ListSkeleton count={4} label="Loading writer results" /> : <PostFeedSkeleton count={3} label={`Loading ${activeTab === 'shorts' ? 'short-read' : 'article'} search results`} />)}
+      {query.trim().length < 1 && <SearchState title="What are you curious about?" detail="Use the search bar above to find published stories, writer profiles, and reader questions." />}
+      {result.isPending && query.trim().length >= 1 && (['writers', 'questions'].includes(activeTab) ? <ListSkeleton count={4} label={activeTab === 'questions' ? 'Loading question results' : 'Loading writer results'} /> : <PostFeedSkeleton count={3} label={`Loading ${activeTab === 'shorts' ? 'short-read' : 'article'} search results`} />)}
       {result.isError && <SearchState isError busy={result.isFetching} title="Search is unavailable" detail="Please check your connection and try again." onRetry={() => result.refetch()} />}
       {!result.isPending && !result.isError && query.trim().length >= 1 && items.length === 0 && (
         <SearchState title={`No ${activeTab} found`} detail="Try a broader phrase or a different spelling." />
@@ -150,10 +153,12 @@ export default function SearchPage() {
           ? items.map(post => <DiscoveryPostCard key={post.id} post={post} />)
           : activeTab === 'writers'
             ? items.map(writer => <WriterResult key={writer.id} writer={writer} />)
-            : items.map(post => <ShortCard key={post.id} post={post} onOpen={short => setShortReadId(short.id)} />)}
+            : activeTab === 'questions'
+              ? items.map(question => <QuestionCard key={question.id} question={question} />)
+              : items.map(post => <ShortCard key={post.id} post={post} onOpen={short => setShortReadId(short.id)} />)}
       </section>}
       </div>
       {shortReadId && <ShortReadModal postId={shortReadId} onClose={() => setShortReadId(null)} />}
-    </main>
+    </PageFrame>
   )
 }

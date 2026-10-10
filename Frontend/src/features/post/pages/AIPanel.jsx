@@ -18,15 +18,15 @@ const AudioIcon = ({ active }) => (
 
 export function AIStickyButtons({ onSummary, onAudio, showSummary, readAloud }) {
   return (
-    <div role="group" aria-label="Article tools" className="flex flex-row flex-wrap gap-[10px] lg:sticky lg:top-20 lg:flex-col">
+    <div role="group" aria-label="Article tools" className="flex flex-row flex-wrap gap-[10px] xl:sticky xl:top-20 xl:flex-col">
       {[
         { fn: onSummary, active: showSummary, icon: <SummaryIcon active={showSummary} />, title: 'Article overview' },
         { fn: onAudio, active: readAloud, icon: <AudioIcon active={readAloud} />, title: 'Read aloud' },
       ].map(button => (
         <button type="button" key={button.title} onClick={button.fn} title={button.title} aria-label={button.title} aria-pressed={button.active}
-          className={`min-h-11 px-3 gap-2 lg:p-0 lg:w-10 lg:min-h-10 rounded-[10px] flex items-center justify-center cursor-pointer border transition-all duration-150 ${button.active ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-[var(--color-text-inverted)]' : 'bg-[var(--color-bg-alt)] border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}>
+          className={`min-h-11 px-3 gap-2 xl:p-0 xl:w-10 xl:min-h-10 rounded-[10px] flex items-center justify-center cursor-pointer border transition-all duration-150 ${button.active ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-[var(--color-text-inverted)]' : 'bg-[var(--color-bg-alt)] border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}>
           {button.icon}
-          <span className="text-[12px] lg:hidden">{button.title}</span>
+          <span className="text-[12px] xl:hidden">{button.title}</span>
         </button>
       ))}
     </div>

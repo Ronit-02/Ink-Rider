@@ -1,6 +1,5 @@
 import retainRetryView from '@/shared/utils/retainRetryView'
-/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, jsx-a11y/no-noninteractive-element-to-interactive-role -- Profile data initializes the edit draft and the tab container owns tab semantics. */
-import { useEffect, useState } from 'react'
+/* eslint-disable jsx-a11y/no-noninteractive-element-to-interactive-role -- The tab container owns tab semantics. */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
@@ -80,21 +79,19 @@ export default function ProfilePage() {
         <Button variant="secondary" disabled={auth.isSigningOut} aria-busy={auth.isSigningOut} onClick={auth.signOutAllDevices}>Sign Out all Devices</Button>
     </div>
   </section>
-  if (!auth.loggedIn) return <PageFrame className="flex min-h-full flex-col !pb-6">
+  if (!auth.loggedIn) return <PageFrame className="flex min-h-full flex-col !py-6">
     <SignInPrompt message="Sign in to view your profile." />
   </PageFrame>
   return <MemberProfile accountActions={accountActions} />
 }
 
 function MemberProfile({ accountActions }) {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { notify } = useToast()
   const [params, setParams] = useSearchParams()
   const requestedTab = params.get('profileTab')
   const tab = TABS.some(item => item.id === requestedTab) ? requestedTab : 'overview'
-  const [editing, setEditing] = useState(false)
-  const [name, setName] = useState('')
-  const [bio, setBio] = useState('')
   const profile = retainRetryView(useQuery({ queryKey: ['me', 'profile'], queryFn: fetchMyProfile }))
   const posts = retainRetryView(useQuery({ queryKey: ['me', 'posts'], queryFn: fetchMyPosts }))
   const bookmarks = retainRetryView(useQuery({ queryKey: ['me', 'bookmarks'], queryFn: fetchBookmarks, enabled: tab === 'bookmarks' }))
@@ -107,7 +104,6 @@ function MemberProfile({ accountActions }) {
     mutationFn: updateMyProfile,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['me', 'profile'] })
-      setEditing(false)
       notify('Profile updated.')
     },
     onError: () => notify('Your profile could not be updated.', { tone: 'error' }),
@@ -117,11 +113,6 @@ function MemberProfile({ accountActions }) {
     onSuccess: data => { window.location.assign(data.portalUrl || data.checkoutUrl) },
     onError: () => notify('Billing is temporarily unavailable.', { tone: 'error' }),
   })
-  const submitProfile = event => {
-    event.preventDefault()
-    if (!name.trim() || updateProfile.isPending) return
-    updateProfile.mutate({ username: name.trim(), bio: bio.trim() })
-  }
 
   const setTab = nextTab => {
     const next = new URLSearchParams(params)
@@ -143,11 +134,6 @@ function MemberProfile({ accountActions }) {
     requestAnimationFrame(() => document.querySelectorAll('[role="tab"][aria-controls="profile-tabpanel"]')[nextIndex]?.focus())
   }
 
-  useEffect(() => {
-    if (!profile.data) return
-    setName(profile.data.displayName || '')
-    setBio(profile.data.bio || '')
-  }, [profile.data])
 
   if (profile.isLoading || posts.isLoading) return <PageFrame>{accountActions}<div role="status" aria-label="Loading profile"><div className="flex items-start gap-5"><Skeleton className="h-20 w-20 shrink-0 rounded-full" /><div className="flex-1"><Skeleton className="h-7 w-48" /><Skeleton className="mt-3 h-3 w-72" /><Skeleton className="mt-2 h-3 w-full max-w-xl" /></div></div><div className="mt-10 grid gap-[14px] sm:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-[14px] border border-[var(--color-border)] p-5"><Skeleton className="h-7 w-16" /><Skeleton className="mt-2 h-3 w-24" /></div>)}</div><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
   if (profile.isError) return <PageFrame>{accountActions}<div><p role="alert" className="text-[13px] text-[var(--color-danger)]">We couldn’t load your profile.</p><Button variant="secondary" className="mt-4" onClick={() => profile.refetch()} aria-busy={profile.isFetching} disabled={profile.isFetching}>Try again</Button></div></PageFrame>
@@ -159,25 +145,16 @@ function MemberProfile({ accountActions }) {
       <header className="flex gap-5 mb-8 items-start flex-wrap">
         <Avatar src={me.avatarUrl} name={me.displayName} size={80} />
         <div className="flex-1 min-w-[240px]">
-          {editing ? (
-            <form id="profile-edit-form" className="flex flex-col gap-2" onSubmit={submitProfile}>
-              <label htmlFor="profile-display-name" className="text-[11px] font-semibold text-[var(--color-text-muted)]">Display name <span aria-hidden="true">(required)</span><input id="profile-display-name" required minLength={1} maxLength={80} value={name} aria-describedby="profile-display-name-help" onChange={event => setName(event.target.value)} className="mt-1 w-full text-[20px] font-bold border border-[var(--color-border)] rounded-[10px] px-3 py-2 bg-[var(--color-bg-alt)] text-[var(--color-text)]" /></label>
-              <p id="profile-display-name-help" className="text-right text-[11px] text-[var(--color-text-muted)]">{name.length}/80 characters</p>
-              <label htmlFor="profile-biography" className="text-[11px] font-semibold text-[var(--color-text-muted)]">Biography <span className="font-normal">(optional)</span><textarea id="profile-biography" maxLength={500} value={bio} aria-describedby="profile-biography-help" onChange={event => setBio(event.target.value)} className="mt-1 h-24 w-full text-[13px] border border-[var(--color-border)] rounded-[10px] px-3 py-2 bg-[var(--color-bg-alt)] text-[var(--color-text)] resize-y" /></label>
-              <p id="profile-biography-help" className="text-right text-[11px] text-[var(--color-text-muted)]">{bio.length}/500 characters</p>
-            </form>
-          ) : (
-            <>
+          <>
               <h1 className="font-bold text-[24px] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{me.displayName}</h1>
               {me.handle && <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">@{me.handle}</p>}
               <p className="mt-3 max-w-2xl text-[13px] leading-[1.65] text-[var(--color-text-secondary)]">{me.bio || 'Add a short biography so readers know what you write about.'}</p>
               <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Member since {new Date(me.joinedAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</p>
-            </>
-          )}
+          </>
         </div>
         <div className="flex flex-wrap gap-2">
           {me.writerStatus === 'writer' && <Link to="/opportunities" className="inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-4 py-2 text-[12px] font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Find reader demand</Link>}
-          {editing ? <><Button type="button" variant="secondary" onClick={() => setEditing(false)}>Cancel</Button><Button type="submit" form="profile-edit-form" disabled={!name.trim() || updateProfile.isPending} aria-busy={updateProfile.isPending}>{'Save'}</Button></> : <Button variant="secondary" onClick={() => setEditing(true)}>Edit profile</Button>}
+          <Button variant="secondary" onClick={() => navigate(`/profile/edit${params.size ? `?${params}` : ''}`)}>Edit profile</Button>
         </div>
       </header>
       {accountActions}

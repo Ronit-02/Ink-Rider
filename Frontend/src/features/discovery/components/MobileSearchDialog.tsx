@@ -1,3 +1,4 @@
+import ModalHeader from '@/shared/components/ui/ModalHeader'
 import retainRetryView from '@/shared/utils/retainRetryView'
 import useOverlayViewport from '@/shared/hooks/useOverlayViewport'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
@@ -12,10 +13,11 @@ import { searchDiscovery } from '../api/search'
 import { fetchDiscoveryFeed } from '../api/feed'
 
 type PostSuggestion = { id: string; title: string; image?: string; author?: { username?: string } }
+type QuerySuggestion = { text: string; articleCount: number }
 type WriterSuggestion = { id: string; handle: string; displayName: string; avatarUrl?: string }
-type SearchResponse = { data: { posts: PostSuggestion[]; writers: WriterSuggestion[] } }
+type SearchResponse = { data: { suggestions: QuerySuggestion[]; writers: WriterSuggestion[] } }
 type PopularResponse = { data: PostSuggestion[] }
-type Suggestion = { kind: 'post'; item: PostSuggestion } | { kind: 'writer'; item: WriterSuggestion }
+type Suggestion = { kind: 'search'; item: QuerySuggestion } | { kind: 'writer'; item: WriterSuggestion }
 type Props = {
   initialQuery: string
   origin: { left: number; width: number }
@@ -47,17 +49,16 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
   }))
   const trendingSearches = [...new Set((popular.data?.data || []).map(post => post.title))].slice(0, 4)
   const result = retainRetryView(useQuery<SearchResponse>({
-    queryKey: ['search-suggestions', query, 'all'],
-    queryFn: () => searchDiscovery({ query, type: 'all', suggestions: true, limit: 6 }),
-    enabled: query.length > 0,
+    queryKey: ['search-suggestions', 'content-v1', query],
+    queryFn: () => searchDiscovery({ query, type: 'all', suggestions: true, limit: 5 }),
+    enabled: query.length > 0 && query === input.trim(),
     staleTime: 30_000,
     retry: false,
   }))
   const waiting = input.trim() !== query
-  const items: Suggestion[] = waiting ? [] : [
-    ...(result.data?.data.posts || []).map(item => ({ kind: 'post' as const, item })),
-    ...(result.data?.data.writers || []).map(item => ({ kind: 'writer' as const, item })),
-  ].slice(0, 6)
+  const searchItems: Suggestion[] = waiting || result.isError ? [] : (result.data?.data.suggestions || []).slice(0, 5).map(item => ({ kind: 'search' as const, item }))
+  const writerItems: Suggestion[] = waiting || result.isError ? [] : (result.data?.data.writers || []).slice(0, 5).map(item => ({ kind: 'writer' as const, item }))
+  const items = [...searchItems, ...writerItems]
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -84,6 +85,17 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
     return () => window.clearTimeout(timer)
   }, [input])
 
+  useEffect(() => {
+    const dialog = dialogRef.current
+    const option = dialog?.querySelector('[role="option"][aria-selected="true"]')
+    if (!dialog || !option) return
+    const bounds = dialog.getBoundingClientRect()
+    const visibleTop = dialog.firstElementChild?.getBoundingClientRect().bottom || bounds.top
+    const row = option.getBoundingClientRect()
+    if (row.top < visibleTop) dialog.scrollTop += row.top - visibleTop
+    else if (row.bottom > bounds.bottom) dialog.scrollTop += row.bottom - bounds.bottom
+  }, [activeIndex])
+
   const search = (value = input.trim()) => {
     if (!value) return
     onClose()
@@ -91,13 +103,14 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
   }
   const openSuggestion = (suggestion: Suggestion) => {
     onClose()
-    navigate(suggestion.kind === 'post' ? `/post/${suggestion.item.id}` : `/author/${suggestion.item.handle}`)
+    navigate(suggestion.kind === 'search' ? `/search?q=${encodeURIComponent(suggestion.item.text)}` : `/author/${suggestion.item.handle}`)
   }
 
   return createPortal(
     <motion.dialog style={viewportStyle} ref={element => { dialogRef.current = element; focusDialogRef.current = element }} aria-label="Search Ink Rider" onCancel={event => { event.preventDefault(); requestClose() }} className="mobile-search-dialog"
       initial={false} animate={{ opacity: closing ? 0 : 1 }} transition={{ duration: reducedMotion ? 0 : 0.28, ease: [0.2, 0, 0, 1] }} onAnimationComplete={() => { if (closing) onClose() }}>
-      <div className="sticky top-0 border-b border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2">
+      <div className="sticky top-0 z-10 border-b border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2">
+        <ModalHeader title="Search Ink Rider" titleId={`${listId}-title`} onClose={requestClose} closeLabel="Close search" className="-mx-4 -mt-2 mb-2" />
         <motion.form role="search" onSubmit={event => {
           event.preventDefault()
           const active = items[activeIndex]
@@ -120,9 +133,6 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
               setActiveIndex(current => current < 0 ? (event.key === 'ArrowDown' ? 0 : items.length - 1) : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length)
             }}
             className="mobile-search-input min-w-0 flex-1 border-none bg-transparent py-2 text-[16px] text-[var(--color-text)] outline-none" />
-          <button type="button" onClick={requestClose} aria-label="Close search" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)]">
-            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="m6 6 12 12M18 6 6 18" /></svg>
-          </button>
           <button type="button" disabled={!input.trim() || closing} onClick={() => search()} aria-label="Search" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--color-accent)] hover:bg-[var(--color-bg-alt)] disabled:opacity-40">
             <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16m-6-6 6 6-6 6" /></svg>
           </button>
@@ -145,15 +155,16 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
         </section></> : <>
           <h2 className="mb-3 text-[15px] font-semibold">Suggestions</h2>
           <div role="status" aria-live="polite" className="text-[13px] text-[var(--color-text-secondary)]">
-            {waiting || result.isPending ? <p className="py-5">Searching…</p> : result.isError ? <p className="py-5">Suggestions are unavailable. You can still view all results or try again.</p> : !items.length ? <p className="py-5">No matching stories or writers. Try another phrase.</p> : <span className="sr-only">{items.length} suggestions available</span>}
+            {waiting || result.isPending ? <p className="py-5">Searching…</p> : result.isError ? <p className="py-5">Suggestions are unavailable. You can still view all results or try again.</p> : !items.length ? <p className="py-5">No matching searches or authors. Try another phrase.</p> : <span className="sr-only">{items.length} suggestions available</span>}
           </div>
           <div id={listId} role="listbox" aria-label="Search suggestions">
-            {items.map((suggestion, index) => <button key={`${suggestion.kind}-${suggestion.item.id}`} id={`${listId}-${index}`} type="button" role="option" aria-selected={activeIndex === index} tabIndex={-1} onMouseDown={event => event.preventDefault()} onClick={() => openSuggestion(suggestion)}
+            {[{ label: 'Search suggestions', items: searchItems, offset: 0 }, { label: 'Authors', items: writerItems, offset: searchItems.length }].filter(group => group.items.length).map(group => <div key={group.label} role="group" aria-label={group.label}>
+              <h3 className="py-3 text-[12px] font-semibold text-[var(--color-text-secondary)]">{group.label}</h3>
+              {group.items.map((suggestion, itemIndex) => { const index = group.offset + itemIndex; return <button key={suggestion.kind === 'search' ? suggestion.item.text : suggestion.item.id} id={`${listId}-${index}`} type="button" role="option" aria-selected={activeIndex === index} tabIndex={-1} onMouseDown={event => event.preventDefault()} onClick={() => openSuggestion(suggestion)}
               className={`flex min-h-16 w-full items-center gap-3 border-b border-[var(--color-border-light)] py-3 text-left ${activeIndex === index ? 'bg-[var(--color-bg-alt)]' : 'hover:bg-[var(--color-surface-hover)]'}`}>
               {suggestion.kind === 'writer' ? <Avatar src={suggestion.item.avatarUrl} name={suggestion.item.displayName} size={40} /> : <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--color-bg-alt)]"><SearchIcon /></span>}
-              <span className="min-w-0 flex-1"><span className="block text-[14px] font-semibold">{suggestion.kind === 'post' ? suggestion.item.title : suggestion.item.displayName}</span><span className="mt-1 block text-[12px] text-[var(--color-text-muted)]">{suggestion.kind === 'post' ? suggestion.item.author?.username : `@${suggestion.item.handle}`}</span></span>
-              <span className="shrink-0 text-[11px] text-[var(--color-text-muted)]">{suggestion.kind === 'post' ? 'Article' : 'Writer'}</span>
-            </button>)}
+              <span className="min-w-0 flex-1"><span className="block break-words text-[14px] font-semibold">{suggestion.kind === 'search' ? suggestion.item.text : suggestion.item.displayName}</span>{suggestion.kind === 'writer' && <span className="mt-1 block break-words text-[12px] text-[var(--color-text-muted)]">@{suggestion.item.handle}</span>}</span>
+            </button> })}</div>)}
           </div>
           {result.isError && <button type="button" onClick={() => result.refetch()} className="mt-4 min-h-11 text-[13px] underline underline-offset-2" aria-busy={result.isFetching} disabled={result.isFetching}>Try again</button>}
         </>}

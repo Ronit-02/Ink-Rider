@@ -64,7 +64,7 @@ Staff review reports, competition activity, and aggregate fraud signals. Moderat
 
 - Editorial and personalized home feeds
 - Latest, popular, and recent discovery modes
-- Search across articles, writers, and short reads
+- Search across articles, writers, short reads, and reader questions
 - Recommendation explanations and reader controls
 - Reading progress, history, saves, comments, follows, and reports
 - Article summaries and browser read-aloud support

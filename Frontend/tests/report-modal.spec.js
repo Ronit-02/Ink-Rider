@@ -1,3 +1,4 @@
+import { expectModalHeader } from './helpers/modal-header'
 import { test, expect } from '@playwright/test'
 
 const id = '507f1f77bcf86cd799439021'
@@ -41,6 +42,7 @@ for (const width of [320, 1280]) for (const [kind, path, label, endpoint] of ent
     await open()
     const dialog = page.getByRole('dialog', { name: label, exact: true })
     await expect(dialog).toBeVisible()
+    await expectModalHeader(dialog)
     expect(await dialog.evaluate(node => node.matches(':modal') && node.parentElement === document.body)).toBe(true)
     if (isCard) await expect(page.getByRole('menu')).toHaveCount(0)
     const box = await dialog.locator('section').first().boundingBox()
@@ -87,7 +89,8 @@ for (const [kind, path, label] of entries) test(`guest ${kind} report requires s
   await page.goto(path)
   if (kind.includes('card')) await page.getByRole('button', { name: `More options for ${post.title}` }).click()
   await page.getByRole(kind.includes('card') ? 'menuitem' : 'button', { name: label, exact: true }).click()
-  await expect(page).toHaveURL(/\/login/)
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByRole('dialog', { name: 'Sign in to Ink Rider' })).toBeVisible()
+  await expect(page).not.toHaveURL(/\/login/)
+  await expect(page.getByRole('dialog', { name: /^Report this/ })).toHaveCount(0)
   expect(reports).toEqual([])
 })

@@ -28,6 +28,7 @@ if (!integrationEnabled) {
   const Draft = require('../schemas/draft.schema');
   const Follow = require('../schemas/follow.schema');
   const Comment = require('../schemas/comment.schema');
+  const CommentLike = require('../schemas/comment-like.schema');
   const Report = require('../schemas/report.schema');
   const ModerationAction = require('../schemas/moderation-action.schema');
   const { generateToken } = require('../utils/helper');
@@ -64,6 +65,7 @@ if (!integrationEnabled) {
     // Text-search routes require the schema's text index. Await model
     // initialization so a fresh CI database cannot race index creation.
     await Post.init();
+    await CommentLike.init();
     owner = await User.create({
       username: `${prefix}-owner`,
       email: `${prefix}-owner@example.test`,
@@ -156,7 +158,8 @@ if (!integrationEnabled) {
         InteractionEvent.deleteMany({ actorId: { $in: userIds } }),
         Draft.deleteMany({ authorId: { $in: userIds } }),
         Follow.deleteMany({ followerId: { $in: userIds } }),
-        Comment.deleteMany({ author: { $in: userIds } }),
+        Comment.deleteMany({ userId: { $in: userIds } }),
+        CommentLike.deleteMany({ userId: { $in: userIds } }),
         Report.deleteMany({ reporterId: { $in: userIds } }),
         ModerationAction.deleteMany({ moderatorId: { $in: userIds } }),
         Post.deleteMany({ author: { $in: userIds } }),
@@ -219,6 +222,54 @@ if (!integrationEnabled) {
     assert.equal(await Save.countDocuments({ userId: owner._id, postId: post._id }), 1);
     assert.equal(await Like.countDocuments({ postId: post._id }), 2);
     assert.equal(current.likesCount, 2);
+  });
+
+  test('comment editing, likes, paginated replies and deletion preserve ownership and thread history', async () => {
+    const listUrl = `${baseUrl}/api/post/${post._id}/comments`;
+    const create = async (user, text, parentCommentId) => {
+      const response = await fetch(listUrl, { method: 'POST', headers: authHeaders(user), body: JSON.stringify({ text, parentCommentId }) });
+      assert.equal(response.status, 201);
+      return (await response.json()).data;
+    };
+    const comment = await create(owner, 'Original comment');
+    const url = `${baseUrl}/api/v1/posts/${post._id}/comments/${comment.id}`;
+    const reply = await create(otherUser, 'Another reader reply', comment.id);
+    await create(owner, 'Second reply', comment.id);
+    const nested = await create(owner, 'Nested reply', reply.id);
+    for (const method of ['PATCH', 'DELETE']) {
+      assert.equal((await fetch(url, { method, headers: authHeaders(otherUser), body: JSON.stringify({ text: 'Unauthorized' }) })).status, 403);
+    }
+    const edit = await fetch(url, { method: 'PATCH', headers: authHeaders(owner), body: JSON.stringify({ text: 'Edited comment' }) });
+    assert.equal(edit.status, 200);
+    assert.equal((await edit.json()).data.content, 'Edited comment');
+    assert.equal((await fetch(url, { method: 'PATCH', headers: authHeaders(owner), body: JSON.stringify({ text: ' ' }) })).status, 400);
+    for (let retry = 0; retry < 2; retry++) assert.equal((await fetch(`${url}/like`, { method: 'PUT', headers: authHeaders(otherUser) })).status, 200);
+    assert.equal(await CommentLike.countDocuments({ commentId: comment.id }), 1);
+    const member = await (await fetch(listUrl, { headers: authHeaders(otherUser) })).json();
+    assert.equal(member.data.find(row => row.id === comment.id).isLiked, true);
+    const guest = await (await fetch(listUrl)).json();
+    assert.equal(guest.data.find(row => row.id === comment.id).isLiked, false);
+    const page = await (await fetch(`${listUrl}?parentCommentId=${comment.id}&limit=1`)).json();
+    assert.equal(page.data.length, 1);
+    assert.ok(page.meta.nextCursor);
+    const next = await (await fetch(`${listUrl}?parentCommentId=${comment.id}&limit=1&cursor=${page.meta.nextCursor}`)).json();
+    assert.equal(next.data.length, 1);
+    assert.notEqual(next.data[0].id, page.data[0].id);
+    const before = await Post.findById(post._id);
+    for (let retry = 0; retry < 2; retry++) assert.equal((await fetch(url, { method: 'DELETE', headers: authHeaders(owner) })).status, 200);
+    assert.equal((await Post.findById(post._id)).commentsCount, before.commentsCount - 1);
+    const deleted = await Comment.findById(comment.id);
+    assert.equal(deleted.content, '');
+    assert.ok(deleted.deletedAt);
+    assert.ok(await Comment.findById(reply.id));
+    assert.ok(await Comment.findById(nested.id));
+    const after = await (await fetch(listUrl)).json();
+    assert.equal(after.data.find(row => row.id === comment.id).isDeleted, true);
+    assert.equal(after.data.find(row => row.id === comment.id).author, null);
+    assert.equal((await fetch(`${url}/like`, { method: 'PUT', headers: authHeaders(owner) })).status, 409);
+    assert.equal((await fetch(url, { method: 'PATCH', headers: authHeaders(owner), body: JSON.stringify({ text: 'Restore' }) })).status, 409);
+    assert.equal((await fetch(`${baseUrl}/api/v1/posts/${shortPost._id}/comments/${reply.id}`, { method: 'DELETE', headers: authHeaders(otherUser) })).status, 404);
+    assert.equal((await fetch(listUrl, { method: 'POST', headers: authHeaders(owner), body: JSON.stringify({ text: 'Wrong post', parentCommentId: String(new mongoose.Types.ObjectId()) }) })).status, 404);
   });
 
   test('signed provider webhooks process once when delivered more than once', async () => {
@@ -293,6 +344,7 @@ if (!integrationEnabled) {
       ['eligible competition posts', 'GET', `/api/competition/${competition._id}/eligible-posts`, 200],
       ['writer profile', 'GET', `/api/writer/${prefix}-owner`, 200],
       ['unified search', 'GET', '/api/search?q=integration', 200],
+      ['question search', 'GET', '/api/search?q=integration&type=questions', 200],
       ['onboarding', 'GET', '/api/v1/onboarding', 200],
       ['reading history', 'GET', '/api/v1/reading-history', 200],
       ['entitlements', 'GET', '/api/v1/me/entitlements', 200],
@@ -313,6 +365,50 @@ if (!integrationEnabled) {
     for (const [name, method, path, expected] of routes) {
       const response = await fetch(`${baseUrl}${path}`, { method, headers: ownerHeaders });
       assert.equal(response.status, expected, `${name} returned ${response.status}`);
+    }
+  });
+
+  test('question categories search persisted questions without exposing private fields', async () => {
+    const response = await fetch(`${baseUrl}/api/search?${new URLSearchParams({ q: topic.slug, type: 'questions' })}`, { headers: authHeaders(owner) });
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    const match = result.data.questions.find(item => item.id === question._id.toString());
+    assert.ok(match);
+    assert.equal(match.text, question.text);
+    assert.equal(match.answersCount, 0);
+    assert.equal(match.upvotes, undefined);
+    assert.equal(match.followers, undefined);
+    assert.equal(match.targetWriterIds, undefined);
+    assert.deepEqual(result.data.posts, []);
+    assert.deepEqual(result.data.writers, []);
+  });
+
+  test('content suggestions rank complete phrases and exclude unreleased metadata', async t => {
+    const query = `${prefix} writing`;
+    const records = await Post.create([
+      ...Array.from({ length: 8 }, (_, index) => ({
+        title: `${query} guide ${index}`, body: validBody('Suggestion fixture'), author: owner._id,
+        tags: [`${prefix}-writing-tips`, `${prefix}-writing-tips`, ...(index < 2 ? [`${prefix}-writing-dialogue`] : []), ...(index === 0 ? [`${prefix}-writing`] : [])],
+        publicAt: new Date(),
+      })),
+      { title: `${query} unreleased`, body: validBody('Private fixture'), author: owner._id, tags: [`${prefix}-writing-secret`], publicAt: new Date(Date.now() + 86400000) },
+      { title: `${query} unpublished`, body: validBody('Private fixture'), author: owner._id, tags: [`${prefix}-writing-hidden`], publicationStatus: 'unpublished' },
+    ]);
+    t.after(() => Post.deleteMany({ _id: { $in: records.map(record => record._id) } }));
+    const response = await fetch(`${baseUrl}/api/search?${new URLSearchParams({ q: query, suggestions: 'true', limit: '99' })}`);
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.data.suggestions.length, 5);
+    assert.deepEqual(result.data.suggestions.slice(0, 3), [
+      { text: query, articleCount: 1 },
+      { text: `${query} tips`, articleCount: 8 },
+      { text: `${query} dialogue`, articleCount: 2 },
+    ]);
+    assert.equal(result.data.suggestions.some(item => /secret|hidden|unreleased|unpublished/.test(item.text)), false);
+    for (const suggestion of result.data.suggestions) {
+      const searchResponse = await fetch(`${baseUrl}/api/search?${new URLSearchParams({ q: suggestion.text })}`);
+      assert.equal(searchResponse.status, 200);
+      assert.ok((await searchResponse.json()).data.posts.length > 0);
     }
   });
 

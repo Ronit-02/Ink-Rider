@@ -6,11 +6,13 @@ type Props = HTMLAttributes<HTMLDivElement> & {
   pinOnMobile?: boolean
   matchAnchorWidth?: boolean
   align?: 'start' | 'end'
+  anchorGap?: number
+  preferredSide?: 'auto' | 'bottom'
   onAnchorHidden?: () => void
 }
 
 // Keep the caller's semantics, actions, and focus behavior; own only placement.
-const ViewportPopover = forwardRef<HTMLDivElement, Props>(function ViewportPopover({ anchorRef, pinOnMobile = false, matchAnchorWidth = false, align = 'end', onAnchorHidden, style, children, ...props }, forwardedRef) {
+const ViewportPopover = forwardRef<HTMLDivElement, Props>(function ViewportPopover({ anchorRef, pinOnMobile = false, matchAnchorWidth = false, align = 'end', anchorGap = 8, preferredSide = 'auto', onAnchorHidden, style, children, ...props }, forwardedRef) {
   const panelRef = useRef<HTMLDivElement | null>(null)
   const closeRef = useRef(onAnchorHidden)
   closeRef.current = onAnchorHidden
@@ -42,16 +44,17 @@ const ViewportPopover = forwardRef<HTMLDivElement, Props>(function ViewportPopov
       panel.style.maxWidth = `${Math.max(0, right - left)}px`
       if (matchAnchorWidth) panel.style.width = `${bounds.width}px`
       const naturalHeight = panel.scrollHeight + (panel.offsetHeight - panel.clientHeight)
-      const below = Math.max(0, bottom - bounds.bottom - gap)
-      const above = Math.max(0, bounds.top - gap - top)
-      const opensBelow = naturalHeight <= below || below >= above
+      const below = Math.max(0, bottom - bounds.bottom - anchorGap)
+      const above = Math.max(0, bounds.top - anchorGap - top)
+      const opensBelow = (preferredSide === 'bottom' && below >= 44) || naturalHeight <= below || below >= above
+      panel.dataset.placement = opensBelow ? 'bottom' : 'top'
       // If neither side fits, use the larger side and keep every action scrollable.
       const maxHeight = Math.max(0, Math.min(typeof style?.maxHeight === 'number' ? style.maxHeight : Infinity, pinOnMobile ? bottom - top : (opensBelow ? below : above)))
       panel.style.maxHeight = `${maxHeight}px`
       const height = Math.min(naturalHeight, maxHeight)
       const width = panel.getBoundingClientRect().width
       const x = pinOnMobile && window.innerWidth < 768 ? left + (right - left - width) / 2 : Math.max(left, Math.min(align === 'start' ? bounds.left : bounds.right - width, right - width))
-      const y = Math.max(top, Math.min(opensBelow ? bounds.bottom + gap : bounds.top - gap - height, bottom - height))
+      const y = Math.max(top, Math.min(opensBelow ? bounds.bottom + anchorGap : bounds.top - anchorGap - height, bottom - height))
       const mobilePinned = pinOnMobile && window.innerWidth < 768
       if (!pinned || !mobilePinned) pinned = { left: x, top: y }
       panel.style.left = `${Math.max(left, Math.min(pinned.left, right - width))}px`
@@ -77,7 +80,7 @@ const ViewportPopover = forwardRef<HTMLDivElement, Props>(function ViewportPopov
       window.visualViewport?.removeEventListener('resize', resize)
       window.visualViewport?.removeEventListener('scroll', resize)
     }
-  }, [anchorRef, pinOnMobile, matchAnchorWidth, align, style?.maxHeight])
+  }, [anchorRef, pinOnMobile, matchAnchorWidth, align, anchorGap, preferredSide, style?.maxHeight])
   return createPortal(<div {...props} ref={element => {
     panelRef.current = element
     if (typeof forwardedRef === 'function') forwardedRef(element)

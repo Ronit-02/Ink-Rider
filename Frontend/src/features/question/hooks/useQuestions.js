@@ -65,12 +65,15 @@ export function useQuestionUpvote(sort) {
       } : old)
       return { previous, key }
     },
-    onSuccess: (data, { questionId, isUpvoted }, context) => {
+    onSuccess: async (data, { questionId, isUpvoted }, context) => {
       queryClient.setQueryData(context.key, old => old ? {
         ...old,
         pages: old.pages.map(page => ({ ...page, data: page.data.map(question => question.id === questionId ? { ...question, ...data } : question) })),
       } : old)
-      queryClient.invalidateQueries({ queryKey: ['question', questionId] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['question', questionId] }),
+        queryClient.invalidateQueries({ queryKey: ['discovery-search'], predicate: query => query.queryKey[2] === 'questions' }),
+      ])
       notify(isUpvoted ? 'Question upvoted.' : 'Question upvote removed.')
     },
     onError: (error, variables, context) => { if (context?.previous) queryClient.setQueryData(context.key, context.previous); notify('The question vote could not be updated.', { tone: 'error' }) },

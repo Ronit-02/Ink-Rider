@@ -5,6 +5,7 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import { useAnswerReport, useAnswerUpvote, useQuestion, useQuestionAnswer, useQuestionFollow, useQuestionReport, useQuestionUpvote } from '@/features/question/hooks/useQuestions'
 import useAuth from '@/features/auth/hooks/useAuth'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
+import Tag from '@/shared/components/ui/Tag'
 import Button from '@/shared/components/ui/Button'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import { ListSkeleton } from '@/shared/components/ui/Skeleton'
@@ -43,8 +44,8 @@ function Answer({ answer, questionId }) {
   return <article className="border-t border-[var(--color-border)] py-5">
     <AuthorMeta author={answer.author} date={answer.createdAt} size="sm" />
     <p className="mt-3 whitespace-pre-wrap text-[14px] leading-7 text-[var(--color-text)]">{answer.text}</p>
-    <button type="button" onClick={toggleVote} disabled={vote.isPending} aria-pressed={answer.isUpvoted} aria-label={`${answer.isUpvoted ? 'Remove upvote from' : 'Upvote'} answer`} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-full border border-[var(--color-border)] px-3 text-[12px] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2" aria-busy={vote.isPending}>
-      <span aria-hidden="true">▲</span>{answer.upvotesCount}
+    <button data-button-style="action" type="button" onClick={toggleVote} disabled={vote.isPending} aria-pressed={answer.isUpvoted} aria-label={`${answer.isUpvoted ? 'Remove upvote from' : 'Upvote'} answer`} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-full border border-[var(--color-border)] px-3 text-[12px] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2" aria-busy={vote.isPending}>
+      <span data-button-icon aria-hidden="true">▲</span>{answer.upvotesCount}
     </button>
     <button type="button" aria-haspopup="dialog" onClick={() => loggedIn ? setReportOpen(true) : signIn()} className="ml-2 inline-flex min-h-10 items-center rounded-full px-3 text-[12px] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">{reportTitle('answer')}</button>
     {reportOpen && <ReportModal title={reportTitle('answer')} onClose={() => setReportOpen(false)}><AnswerReportForm questionId={questionId} answerId={answer.id} /></ReportModal>}
@@ -105,9 +106,9 @@ export default function QuestionDetail() {
         <AuthorMeta author={item.author} date={item.createdAt} size="sm" />
         <h1 className="mt-4 max-w-[760px] text-[clamp(1.7rem,4vw,2.7rem)] leading-[1.12] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{item.text}</h1>
         {item.context && <p className="mt-4 max-w-[700px] text-[15px] leading-7 text-[var(--color-text-secondary)]">{item.context}</p>}
-        <div className="mt-4 flex flex-wrap gap-2">{item.tags.map(tag => <span key={tag} className="rounded-full bg-[var(--color-bg-alt)] px-2.5 py-1 text-[11px] text-[var(--color-text-secondary)]">#{tag}</span>)}</div>
+        <div className="mt-4 flex flex-wrap gap-x-2">{item.tags.map(tag => <Link key={tag} to={`/search?${new URLSearchParams({ q: tag.trim(), type: 'questions' })}`} aria-label={`Questions about ${tag}`} className="inline-flex min-h-11 max-w-full items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] [&>span]:max-w-full [&>span]:break-words [&>span]:whitespace-normal"><Tag label={`#${tag}`} /></Link>)}</div>
         <div className="mt-6 flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => loggedIn ? upvote.mutate({ questionId: id, isUpvoted: !item.isUpvoted }) : signIn()} disabled={upvote.isPending} aria-pressed={item.isUpvoted} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[var(--color-border)] px-4 text-[12px] font-semibold text-[var(--color-text)]" aria-busy={upvote.isPending}>▲ {item.upvotesCount}</button>
+          <button data-button-style="action" data-button-boundary="true" type="button" onClick={() => loggedIn ? upvote.mutate({ questionId: id, isUpvoted: !item.isUpvoted }) : signIn()} disabled={upvote.isPending} aria-label={`${item.isUpvoted ? 'Remove upvote from' : 'Upvote'} question`} aria-pressed={item.isUpvoted} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[var(--color-border)] px-4 text-[12px] font-semibold text-[var(--color-text)]" aria-busy={upvote.isPending}><span data-button-icon aria-hidden="true">▲</span> {item.upvotesCount}</button>
           <Button variant="secondary" onClick={() => loggedIn ? follow.mutate({ questionId: id, isFollowing: !item.isFollowing }) : signIn()} disabled={follow.isPending} aria-busy={follow.isPending}>{item.isFollowing ? 'Following question' : 'Follow question'}</Button>
           <Button variant="ghost" aria-haspopup="dialog" onClick={() => loggedIn ? setReportOpen(true) : signIn()}>{reportTitle('question')}</Button>
         </div>

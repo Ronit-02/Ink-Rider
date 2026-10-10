@@ -467,4 +467,4 @@ const linkResponsePost = async (req, res) => {
   }
 };
 
-module.exports = { getQuestions, getQuestionDetail, getQuestionOpportunities, suggestQuestions, createQuestion, upvoteQuestion, removeQuestionUpvote, createAnswer, upvoteAnswer, removeAnswerUpvote, followQuestion, unfollowQuestion, reportQuestion, reportAnswer, claimQuestion, unclaimQuestion, declineQuestion, linkResponsePost };
+module.exports = { presentQuestions, getQuestions, getQuestionDetail, getQuestionOpportunities, suggestQuestions, createQuestion, upvoteQuestion, removeQuestionUpvote, createAnswer, upvoteAnswer, removeAnswerUpvote, followQuestion, unfollowQuestion, reportQuestion, reportAnswer, claimQuestion, unclaimQuestion, declineQuestion, linkResponsePost };

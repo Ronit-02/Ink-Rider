@@ -1,5 +1,7 @@
 # Report-button audit
 
+Header update — 2026-10-10: ReportModal now reuses the approved shared Comments-style ModalHeader. Subject naming, shared form content, submission/retry/confirmation, guest gating, and dismissal behavior are retained. Header contract and complete change inventory belong to [modal-audit.md](modal-audit.md); dated verification belongs to the progress tracker. This supersedes the earlier unchanged-header presentation boundary.
+
 Audited and corrected: 2026-10-08. Scope: all report actions in `Frontend/src`, including shared components used across routes.
 
 | Entry point | Before | Completed behavior |

@@ -1,3 +1,5 @@
+import ModalHeader from '@/shared/components/ui/ModalHeader'
+import PageFrame from '@/shared/components/layout/PageFrame'
 import retainRetryView from '@/shared/utils/retainRetryView'
 import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
@@ -70,7 +72,7 @@ export default function AuthorPage() {
 
   if (!handle) {
     return (
-      <main className="max-w-[720px] mx-auto px-6 py-20 text-center">
+      <PageFrame className="py-20 text-center">
         <h1 className="font-bold text-[28px] text-[var(--color-text)] mb-3" style={{ fontFamily: 'var(--font-display)' }}>
           Choose a writer to view their profile
         </h1>
@@ -81,18 +83,18 @@ export default function AuthorPage() {
         >
           Search writers
         </Link>
-      </main>
+      </PageFrame>
     )
   }
 
   if (writerQuery.isPending) {
-    return <main className="max-w-[900px] mx-auto px-6 md:px-8 pt-10 pb-20"><div role="status" aria-label="Loading writer profile"><div className="flex items-start gap-5"><Skeleton className="h-20 w-20 rounded-full" /><div className="flex-1"><Skeleton className="h-7 w-48" /><Skeleton className="mt-3 h-3 w-32" /><Skeleton className="mt-4 h-3 w-full max-w-xl" /></div></div><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></main>
+    return <PageFrame className="pb-20"><div role="status" aria-label="Loading writer profile"><div className="flex items-start gap-5"><Skeleton className="h-20 w-20 rounded-full" /><div className="flex-1"><Skeleton className="h-7 w-48" /><Skeleton className="mt-3 h-3 w-32" /><Skeleton className="mt-4 h-3 w-full max-w-xl" /></div></div><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
   }
 
   if (writerQuery.isError) {
     const notFound = writerQuery.error?.response?.status === 404
     return (
-      <main className="max-w-[720px] mx-auto px-6 py-20 text-center">
+      <PageFrame className="py-20 text-center">
         <div role="alert">
         <h1 className="font-bold text-[28px] text-[var(--color-text)] mb-3" style={{ fontFamily: 'var(--font-display)' }}>
           {notFound ? 'Writer not found' : 'Profile unavailable'}
@@ -104,7 +106,7 @@ export default function AuthorPage() {
           ? <Link to="/" className="text-[13px] font-semibold underline underline-offset-4">Return home</Link>
           : <Button variant="secondary" onClick={() => writerQuery.refetch()} aria-busy={writerQuery.isFetching} disabled={writerQuery.isFetching}>Try again</Button>}
         </div>
-      </main>
+      </PageFrame>
     )
   }
 
@@ -114,7 +116,7 @@ export default function AuthorPage() {
   }
 
   return (
-    <main className="max-w-[1080px] mx-auto px-6 md:px-8 pb-20">
+    <PageFrame className="!pb-20">
       <div className="h-[180px] md:h-[220px] rounded-b-[20px] mb-0 relative overflow-hidden
         bg-[var(--color-bg-alt)] border-x border-b border-[var(--color-border)]">
         <div className="absolute inset-0 opacity-70"
@@ -191,10 +193,7 @@ export default function AuthorPage() {
         {requestOpen && (
           <ModalLayer id="direct-request-dialog" onDismiss={() => setRequestOpen(false)} dismissOnBackdrop={!subject && !details} aria-labelledby="direct-request-heading" className="flex items-center justify-center p-4">
           <section ref={requestDialogRef} tabIndex={-1} className="w-full max-w-[620px] overflow-y-auto rounded-[16px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-5">
-            <div className="flex items-center justify-between gap-4">
-              <h2 id="direct-request-heading" className="font-semibold text-[14px] text-[var(--color-text)]">Direct request to {writer.displayName}</h2>
-              <button ref={closeRequestRef} type="button" onClick={() => setRequestOpen(false)} aria-label="Close article request" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)]">×</button>
-            </div>
+            <ModalHeader title={`Direct request to ${writer.displayName}`} titleId="direct-request-heading" onClose={() => setRequestOpen(false)} closeLabel="Close article request" closeRef={closeRequestRef} className="-mx-5 -mt-5 mb-4" />
             {entitlements.isPending ? (
               <p role="status" className="mt-2 text-[12px] text-[var(--color-text-secondary)]">Checking membership…</p>
             ) : entitlements.isError ? (
@@ -270,6 +269,6 @@ export default function AuthorPage() {
           </div>
         )}
       </section>
-    </main>
+    </PageFrame>
   )
 }

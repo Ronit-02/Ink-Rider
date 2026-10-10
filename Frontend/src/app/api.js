@@ -72,7 +72,7 @@ api.interceptors.response.use(
       } 
       catch (refreshError) {
         store.dispatch(logout());
-        window.location.href = '/login';  
+        window.dispatchEvent(new Event('ink-rider:sign-in-required'));
         return Promise.reject(refreshError);
       }
     }

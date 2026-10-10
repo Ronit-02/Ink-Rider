@@ -48,7 +48,7 @@ not use this mode and continues to own its clean server processes.
 | `/opportunities` | Writer opportunity inbox and reader-demand signals |
 | `/explore/competitions` | Active and completed competitions |
 | `/explore/competitions/:id` | Competition detail, entries, and voting |
-| `/search` | Search — posts, writers, and shorts |
+| `/search` | Search — posts, writers, shorts, and questions; question categories select the Questions tab |
 | `/post/:id` | Article reading with engagement, summary, and read aloud |
 | `/author/:handle` | Public writer profile |
 | `/collections` | Discover and manage collections |
@@ -57,18 +57,23 @@ not use this mode and continues to own its clean server processes.
 | `/shorts` | Short reads |
 | `/shorts/series/:id` | Short-read series progression |
 | `/history` | Private reading history |
-| `/members` | Member Hub and creator experiences |
+| `/members` | Centered guest sign-in prompt or signed-in Member Hub and creator experiences |
 | `/membership` | Public membership perks, sign-in, checkout, and membership management |
-| `/notifications` | Notifications and unread activity |
+| `/notifications` | Centered guest sign-in prompt or signed-in inbox below the desktop notification button; mobile uses the existing modal; direct entries open over Home |
 | `/onboarding` | Onboarding interests and follows |
-| `/write` | Guest sign-in prompt or signed-in writer editor and publishing |
-| `/profile` | Centered guest sign-in prompt or personal profile, history, and account activity; mobile Account navigation opens an account sheet with a member-only Write link |
+| `/write` | Public writer editor; guest Publish opens sign-in, authenticated drafts autosave and publish |
+| `/profile` | Centered guest sign-in prompt or personal profile, history, and account activity; mobile Account navigation opens an account sheet with a public Write link |
+| `/profile/edit` | Signed-in profile editing page with the existing display-name/biography fields, Save, Cancel, and Back |
 | `/settings` | Public appearance/language settings and member-only reading-interest settings |
 | `/help` | Public guide to reading, writing, community participation, membership, settings, and recovery |
 
-On every mobile application page, Collections occupies the fourth bottom-bar position for guests and members. Write is available in the signed-in Account sheet; desktop navigation is unchanged.
+New writing is public; guests compose locally and Publish opens the shared sign-in modal. Writing stays in the mounted editor through dismissal or in-place login, then authenticated autosave begins; guest reload/navigation discards local work. Saved-draft and edit links remain sign-in gated.
 
-Theme defaults to the browser/system color preference and follows changes until the visitor explicitly chooses Light or Dark in Settings. That saved choice takes priority on later visits; browsers without preference detection fall back to dark.
+Restricted pages wait for session restoration, then show guests a centered message specific to the screen and a Sign In button. The login modal opens only after activating the button, and the full route/query/hash is preserved. Notifications uses this page state for guests and an anchored desktop inbox or mobile modal for signed-in accounts. Edit profile opens `/profile/edit`; Save and Cancel return to the profile with its query-selected tab preserved.
+
+On every mobile application page, Collections occupies the fourth bottom-bar position for guests and members. Write is available to guests and members in the Account sheet and desktop sidebar; Member Hub remains signed-in only in the sidebar.
+
+Theme defaults to the browser/system color preference and follows changes until the visitor explicitly chooses Light or Dark in Settings. That saved choice takes priority on later visits. Choosing Use system theme in Settings clears the override and resumes live system preference updates; browsers without preference detection fall back to dark. Theme and the English-only language option use the shared accessible dropdown. Settings and Help have no page Back control.
 
 ## Project Structure
 
@@ -94,3 +99,5 @@ src/
 - Google Fonts: Libre Baskerville + DM Sans
 
 The frontend uses server-backed API data for primary routes. Keep feature behavior in its feature module, reuse shared components before adding new ones, and keep route filters and tabs in the URL when they need to be shareable.
+
+Global search has no category/type-selection buttons. Desktop and mobile autocomplete pause 250 ms after typing, then show up to five complete Search suggestions from public post tags/titles and five Authors. Selecting a phrase opens `/search?q=<phrase>`; selecting an author opens their profile. Enter without a selection searches the exact input. Search-result tabs and filters retain their existing behavior.

@@ -1,3 +1,4 @@
+import ModalHeader from '@/shared/components/ui/ModalHeader'
 import retainRetryView from '@/shared/utils/retainRetryView'
 import ModalLayer from '@/shared/components/ui/ModalLayer'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -61,10 +62,7 @@ export default function ShortReadModal({ postId, onClose }) {
 
   return <ModalLayer onDismiss={onClose} aria-busy={postQuery.isPending} aria-labelledby={post && blocks ? 'short-read-title' : 'short-read-dialog-label'} className="flex items-end justify-center p-0 sm:items-center sm:p-5">
     <section ref={dialogRef} tabIndex={-1} className="flex max-h-[calc(var(--overlay-height)*0.94)] w-full max-w-[440px] flex-col overflow-hidden rounded-t-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_20px_70px_rgba(0,0,0,0.24)] sm:max-h-[calc(var(--overlay-height)*0.88)] sm:rounded-[16px]">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--color-border)] px-5 py-4 sm:px-7">
-        <div><p id="short-read-dialog-label" className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--color-accent)]">Short read</p><p className="mt-1 text-[11px] text-[var(--color-text-muted)]">A focused idea from the Ink Rider community</p></div>
-        <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Close short read" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-alt)]">×</button>
-      </header>
+      <ModalHeader title="Short read" titleId="short-read-dialog-label" subtitle="A focused idea from the Ink Rider community" onClose={onClose} closeLabel="Close short read" closeRef={closeButtonRef} />
 
       <div className="min-h-0 overflow-y-auto px-5 py-6 sm:px-10 sm:py-8">
         {postQuery.isPending && <PostDetailSkeleton as="div" label="Loading short read" />}
@@ -73,7 +71,13 @@ export default function ShortReadModal({ postId, onClose }) {
         {post && blocks && <>
           {post.coverImage && <img src={post.coverImage} alt="" className="mx-auto mb-6 aspect-[4/5] w-full max-w-[320px] rounded-[10px] object-cover" />}
           <h2 id="short-read-title" className="text-[clamp(24px,5vw,34px)] font-bold leading-[1.12] tracking-[-0.045em] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{post.title}</h2>
-          {authorHandle ? <Link to={`/author/${encodeURIComponent(authorHandle)}`} onClick={onClose} aria-label={`View ${post.author.username}'s profile`} className="mt-4 flex items-center gap-3 rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"><Avatar src={post.author?.picture} name={post.author?.username} size={34} /><div className="min-w-0"><p className="truncate text-[12px] font-semibold text-[var(--color-text)]">{post.author?.username}</p><p className="text-[11px] text-[var(--color-text-muted)]">{post.readTime || 'Short read'}</p></div></Link> : <div className="mt-4 flex items-center gap-3"><Avatar src={post.author?.picture} name={post.author?.username} size={34} /><div className="min-w-0"><p className="truncate text-[12px] font-semibold text-[var(--color-text)]">{post.author?.username}</p><p className="text-[11px] text-[var(--color-text-muted)]">{post.readTime || 'Short read'}</p></div></div>}
+          <div className="mt-4 flex items-center gap-3">
+            {authorHandle ? <Link to={`/author/${encodeURIComponent(authorHandle)}`} onClick={onClose} aria-label={`Open writer profile for ${post.author.username}`} className="shrink-0 rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"><Avatar src={post.author?.picture} name={post.author?.username} size={34} /></Link> : <Avatar src={post.author?.picture} name={post.author?.username} size={34} />}
+            <div className="min-w-0">
+              {authorHandle ? <Link to={`/author/${encodeURIComponent(authorHandle)}`} onClick={onClose} aria-label={`View ${post.author.username}'s profile`} className="block w-fit max-w-full rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"><p className="truncate text-[12px] font-semibold text-[var(--color-text)]">{post.author?.username}</p></Link> : <p className="truncate text-[12px] font-semibold text-[var(--color-text)]">{post.author?.username}</p>}
+              <p className="text-[11px] text-[var(--color-text-muted)]">{post.readTime || 'Short read'}</p>
+            </div>
+          </div>
           {(likeMutation.isError || bookmarkMutation.isError) && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">We couldn't update this short read. Please try again.</p>}
           <Divider className="my-7" />
           <PostBody body={blocks} compact />

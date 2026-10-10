@@ -145,7 +145,7 @@ export default function Sidebar() {
     >
       <nav aria-label="Desktop primary navigation" className="flex min-h-full flex-col">
         <div>
-        {LINKS.filter(item => item.to !== '/write' || loggedIn).map(item =>
+        {LINKS.filter(item => item.to !== '/members' || loggedIn).map(item =>
           item.children ? (
             <ExploreSection key={item.to} item={item} pathname={pathname} reducedMotion={reducedMotion} />
           ) : (

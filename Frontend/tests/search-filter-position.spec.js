@@ -1,5 +1,109 @@
 import { test, expect } from '@playwright/test'
 
+const readerQuestion = {
+  id: '507f1f77bcf86cd799439011', text: 'How can coastal cities adapt to rising seas?',
+  context: 'Readers want practical evidence.', tags: ['coastal resilience', 'science'],
+  author: { username: 'Maya Sen', handle: 'maya-sen' }, createdAt: '2026-09-08T00:00:00Z',
+  upvotesCount: 4, isUpvoted: false, answersCount: 1, responsePosts: [{ _id: 'response', title: 'A coastal response' }],
+}
+
+async function mockQuestionSearch(page, { signedIn = false } = {}) {
+  const searches = []
+  const votes = []
+  let count = 4
+  let selected = false
+  await page.route(url => url.pathname.startsWith('/api/'), async route => {
+    const request = route.request()
+    const url = new URL(request.url())
+    if (url.pathname === '/api/auth/refresh-token') return route.fulfill({ status: signedIn ? 200 : 401, json: signedIn ? { accessToken: 'question-search-token', user: 'Reader', email: 'reader@example.test', role: 'regular' } : { message: 'Signed out' } })
+    if (url.pathname === '/api/search') {
+      searches.push(Object.fromEntries(url.searchParams))
+      if (url.searchParams.get('q') === 'unavailable' && searches.filter(item => item.q === 'unavailable').length === 1) return route.fulfill({ status: 500, json: { message: 'Try again' } })
+      const questions = url.searchParams.get('q') === 'absent' ? [] : [{ ...readerQuestion, upvotesCount: count, isUpvoted: selected }]
+      return route.fulfill({ json: { data: { questions, posts: [], writers: [], shorts: [] } } })
+    }
+    if (url.pathname === `/api/question/${readerQuestion.id}/upvote`) {
+      votes.push(request.method())
+      if (votes.length === 2) return route.fulfill({ status: 500, json: { message: 'Vote unavailable' } })
+      selected = request.method() === 'PUT'
+      count = selected ? 5 : 4
+      return route.fulfill({ json: { data: { isUpvoted: selected, upvotesCount: count } } })
+    }
+    if (url.pathname === `/api/question/${readerQuestion.id}`) return route.fulfill({ json: { data: { ...readerQuestion, answers: [], followersCount: 2 } } })
+    return route.fulfill({ json: { data: [], meta: { nextCursor: null, unreadCount: 0 } } })
+  })
+  return { searches, votes }
+}
+
+for (const width of [320, 1280]) {
+  test(`Questions search retains tabs, filters, category navigation, and guest actions at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 })
+    await page.addInitScript(theme => localStorage.setItem('ink-theme', theme), width === 320 ? 'dark' : 'light')
+    const { searches } = await mockQuestionSearch(page)
+    await page.goto('/search?q=coastal+resilience&type=questions&keep=reader')
+    const questionsTab = page.getByRole('tab', { name: 'Questions', exact: true })
+    await expect(questionsTab).toHaveAttribute('aria-selected', 'true')
+    const panel = page.getByRole('tabpanel')
+    await expect(panel.getByRole('heading', { name: readerQuestion.text })).toBeVisible()
+    expect(searches.at(-1)).toMatchObject({ q: 'coastal resilience', type: 'questions' })
+    await questionsTab.focus()
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByRole('tab', { name: 'Posts', exact: true })).toBeFocused()
+    await page.keyboard.press('End')
+    await expect(questionsTab).toBeFocused()
+    await expect(page).toHaveURL(/type=questions/)
+    await page.getByRole('button', { name: 'Filters', exact: true }).click()
+    const filters = page.getByRole('dialog', { name: 'Refine results' })
+    await filters.getByRole('button', { name: 'Science', exact: true }).click()
+    await filters.getByRole('combobox', { name: 'Time' }).selectOption('week')
+    await filters.getByRole('combobox', { name: 'Sort' }).selectOption('latest')
+    await expect.poll(() => searches.some(search => search.type === 'questions' && search.topic === 'science' && search.time === 'week' && search.sort === 'latest')).toBe(true)
+    await filters.getByRole('button', { name: 'Reset filters' }).click()
+    await expect(page).toHaveURL(url => url.pathname === '/search' && url.searchParams.get('q') === 'coastal resilience' && url.searchParams.get('type') === 'questions' && url.searchParams.get('keep') === 'reader' && !url.searchParams.has('topic') && !url.searchParams.has('time') && !url.searchParams.has('sort'))
+    await filters.getByRole('button', { name: 'Close filters' }).press('Escape')
+    await panel.getByRole('button', { name: 'Upvote question', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: 'Sign in to Ink Rider' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await panel.getByRole('link', { name: 'Questions about science', exact: true }).click()
+    await expect(page).toHaveURL('/search?q=science&type=questions')
+    await expect(panel.getByRole('link', { name: 'View responses' })).toHaveAttribute('href', `/explore/questions/${readerQuestion.id}#response-posts-title`)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('questions-search.png'), fullPage: true })
+    await panel.getByRole('heading', { name: readerQuestion.text }).getByRole('link').click()
+    await expect(page).toHaveURL(`/explore/questions/${readerQuestion.id}`)
+    const detailCategory = page.getByRole('link', { name: 'Questions about coastal resilience' })
+    await detailCategory.focus()
+    await page.keyboard.press('Enter')
+    await expect(page).toHaveURL('/search?q=coastal+resilience&type=questions')
+    await page.reload()
+    await expect(questionsTab).toHaveAttribute('aria-selected', 'true')
+    await expect(panel.getByRole('heading', { name: readerQuestion.text })).toBeVisible()
+  })
+}
+
+test('question search shows empty/error recovery and refreshes votes after confirmation', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const { votes } = await mockQuestionSearch(page, { signedIn: true })
+  await page.goto('/search?q=absent&type=questions')
+  await expect(page.getByRole('heading', { name: 'No questions found' })).toBeVisible()
+  await page.goto('/search?q=unavailable&type=questions')
+  await expect(page.getByRole('alert')).toContainText('Search is unavailable')
+  await page.getByRole('button', { name: 'Try again', exact: true }).click()
+  const vote = page.getByRole('button', { name: 'Upvote question', exact: true })
+  await expect(vote).toBeVisible()
+  await vote.click()
+  const removeVote = page.getByRole('button', { name: 'Remove upvote from question', exact: true })
+  await expect(removeVote).toHaveAttribute('aria-pressed', 'true')
+  await expect(removeVote).toContainText('5')
+  await removeVote.click()
+  await expect(page.getByRole('alert').filter({ hasText: 'The question vote could not be updated.' })).toBeVisible()
+  await expect(removeVote).toHaveAttribute('aria-pressed', 'true')
+  await removeVote.click()
+  await expect(vote).toHaveAttribute('aria-pressed', 'false')
+  await expect(vote).toContainText('4')
+  expect(votes).toEqual(['PUT', 'DELETE', 'DELETE'])
+})
+
 for (const width of [320, 369, 390, 1280]) {
   test(`search filter panel stays pinned and visible as results change at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 735 })
@@ -51,7 +155,7 @@ for (const width of [320, 369, 390, 1280]) {
       await page.setViewportSize({ width, height: 420 })
       await expect.poll(async () => {
         const bounds = await dialog.boundingBox()
-        return bounds.y + bounds.height
+        return bounds ? bounds.y + bounds.height : Infinity
       }).toBeLessThanOrEqual(356)
       await dialog.getByRole('button', { name: 'Reset filters' }).scrollIntoViewIfNeeded()
       await expect(dialog.getByRole('button', { name: 'Reset filters' })).toBeInViewport()

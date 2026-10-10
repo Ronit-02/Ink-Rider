@@ -2,7 +2,59 @@
 
 Audited: 2026-10-08. Source scope: all JSX/TSX button declarations under Frontend/src, including shared components and feature-local controls.
 
-## Baseline and requested behavior
+## Current icon-only loading audit — 2026-10-10
+
+This supersedes the historical filled-button rule below for every icon-led action. Source inspection covered all JSX/TSX native buttons, shared Button/AppreciationButton callers, mapped menu rows, SVG icon components, and text glyphs in the current working tree. Async controls use existing mutation/promise state; synchronous navigation/disclosure controls have no asynchronous loading state. Text-only actions keep their existing pending treatment. Google continues to own its injected control.
+
+### Findings and completed contract
+
+- The global busy rule filled every button and changed its label color. Icon-led buttons now retain their normal surface/border/text and full opacity; SVGs alone receive muted fill/stroke/color. Non-SVG vote glyphs are explicitly marked with data-button-icon and receive only muted color.
+- The special whole-comment-like fade is replaced by the common icon-only rule. Its count stays fully opaque, with the same top alignment and hit target.
+- Shared appreciation/comment, article Save/Saved, and question/answer vote actions have transparent resting/selected surfaces and borders. Selected appreciation still fills its heart; pressed state/counts remain visible. Existing hover feedback, geometry, and keyboard focus remain available. Primary pills, dropdown triggers, and dedicated circular icon-only controls retain their ordinary structure.
+- Existing Button is extended with action/menu variants and decorative leading/trailing icon slots. Primary/secondary/ghost callers remain compatible. Returned async click promises still disable repeat activation until settlement.
+- Question-detail voting now has an explicit Upvote/Remove upvote accessible action name rather than relying on the decorative triangle/count.
+
+### Pending implementation coverage
+
+| Implementation | Icon behavior |
+|---|---|
+| AppreciationButton, reused by cards/featured/writer/article/short reading | Muted filled heart, unchanged count, borderless action |
+| CommentItem, reused by article/comments/short reading | Muted filled heart, fully opaque count, unchanged compact target |
+| Article Save/Saved | Muted bookmark, unchanged label, borderless action |
+| Collection detail and short-reader Save | Muted bookmark, ordinary circular surface preserved |
+| DiscoveryPostCard menu save | Muted bookmark only; existing hover/focus row and label retained |
+| ShareMenu clipboard copy | Muted link icon only; existing modal row and label retained |
+| MobileProfileSheet sign-out | Muted user icon only; fully opaque label and transparent row |
+| Question feed/detail and answer voting | Muted triangle only; borderless action/count |
+| Competition entry voting | Muted plus/check glyph only; existing pill/cover contrast retained |
+| Reusable Button primary/action/menu with icon slots | Normal surface/label/dimensions retained through returned-promise loading |
+
+Menus stay open during pending actions and failures. Duplicate protection, optimistic updates, rollback, confirmed refresh, sign-in, labels, routes, query/cache behavior, and error feedback are unchanged. Frontend retains PageFrame/AppLayout, DM Sans/Libre Baskerville, semantic Light/Dark tokens, existing cards and navigation. Express routes/controllers/services and Mongoose records retain their existing data flow; no backend, API, schema, dependency, optional redesign, or migration work belongs to this correction.
+
+### Changed files for this correction
+
+Implementation:
+- Frontend/src/styles/global.css
+- Frontend/src/shared/components/ui/Button.jsx
+- Frontend/src/features/post/components/AppreciationButton.tsx
+- Frontend/src/features/post/components/CommentItem.tsx
+- Frontend/src/features/discovery/components/PostEngagementControls.tsx
+- Frontend/src/features/post/pages/index.jsx
+- Frontend/src/features/discovery/pages/Explore/QuestionsTab.jsx
+- Frontend/src/features/discovery/pages/Explore/QuestionDetail.jsx
+- Frontend/src/features/discovery/pages/Explore/CompetitionDetail.jsx
+
+Verification: Frontend/tests/button-loading.spec.js and Frontend/tests/appreciation-style.spec.js. Existing comment-actions, collection-detail, and question-detail suites are reused. Documentation: this audit, context/ui-rules.md, context/ui-registry.md, context/comment-actions-audit.md, and context/progress-tracker.md. Pre-existing and concurrent unrelated working-tree changes are preserved. No approval-dependent decision remains.
+
+### Verification
+
+On 2026-10-10, 66 distinct mocked-API Chrome checks passed across the main run and focused reruns. These include every pending icon implementation listed above, existing comment/collection/question interactions, six appreciation idle/selected cases, text-only loading regressions, and two real reusable-primitive promise checks exercising primary/action/menu in both themes. Phone Light (320 px) and desktop Dark (1280 px), plus both mobile sign-out themes and both reusable-primitive themes, were covered. Assertions verify icon color/fill, full opacity, busy/disabled state, one request after repeated activation, rollback/retry, transparency for quiet actions, and stable primitive labels/colors/bounds.
+
+Pending screenshots were visually reviewed for article appreciation/save, collection save, comments, question/answer votes, competition vote, short save, discovery menu save, copy, mobile sign-out, and reusable variants. Source inventory is app-wide; this is representative rendered implementation coverage, not every button instance or live provider flow. Frontend lint, production build, artifact validation (78 files without source maps), and scoped whitespace checks passed. Local sandbox networking blocked initial browser attempts; the successful runs used an isolated task-owned Vite server and installed Chrome outside the sandbox. Early selector failures were corrected to follow optimistic label changes, and the primitive harness import was corrected before passing. Evidence remains ignored under Frontend/node_modules/.cache/icon-button-audit/. Live persistence/providers, physical devices, assistive technology, and other browser engines were not exercised.
+
+## Historical baseline and requested behavior — 2026-10-08
+
+Earlier 2026-10-10 correction (superseded by the current icon-only contract above): inline comment Like/Unlike overrides the filled busy surface with transparency and 60% opacity. The compact top-aligned heart/count stays inside its existing 44 px target without revealing a tall pill while pending. Busy semantics, wait cursor, duplicate protection, and confirmed-refresh timing remain intact. This scoped exception supersedes the common filled rule only for comment likes; see [comment actions audit](comment-actions-audit.md) for verification.
 
 The source inventory found 212 button declarations. Existing post-detail bookmark/appreciation actions disable and fade while pending; collection detail alone introduced a spinner. Text actions also swap labels and sometimes shrink or expand. Retry, verification, direct-request response, competition-vote, clipboard, and sign-out controls need pending wiring.
 
@@ -105,6 +157,15 @@ Publishing/member/staff: Frontend/src/features/editor/pages/index.jsx; Frontend/
 
 People: Frontend/src/features/user/components/MobileProfileSheet.tsx; Frontend/src/features/user/pages/Author/index.jsx; Frontend/src/features/user/pages/Profile/index.jsx; Frontend/src/features/user/pages/Settings/index.jsx.
 
-Tests/documentation: Frontend/tests/button-loading.spec.js; Frontend/tests/collection-detail.spec.js; Frontend/tests/appreciation-style.spec.js; context/button-loading-audit.md; context/ui-rules.md; context/ui-registry.md; context/progress-tracker.md. The appreciation test now checks the current inverted theme token instead of a stale hardcoded dark value. Other simultaneous working-tree changes are outside this loading audit.
+Tests/documentation: Frontend/tests/button-loading.spec.js; Frontend/tests/collection-detail.spec.js; Frontend/tests/appreciation-style.spec.js; Frontend/tests/responsive-controls.spec.js; context/button-loading-audit.md; context/ui-rules.md; context/ui-registry.md; context/progress-tracker.md. The appreciation test now checks the current inverted theme token instead of a stale hardcoded dark value. The mobile-navigation test now reflects the existing four links and Account dialog button instead of an obsolete five-link layout. Other simultaneous working-tree changes are outside this loading audit.
 
 No backend, route, API contract, schema, dependency, or idle design change is required by this task. No approval-dependent decision remains.
+
+
+## Verification — 2026-10-08
+
+103 distinct mocked-API Chrome checks passed across the broad run and targeted reruns: 100 passed in the 102-case regression run; the stale mobile-navigation assertion was corrected and passed, and collection-share focus passed on isolated rerun after an abnormal elapsed-time report. One additional native-search retry check passed. This includes all 18 delayed-action cases in button-loading.spec.js plus collection save's separate held mutation/refetch success/failure/retry check.
+
+Delayed coverage includes Light/320 px and Dark/1280 px post bookmark, writer follow, competition vote, membership checkout, and notification mark-all; login label/dimensions; OTP verify/resend exclusion; clipboard failure/retry; post Retry success; native search Retry failure/retry; collection-menu save; staff validation versus pending; and desktop sign-out. Assertions check the shared theme-derived fill, unchanged loading labels/icons, disabled/busy state, one request after repeat activation, and recovery. Broader regression checks cover appreciation, curator/navigation, collections, writer/profile recovery, report forms, responsive controls, shared sharing, and staff.
+
+Frontend lint, production build, security:artifacts (76 files, no source maps), and git diff --check passed. TSX remains compiled/browser-tested under the repository's existing lint exclusion. Backend code is unchanged by this task. No live provider, email, billing, database, physical-device, or non-Chrome-engine verification is claimed.

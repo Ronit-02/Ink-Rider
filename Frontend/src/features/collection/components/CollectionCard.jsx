@@ -1,3 +1,4 @@
+import ModalHeader from '@/shared/components/ui/ModalHeader'
 import ShareMenu from '@/shared/components/ui/ShareMenu'
 import ModalLayer from '@/shared/components/ui/ModalLayer'
 import ViewportPopover from '@/shared/components/ui/ViewportPopover'
@@ -106,10 +107,7 @@ export default function CollectionCard({ collection }) {
       {shareOpen && <ShareMenu anchorRef={triggerRef} id={`collection-share-${collection.id}`} label="Share collection" contentName="Collection" url={`${window.location.origin}/collections/${collection.id}`} onClose={({ restoreFocus = false } = {}) => { setShareOpen(false); if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus()) }} />}
       {deleteOpen && <ModalLayer onDismiss={() => setDeleteOpen(false)} dismissOnBackdrop={false} returnFocusRef={triggerRef} aria-labelledby={`${deleteDialogId}-title`} className="flex items-center justify-center p-4 backdrop:bg-black/40">
         <section ref={deleteDialogRef} tabIndex="-1" className="w-full max-w-[420px] overflow-y-auto rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-menu)]">
-          <div className="flex items-start justify-between gap-4">
-            <h2 id={`${deleteDialogId}-title`} className="text-[18px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>Delete collection?</h2>
-            <button ref={deleteCloseRef} type="button" aria-label="Cancel delete" onClick={() => setDeleteOpen(false)} className="rounded-full px-2 text-[22px] leading-none text-[var(--color-text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">×</button>
-          </div>
+          <ModalHeader title="Delete collection?" titleId={`${deleteDialogId}-title`} onClose={() => setDeleteOpen(false)} closeLabel="Cancel delete" closeRef={deleteCloseRef} className="-mx-6 -mt-6" />
           <p className="mt-3 text-[13px] leading-5 text-[var(--color-text-secondary)]">This permanently removes “{collection.title}”. Stories in the collection are not deleted.</p>
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancel</Button>

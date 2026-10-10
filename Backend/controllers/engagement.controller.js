@@ -4,8 +4,9 @@ const Post = require('../schemas/post.schema');
 const Save = require('../schemas/save.schema');
 const Report = require('../schemas/report.schema');
 const { reportReasons } = Report;
+const { withTransaction } = require('../utils/transaction');
 const { getPostAccessContext, canAccessPost } = require('../services/post-access.service');
-const { setLike, addComment: createCommentWorkflow } = require('../services/engagement.service');
+const { setLike, addComment: createCommentWorkflow, presentComments, setCommentLike } = require('../services/engagement.service');
 
 const isValidId = id => mongoose.isValidObjectId(id);
 
@@ -94,7 +95,10 @@ const getComments = async (req, res) => {
     const limit = Number.isFinite(requestedLimit)
       ? Math.min(Math.max(requestedLimit, 1), 50)
       : 20;
-    const filter = { postId, parentCommentId: null };
+    const parentCommentId = req.query.parentCommentId || null;
+    if (parentCommentId !== null && !isValidId(parentCommentId)) return res.status(400).json({ message: 'Invalid parent comment id' });
+    if (parentCommentId && !await Comment.exists({ _id: parentCommentId, postId })) return res.status(404).json({ message: 'Comment not found' });
+    const filter = { postId, parentCommentId };
 
     if (req.query.cursor) {
       if (!isValidId(req.query.cursor)) {
@@ -110,22 +114,13 @@ const getComments = async (req, res) => {
 
     const hasMore = comments.length > limit;
     const page = hasMore ? comments.slice(0, limit) : comments;
-    const data = page.map(comment => ({
-      id: comment._id,
-      content: comment.content,
-      createdAt: comment.createdAt,
-      author: comment.userId ? {
-        id: comment.userId._id,
-        name: comment.userId.username,
-        avatar: comment.userId.picture,
-        bio: comment.userId.bio,
-      } : null,
-    }));
+    const data = await presentComments(page, req.auth?.userId);
 
     return res.status(200).json({
       data,
       meta: {
         nextCursor: hasMore ? page[page.length - 1]._id : null,
+        totalCount: await Comment.countDocuments({ postId, deletedAt: null }),
       },
     });
   } catch (error) {
@@ -144,10 +139,75 @@ const createComment = async (req, res) => {
     const lookup = await requirePost(postId, req.auth.userId);
     if (lookup.error) return sendPostLookupError(res, lookup.error);
 
-    return res.status(201).json({ data: await createCommentWorkflow({ postId, userId: req.auth.userId, content }) });
+    const parentCommentId = req.body.parentCommentId ?? null;
+    if (parentCommentId !== null && !isValidId(parentCommentId)) return res.status(400).json({ message: 'Invalid parent comment id' });
+    if (parentCommentId && !await Comment.exists({ _id: parentCommentId, postId })) return res.status(404).json({ message: 'Comment not found' });
+    return res.status(201).json({ data: await createCommentWorkflow({ postId, userId: req.auth.userId, content, parentCommentId }) });
   } catch (error) {
     console.error(`[${req.requestId}] Comment creation failed`);
     return res.status(500).json({ message: 'Unable to add comment' });
+  }
+};
+
+const requireComment = async (req, res) => {
+  const { postId, commentId } = req.params;
+  if (!isValidId(commentId)) {
+    res.status(400).json({ message: 'Invalid comment id' });
+    return null;
+  }
+  const lookup = await requirePost(postId, req.auth.userId);
+  if (lookup.error) {
+    sendPostLookupError(res, lookup.error);
+    return null;
+  }
+  const comment = await Comment.findOne({ _id: commentId, postId });
+  if (!comment) res.status(404).json({ message: 'Comment not found' });
+  return comment;
+};
+
+const editComment = async (req, res) => {
+  try {
+    const content = typeof req.body.text === 'string' ? req.body.text.trim() : '';
+    if (!content || content.length > 1000) return res.status(400).json({ message: 'Comment must contain 1–1000 characters' });
+    const comment = await requireComment(req, res);
+    if (!comment) return;
+    if (String(comment.userId) !== req.auth.userId) return res.status(403).json({ message: 'You can only edit your own comments' });
+    if (comment.deletedAt) return res.status(409).json({ message: 'Comment has been deleted' });
+    const updated = await Comment.findOneAndUpdate({ _id: comment._id, userId: req.auth.userId, deletedAt: null }, { $set: { content } }, { new: true, runValidators: true })
+      .populate({ path: 'userId', select: 'picture username bio' });
+    if (!updated) return res.status(409).json({ message: 'Comment has been deleted' });
+    return res.status(200).json({ data: (await presentComments([updated], req.auth.userId))[0] });
+  } catch {
+    return res.status(500).json({ message: 'Unable to edit comment' });
+  }
+};
+
+const likeComment = async (req, res) => {
+  try {
+    const comment = await requireComment(req, res);
+    if (!comment) return;
+    if (comment.deletedAt) return res.status(409).json({ message: 'Comment has been deleted' });
+    return res.status(200).json({ data: await setCommentLike({ commentId: comment._id, userId: req.auth.userId, liked: req.method === 'PUT' }) });
+  } catch {
+    return res.status(500).json({ message: 'Unable to update comment like' });
+  }
+};
+
+const deleteComment = async (req, res) => {
+  try {
+    const comment = await requireComment(req, res);
+    if (!comment) return;
+    if (String(comment.userId) !== req.auth.userId) return res.status(403).json({ message: 'You can only delete your own comments' });
+    const deleted = await withTransaction(async session => {
+      const options = session ? { session } : {};
+      // Atomic guard makes repeated deletion decrement the counter only once.
+      const result = await Comment.updateOne({ _id: comment._id, userId: req.auth.userId, deletedAt: null }, { $set: { content: '', deletedAt: new Date() } }, options);
+      if (result.modifiedCount === 1) await Post.updateOne({ _id: req.params.postId, commentsCount: { $gt: 0 } }, { $inc: { commentsCount: -1 } }, options);
+      return result.modifiedCount === 1;
+    });
+    return res.status(200).json({ data: { id: comment._id, deleted, isDeleted: true } });
+  } catch {
+    return res.status(500).json({ message: 'Unable to delete comment' });
   }
 };
 
@@ -203,5 +263,8 @@ module.exports = {
   unlikePost,
   getComments,
   createComment,
+  editComment,
+  likeComment,
+  deleteComment,
   reportPost,
 };

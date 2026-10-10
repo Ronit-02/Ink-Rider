@@ -1,8 +1,9 @@
+import ModalHeader from '@/shared/components/ui/ModalHeader'
 import useOverlayViewport from '@/shared/hooks/useOverlayViewport'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import useAuth from '@/features/auth/hooks/useAuth'
 import Avatar from '@/shared/components/ui/Avatar'
@@ -12,10 +13,13 @@ import useDialogFocus from '@/shared/hooks/useDialogFocus'
 export default function MobileProfileSheet({ onClose }: { onClose: () => void }) {
   const auth = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const returnTo = `${location.pathname}${location.search}${location.hash}`
   const reducedMotion = useReducedMotion()
   const [closing, setClosing] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const destination = useRef<string | null>(null)
+  const signInRequested = useRef(false)
   const finished = useRef(false)
   const requestClose = useCallback(() => setClosing(true), [])
   const viewportStyle = useOverlayViewport()
@@ -39,7 +43,8 @@ export default function MobileProfileSheet({ onClose }: { onClose: () => void })
     if (!closing || finished.current) return
     finished.current = true
     onClose()
-    if (destination.current) navigate(destination.current)
+    if (signInRequested.current) requestAnimationFrame(() => auth.signIn())
+    if (destination.current) navigate(destination.current, { state: destination.current === '/notifications' ? { notificationBackground: location } : destination.current === '/signup' ? { returnTo } : undefined })
   }
 
   const followLink = (event: MouseEvent<HTMLAnchorElement>, path: string) => {
@@ -53,23 +58,19 @@ export default function MobileProfileSheet({ onClose }: { onClose: () => void })
   return createPortal(<dialog style={viewportStyle} id="mobile-profile-sheet" autoFocus tabIndex={-1} ref={element => { dialogRef.current = element; focusRef.current = element }} aria-labelledby="profile-sheet-title" onCancel={event => { event.preventDefault(); requestClose() }} className="fixed inset-0 m-0 h-[100dvh] max-h-none w-full max-w-none overflow-hidden border-0 bg-transparent p-0 text-[var(--color-text)] backdrop:bg-transparent">
     <motion.div aria-hidden="true" className="absolute inset-0 bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: closing ? 0 : 1 }} transition={{ duration: reducedMotion ? 0 : 0.28 }} onClick={requestClose} />
     <motion.section data-profile-sheet="true" initial={reducedMotion ? false : { y: '100%' }} animate={{ y: closing ? '100%' : 0 }} transition={{ duration: reducedMotion ? 0 : 0.32, ease: [0.2, 0.8, 0.2, 1] }} onAnimationComplete={finishClose} className="absolute inset-x-0 bottom-0 mx-auto flex w-full max-w-[480px] max-h-[calc(var(--overlay-height)_-_1rem)] flex-col overflow-hidden rounded-t-[20px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-float)]">
-      <header className="shrink-0 px-5 pt-3">
-        <div aria-hidden="true" className="mx-auto mb-2 h-1 w-10 rounded-full bg-[var(--color-border)]" />
-        <div className="flex items-center justify-end gap-3">
-          <h2 id="profile-sheet-title" className="sr-only">Account</h2>
-          <button ref={closeButtonRef} type="button" aria-label="Close account menu" onClick={requestClose} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[24px] hover:bg-[var(--color-bg-alt)]">×</button>
-        </div>
-      </header>
+      <div aria-hidden="true" className="shrink-0 bg-[var(--color-surface)] px-5 pt-3"><div className="mx-auto h-1 w-10 rounded-full bg-[var(--color-border)]" /></div>
+      <ModalHeader title="Account" titleId="profile-sheet-title" onClose={requestClose} closeLabel="Close account menu" closeRef={closeButtonRef} />
       <div className="min-h-0 overflow-y-auto overscroll-contain px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         {auth.loggedIn ? <Link to="/profile" onClick={event => followLink(event, '/profile')} className={`${rowClass} mb-3`}>
           <Avatar src={auth.avatarUrl} name={auth.user} size={44} />
           <span className="min-w-0 flex-1"><span className="block text-[12px] text-[var(--color-text-secondary)]">{auth.user}</span><span className="block">My profile</span></span><span aria-hidden="true">→</span>
         </Link> : <div className="mb-5 grid grid-cols-2 gap-3">
-          <Link to="/signup" onClick={event => followLink(event, '/signup')} style={{ color: 'var(--color-text-inverted)' }} className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--color-accent)] px-4 text-[13px] font-semibold">Sign Up</Link>
-          <Link to="/login" onClick={event => followLink(event, '/login')} className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--color-border)] px-4 text-[13px] font-semibold">Sign In</Link>
+          <Link to="/signup" state={{ returnTo }} onClick={event => followLink(event, '/signup')} style={{ color: 'var(--color-text-inverted)' }} className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--color-accent)] px-4 text-[13px] font-semibold">Sign Up</Link>
+          <button type="button" onClick={() => { signInRequested.current = true; requestClose() }} aria-haspopup="dialog" className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--color-border)] px-4 text-[13px] font-semibold">Sign In</button>
         </div>}
         <nav aria-label="Account menu">
-          {auth.loggedIn && <Link to="/write" onClick={event => followLink(event, '/write')} className={rowClass}><PenIcon /><span className="flex-1">Write</span><span aria-hidden="true">→</span></Link>}
+          <Link to="/write" onClick={event => followLink(event, '/write')} className={rowClass}><PenIcon /><span className="flex-1">Write</span><span aria-hidden="true">→</span></Link>
+          {auth.loggedIn && <Link to="/notifications" state={{ notificationBackground: location }} aria-haspopup="dialog" onClick={event => followLink(event, '/notifications')} className={rowClass}><span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">♢</span><span className="flex-1">Notifications</span><span aria-hidden="true">→</span></Link>}
           <Link to="/membership" onClick={event => followLink(event, '/membership')} className={rowClass}><span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">✦</span><span className="flex-1">Join</span><span aria-hidden="true">→</span></Link>
           <Link to="/settings" onClick={event => followLink(event, '/settings')} className={rowClass}><SettingsIcon /><span className="flex-1">Settings</span><span aria-hidden="true">→</span></Link>
           <button type="button" aria-expanded={helpOpen} aria-controls="profile-sheet-help" onClick={() => setHelpOpen(value => !value)} className={rowClass}><span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-current text-[11px]">?</span><span className="flex-1">Help</span><span aria-hidden="true">{helpOpen ? '−' : '+'}</span></button>

@@ -16,6 +16,7 @@ const run = async () => {
       { $group: { _id: '$postId', count: { $sum: 1 } } },
     ]),
     Comment.aggregate([
+      { $match: { deletedAt: null } },
       { $group: { _id: '$postId', count: { $sum: 1 } } },
     ]),
     Post.find().select('_id').lean(),

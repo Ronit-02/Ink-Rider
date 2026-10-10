@@ -24,7 +24,7 @@ export default function PostEngagementControls({ post, divider = false }: { post
     <div className="relative z-10 ml-auto flex shrink-0 items-center gap-2 text-[12px] tabular-nums text-[var(--color-text-secondary)]">
       <AppreciationButton isLiked={post.isLiked} count={post.likesCount} label={`${post.isLiked ? 'Remove appreciation from' : 'Appreciate'} ${post.title}`} disabled={likeMutation.isPending} onClick={() => loggedIn ? likeMutation.mutate(!post.isLiked) : signIn()} />
       {divider && <span aria-hidden="true" className="h-5 w-px bg-[var(--color-border)]" />}
-      <button type="button" aria-label={`Comments on ${post.title}`} aria-haspopup="dialog" aria-expanded={commentsOpen} aria-controls={commentsOpen ? commentsId : undefined} onClick={() => setCommentsOpen(true)} className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 transition-colors hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">
+      <button data-button-style="action" type="button" aria-label={`Comments on ${post.title}`} aria-haspopup="dialog" aria-expanded={commentsOpen} aria-controls={commentsOpen ? commentsId : undefined} onClick={() => setCommentsOpen(true)} className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 transition-colors hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">
         <CommentIcon /><span>{post.commentsCount || 0}</span>
       </button>
     </div>

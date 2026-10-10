@@ -1,8 +1,28 @@
 # Modal and overlay audit
 
+## Current modal/header inventory — 2026-10-10
+
+Title alignment follow-up: ModalHeader now expands its title column and vertically centers subtitle-free headings beside Close. Subtitle-bearing headers retain their existing top alignment. This changes only ModalHeader.tsx, the shared browser assertion helper, UI rules, this audit, and the progress tracker; existing callers, title text alignment, panel padding, Close targets, and backend contracts are preserved. Verification is recorded below in the progress tracker.
+
+Source inspection finds 14 product modal families, excluding dropdowns and non-modal popovers: Ask the community, Create a collection, Create a short series, Submit an article, Delete collection, Short read, mobile Account, mobile Search, Comments, Report, Share, Sign in, mobile Inbox, and Direct writer request. Report is one shared shell with post/short/question/answer subjects; counting those subjects separately gives 17 purpose-specific dialogs. ModalLayer is infrastructure and is not counted. Desktop Inbox and Filters remain non-modal popovers.
+
+Before standardization, headers varied between sans-serif form titles, compact sans-serif report/request/share titles, serif Comments/delete titles, uppercase Short read/Inbox labels, hidden Account/sign-in titles, and the search-field-led mobile Search header. All these headers now reuse ModalHeader.tsx. This inventory supersedes the historical nine-type count for the current working tree, without superseding its dated behavioral evidence.
+
+Completed approved presentation: the Comments reference's 20 px bold Libre Baskerville title, optional 12 px secondary subtitle, divided header, 16 px phone/24 px wider horizontal gutters, 12 px vertical padding, and borderless 44 px Close target. Existing content titles and useful subtitles are retained. Account and Sign in have visible titles; mobile Search has a title row above its existing animated search field and retains one Close control. The desktop Inbox is excluded from the modal count and uses the same approved header as mobile Inbox.
+
+Changed implementation files: new `Frontend/src/shared/components/ui/ModalHeader.tsx`; existing `features/post/components/CommentsModal.tsx`, `shared/components/ui/ReportModal.tsx`, `shared/components/ui/ShareMenu.tsx`, `features/auth/components/LoginModal.tsx`, `features/discovery/pages/Explore/QuestionsTab.jsx`, `features/collection/pages/index.jsx`, `features/discovery/pages/Search/ShortsTab.jsx`, `features/discovery/pages/Explore/CompetitionDetail.jsx`, `features/collection/components/CollectionCard.jsx`, `features/discovery/components/ShortReadModal.jsx`, `features/user/components/MobileProfileSheet.tsx`, `features/discovery/components/MobileSearchDialog.tsx`, `features/notification/pages/NotificationsPage.jsx`, and `features/user/pages/Author/index.jsx` (all under `Frontend/src/`).
+
+Changed verification files under `Frontend/tests/`: new `helpers/modal-header.js`; existing `modal-audit.spec.js`, `report-modal.spec.js`, `share-menu.spec.js`, `notifications-modal.spec.js`, `auth-access-modal.spec.js`, `profile-discovery.spec.js`, and `mobile-search-dialog.spec.js`. Documentation changes: this audit, `ui-rules.md`, `ui-registry.md`, `progress-tracker.md`, and the existing notifications/report/share audits. No temporary edit script remains.
+
+Frontend retains React/Vite, existing feature panels, DM Sans body controls, semantic Light/Dark colors, placement, animation, forms, and native modal focus/dismissal contracts. Existing hooks connect these surfaces to Express controllers/services and Mongoose identity, post/comment, question, collection, series, competition, notification, and creator-request records. Share remains a browser-only action. No backend route, API contract, schema, service, or persistence change is required.
+
+The user explicitly approved the structural before/after impact, including desktop Inbox, on 2026-10-10. No approval decision remains. Dated completed verification is recorded in progress-tracker.md; historical draft-loss and eligible-list recovery limitations remain outside this header change.
+
 Audited: 2026-10-07. Scope: the current working tree, including its native-dialog and viewport-placement changes. This is an audit, not a claim that every modal is fixed. Application code was not changed by this task.
 
 ## Inventory and verification boundary
+
+Notifications was converted to a native ModalLayer inbox on 2026-10-09. Its entry points, preserved background route/scroll, read actions, cursor pagination, and focused browser evidence are owned by the [notifications audit](notifications-audit.md). It is an addition to this report's original dated modal inventory. The 2026-10-10 change uses an anchored ViewportPopover on desktop; mobile retains the native modal.
 
 The original 2026-10-07 audit covered nine user-facing modal types. Reporting became a tenth type on 2026-10-08; its separate inventory and verification are owned by the [report-button audit](report-audit.md). `ModalLayer` is a wrapper, not a tenth product dialog. The first six feature forms/reading surfaces below use that wrapper; Account, mobile search, and comments have their own native-dialog implementations. All nine enter the browser's modal top layer.
 
@@ -59,6 +79,8 @@ Priority: P2. The shared compact comment header places the author and date in on
 File relevant to a fix: `Frontend/src/features/post/pages/CommentsSection.jsx`. Preserve the avatar/name/date design, but allow the name/date to wrap within the available column.
 
 ## Related overlays and excluded surfaces
+
+The 2026-10-09 authentication change adds `LoginModal` for protected routes, gated actions, and expired sessions. It reuses Login/ModalLayer and retains direct login/signup pages. Its current behavior is owned by the Sign-in access guards section in UI rules; verification is separate from the historical nine-type audit above.
 
 | Surface | Classification | Existing coverage used in this audit |
 |---|---|---|

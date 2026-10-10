@@ -32,7 +32,7 @@ router.put('/:postId/bookmark',       validateToken, savePost);
 router.delete('/:postId/bookmark',    validateToken, unsavePost);
 router.put('/:postId/like',           validateToken, likePost);
 router.delete('/:postId/like',        validateToken, unlikePost);
-router.get('/:postId/comments',       getComments);
+router.get('/:postId/comments',       optionalAuth, getComments);
 router.post('/:postId/comments',      validateToken, createComment);
 router.post('/:postId/reports',       validateToken, reportPost);
 

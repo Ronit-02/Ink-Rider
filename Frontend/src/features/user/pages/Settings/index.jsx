@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useSelector } from 'react-redux'
-import { Link, useOutletContext } from 'react-router-dom'
+import { useOutletContext } from 'react-router-dom'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import Button from '@/shared/components/ui/Button'
 import StepInterests from '@/features/onboarding/pages/StepInterests'
@@ -13,7 +13,7 @@ import useToast from '@/shared/hooks/useToast'
 import ProfileSettings from '../../components/ProfileSettings'
 
 export default function SettingsPage() {
-  const { dark, toggleTheme } = useOutletContext()
+  const { themePreference, setTheme } = useOutletContext()
   const isReady = useSelector(state => state.auth.isReady)
   const loggedIn = useSelector(state => Boolean(state.auth.user))
   return <PageFrame>
@@ -21,8 +21,8 @@ export default function SettingsPage() {
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">Your app</p>
       <h1 className="mt-3 text-[clamp(30px,5vw,48px)] font-bold tracking-[-0.05em] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>Settings</h1>
     </header>
-    <ProfileSettings dark={dark} toggleTheme={toggleTheme} />
-    {!isReady ? <p role="status" className="py-7 text-[13px] text-[var(--color-text-secondary)]">Restoring your session…</p> : loggedIn ? <MemberSettings /> : <p className="py-7 text-[13px] text-[var(--color-text-secondary)]"><Link to="/login" className="font-semibold underline underline-offset-4">Sign In</Link> to manage your reading interests.</p>}
+    <ProfileSettings themePreference={themePreference} setTheme={setTheme} />
+    {!isReady ? <p role="status" className="py-7 text-[13px] text-[var(--color-text-secondary)]">Restoring your session…</p> : loggedIn ? <MemberSettings /> : null}
   </PageFrame>
 }
 

@@ -58,7 +58,7 @@ export default function PostPage() {
   const [showShare,   setShowShare]   = useState(false)
   const [showReport,  setShowReport]  = useState(false)
   const [shortReadId, setShortReadId] = useState(null)
-  const [isWideScreen, setIsWideScreen] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
+  const [isWideScreen, setIsWideScreen] = useState(() => window.matchMedia('(min-width: 1280px)').matches)
   const hasSidePanel = showSummary || readAloud;
 
   // Hooks
@@ -67,8 +67,9 @@ export default function PostPage() {
   const likeMutation = usePostLike(postId)
   const reportMutation = useReportPost(postId)
   const pageRef = useRef(null)
+  const readingEndRef = useRef(null)
   const shareTriggerRef = useRef(null)
-  const progress = useReadingProgress(pageRef);
+  const progress = useReadingProgress(pageRef, readingEndRef)
   const recordedPostId = useRef(null)
   const recordedCompletion = useRef(false)
   const recordedDepths = useRef(new Set())
@@ -80,7 +81,7 @@ export default function PostPage() {
 
   // Page Effects
   useEffect(() => {
-    const media = window.matchMedia('(min-width: 1024px)')
+    const media = window.matchMedia('(min-width: 1280px)')
     const update = () => setIsWideScreen(media.matches)
     media.addEventListener('change', update)
     return () => media.removeEventListener('change', update)
@@ -150,7 +151,7 @@ export default function PostPage() {
   // Session restoration temporarily disables the reader-specific detail query.
   // Keep the existing skeleton visible until a post response is available so a
   // reload cannot dereference an absent response and blank the page.
-  if (fetchPostIsLoading || (!postData && !isError)) return <PostDetailSkeleton />;
+  if (fetchPostIsLoading || (!postData && !isError)) return <PageFrame><PostDetailSkeleton as="div" className="!m-0 !max-w-[760px] !p-0" /></PageFrame>;
   if (isError && isMissingResourceError(error)) return <MissingResourceState eyebrow="Article unavailable" title="This article is no longer available" detail="It may have been removed, unpublished, or the link may be incorrect. Explore recent stories instead." recoveryTo="/" recoveryLabel="Explore stories" />;
   if (isError) return <PostErrorState onRetry={refetch} />;
   const postBlocks = parsePostBlocks(postData.body)
@@ -193,7 +194,7 @@ export default function PostPage() {
       </div>
 
       {/* ── Page body — LEFT aligned (matches sidebar layout) ── */}
-      <PageFrame className="flex flex-col gap-8 lg:flex-row">
+      <PageFrame className="flex flex-col gap-8 xl:flex-row">
 
         {/* ── Article column ── */}
         <div className={`min-w-0 w-full flex-1 ${hasSidePanel ? '' : 'max-w-[760px]'}`}>
@@ -215,22 +216,23 @@ export default function PostPage() {
           </h1>
 
           {/* Author row + actions */}
-          <div className="flex flex-col items-start justify-between mb-6 gap-4 lg:flex-row lg:items-center lg:flex-wrap">
-            <div className="w-full min-w-0 lg:w-auto lg:flex-1">
-              <AuthorMeta author={postData.author} readTime={postData?.readTime || '5 mins'} date={postData.createdAt} size="md" stacked={!isWideScreen} />
+          <div className="flex flex-col items-start justify-between mb-6 gap-5 sm:flex-row sm:items-center sm:flex-wrap sm:gap-6">
+            <div className="w-full min-w-0 sm:w-auto sm:flex-1 sm:min-w-[200px]">
+              <AuthorMeta author={postData.author} readTime={postData?.readTime || '5 mins'} date={postData.createdAt} size="md" stacked variant="article" />
             </div>
 
-            <div className="flex gap-2 shrink-0">
+            <div role="group" aria-label="Article actions" className="flex flex-wrap items-center gap-1.5 shrink-0 max-w-full">
               
               <AppreciationButton isLiked={postData.isLiked} count={postData.likesCount} label={postData.isLiked ? 'Remove appreciation' : 'Appreciate this article'} disabled={likeMutation.isPending} onClick={handleLike} />
 
-              <button type="button" onClick={handleBookmark}
+              <button data-button-style="action" type="button" onClick={handleBookmark}
                 disabled={BookmarkMutation.isPending}
                 aria-label={postData.isBookmarked ? 'Remove from saved articles' : 'Save this article'}
                 aria-pressed={postData.isBookmarked}
-                className={`w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-(--color-border) flex items-center justify-center cursor-pointer transition-all duration-150
+                className={`min-h-11 rounded-full border border-(--color-border) px-3 flex items-center justify-center gap-2 text-[13px] font-medium cursor-pointer transition-all duration-150 hover:opacity-80
                   disabled:opacity-60 ${postData.isBookmarked ? 'bg-(--color-accent) text-(--color-text-inverted)' : 'bg-(--color-surface) text-(--color-text-secondary)'}`} aria-busy={BookmarkMutation.isPending}>
                 <BookmarkIcon filled={postData.isBookmarked} />
+                <span>{postData.isBookmarked ? 'Saved' : 'Save'}</span>
               </button>
               
               {/* Share */}
@@ -240,8 +242,9 @@ export default function PostPage() {
                   aria-expanded={showShare}
                   aria-haspopup="dialog"
                   aria-controls={showShare ? 'article-share-menu' : undefined}
-                  className="w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-(--color-border) bg-(--color-surface) text-(--color-text-secondary) flex items-center justify-center cursor-pointer transition-all">
+                  className="min-h-11 px-3 rounded-full text-(--color-text-secondary) flex items-center justify-center gap-2 text-[13px] font-medium cursor-pointer transition-all hover:bg-(--color-bg-alt)">
                   <ShareIcon />
+                  <span>Share</span>
                 </button>
                 {showShare && <ShareMenu anchorRef={shareTriggerRef} onClose={closeShareMenu} id="article-share-menu" label="Share article" contentName="Article" url={`${window.location.origin}/post/${postId}`} />}
               </div>
@@ -252,8 +255,8 @@ export default function PostPage() {
                 aria-label={reportTitle(postData.format === 'short' ? 'short' : 'post')}
                 aria-haspopup="dialog"
                 aria-expanded={showReport}
-                  className="w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-(--color-border) bg-(--color-surface)
-                  text-(--color-text-secondary) flex items-center justify-center cursor-pointer transition-all">
+                title={reportTitle(postData.format === 'short' ? 'short' : 'post')}
+                  className="w-11 h-11 rounded-full text-(--color-text-muted) hover:bg-(--color-bg-alt) hover:text-(--color-text-secondary) flex items-center justify-center cursor-pointer transition-all">
                 <FlagIcon />
               </button>
             </div>
@@ -294,6 +297,8 @@ export default function PostPage() {
           <AuthorBio author={postData.author} />
 
           <Divider className="my-10" />
+
+          <div ref={readingEndRef} />
 
           {/* Comments (renamed from Responses) */}
           <CommentsSection postId={postId} initialCount={postData.commentsCount || 0} />

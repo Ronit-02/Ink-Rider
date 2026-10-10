@@ -1,14 +1,14 @@
-type Props = { dark: boolean; toggleTheme: () => void }
+import Select from '@/shared/components/ui/Select'
 
-export default function ProfileSettings({ dark, toggleTheme }: Props) {
+type Props = { themePreference: 'system' | 'light' | 'dark'; setTheme: (value: string) => void }
+const themes = [{ value: 'system', label: 'Use system theme' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]
+const languages = [{ value: 'en', label: 'English' }]
+
+export default function ProfileSettings({ themePreference, setTheme }: Props) {
   return <section aria-labelledby="app-preferences-title" className="border-y border-[var(--color-border)] py-7">
     <h2 id="app-preferences-title" className="mb-5 text-[18px] font-semibold">App preferences</h2>
-    <label htmlFor="app-theme" className="mb-2 block text-[13px] font-semibold">Theme</label>
-    <select id="app-theme" value={dark ? 'dark' : 'light'} onChange={event => { if ((event.target.value === 'dark') !== dark) toggleTheme() }} className="mb-5 min-h-11 w-full max-w-[420px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-alt)] px-3 text-[14px]">
-      <option value="light">Light</option><option value="dark">Dark</option>
-    </select>
-    <label htmlFor="app-language" className="mb-2 block text-[13px] font-semibold">Language</label>
-    <select id="app-language" defaultValue="en" disabled aria-describedby="app-language-help" className="min-h-11 w-full max-w-[420px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-alt)] px-3 text-[14px]"><option value="en">English</option></select>
+    <div className="mb-5"><Select id="app-theme" label="Theme" value={themePreference} options={themes} onChange={setTheme} /></div>
+    <Select id="app-language" label="Language" value="en" options={languages} onChange={() => {}} describedBy="app-language-help" />
     <p id="app-language-help" className="mt-2 text-[12px] text-[var(--color-text-secondary)]">English is the only language available right now.</p>
   </section>
 }

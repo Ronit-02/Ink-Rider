@@ -22,7 +22,7 @@ const benefits = [
 const linkClass = 'inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--color-border)] px-[18px] py-2 text-[13px] font-medium'
 
 export default function MembershipPage() {
-  const { loggedIn } = useAuth()
+  const { loggedIn, signIn } = useAuth()
   const isReady = useSelector((state: { auth: { isReady: boolean } }) => state.auth.isReady)
   const entitlements = retainRetryView(useEntitlements(isReady && loggedIn))
   const membership = entitlements.data?.membership
@@ -42,12 +42,12 @@ export default function MembershipPage() {
       {!hasSubscription && <><p className="mt-2 text-[22px] font-bold text-[var(--color-text)]">₹199<span className="text-[13px] font-normal text-[var(--color-text-secondary)]"> / month</span></p><p className="mt-2 text-[13px] leading-6 text-[var(--color-text-secondary)]">Provisional launch price. Paid signup will be available after payment integration. No payment is taken while billing is unavailable.</p></>}
       <p className="mt-2 text-[13px] leading-6 text-[var(--color-text-secondary)]">{hasSubscription ? 'Explore your member experiences or manage your subscription.' : 'Review the final price and renewal details in checkout before confirming your membership.'}</p>
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        {!isReady ? <p role="status" className="text-[13px]">Restoring your session…</p> : !loggedIn ? <Link to="/login" state={{ returnTo: '/membership' }} style={{ color: 'var(--color-text-inverted)' }} className={`${linkClass} bg-[var(--color-accent)]`}>Sign In to join</Link> : entitlements.isPending ? <p role="status" className="text-[13px]">Checking your membership…</p> : entitlements.isError ? <><p role="alert" className="text-[13px] text-[var(--color-danger)]">Your membership could not be checked.</p><Button variant="secondary" className="min-h-11 sm:min-h-11" onClick={() => entitlements.refetch()} aria-busy={entitlements.isFetching} disabled={entitlements.isFetching}>Try again</Button></> : <>
+        {!isReady ? <p role="status" className="text-[13px]">Restoring your session…</p> : !loggedIn ? <button type="button" onClick={signIn} aria-haspopup="dialog" style={{ color: 'var(--color-text-inverted)' }} className={`${linkClass} bg-[var(--color-accent)]`}>Sign In to join</button> : entitlements.isPending ? <p role="status" className="text-[13px]">Checking your membership…</p> : entitlements.isError ? <><p role="alert" className="text-[13px] text-[var(--color-danger)]">Your membership could not be checked.</p><Button variant="secondary" className="min-h-11 sm:min-h-11" onClick={() => entitlements.refetch()} aria-busy={entitlements.isFetching} disabled={entitlements.isFetching}>Try again</Button></> : <>
           <Button className="min-h-11 sm:min-h-11" disabled={billing.isPending} onClick={() => billing.mutate()} aria-busy={billing.isPending}>{hasSubscription ? 'Manage membership' : 'Become a member'}</Button>
           {hasSubscription && <Link to="/members" className={linkClass}>Open Member Hub</Link>}
         </>}
       </div>
-      {!loggedIn && isReady && <p className="mt-3 text-[13px] text-[var(--color-text-secondary)]">New here? You can create a free account from the sign-in page, then return here to join.</p>}
+      {!loggedIn && isReady && <p className="mt-3 text-[13px] text-[var(--color-text-secondary)]">New here? You can create a free account in the sign-in dialog. After onboarding, return here to join.</p>}
       {billing.isError && <p role="alert" className="mt-3 text-[13px] text-[var(--color-danger)]">{billingNotConfigured ? 'Paid membership is not available yet. Payment integration is coming soon; no payment has been taken.' : 'Membership billing could not be opened. Please try again later.'}</p>}
     </section>
 

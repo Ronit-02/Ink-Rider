@@ -57,6 +57,10 @@ Public writer-profile article summaries include the viewer's `isLiked` state, re
 
 Discovery lists use bounded cursor pages and compact presentation DTOs. Personalized ranking reads a bounded candidate projection, then loads only the selected page's display fields; it must not hydrate or parse full article bodies for every ranking candidate.
 
+Unified search also supports explicit reader-question results. It matches question text, context, and tags with the existing topic/time filters and bounded limits, excludes closed questions, and reuses the question-list presenter for public author identity, viewer upvote state, answer counts, and accessible published responses. Existing post/writer/short search behavior and stored models are preserved. Search caches for questions are viewer-specific and refresh after confirmed upvotes.
+
+Global autocomplete returns independent groups of up to five complete search phrases and five public writers. Phrases come from publicly released post tags and titles, with normalized deduplication, exact/phrase-prefix/word-prefix ranking, and supporting-publication counts. It does not read article bodies or search history. Selecting a phrase runs unified search; selecting a writer opens their profile. Full-result contracts and persistence models remain unchanged.
+
 Competition detail entry author data includes the stored public profile handle, resolved through one batch profile read, so entry cards can link directly to the writer without guessing a handle from the display name.
 
 ## Product data principles

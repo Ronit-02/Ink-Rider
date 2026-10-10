@@ -70,6 +70,29 @@ body {
 
 /* Element defaults */
 button { cursor: pointer; font-family: inherit; }
+/* Application pages and Back rows share one outer frame. Reading columns and
+   controls can remain narrower inside it without moving the page's origin. */
+.app-page-frame {
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+@media (min-width: 640px) {
+  .app-page-frame { padding-inline: 20px; }
+}
+@media (min-width: 768px) {
+  .app-page-frame { padding-inline: 32px; }
+}
+[data-app-scroll] { scrollbar-gutter: stable; }
+/* The shell scrolls below the navbar, so zero pins Back beneath it. Keep
+   scrolling content behind an opaque row and below navigation/overlays. */
+[data-page-back] {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--color-bg);
+}
 /* Back owns a separate row. Keep its following content close but clear of the
    control/focus ring without changing primary-page spacing. */
 [data-page-back] + main,
@@ -82,14 +105,52 @@ button { cursor: pointer; font-family: inherit; }
     padding-top: 1.5rem;
   }
 }
-/* Async actions retain their content and dimensions while using one muted fill.
-   Busy is separate from validation/permission-disabled state. */
-button[aria-busy="true"] {
+/* Text-only actions retain their existing pending treatment. Icon-led actions
+   keep their surface and label; only the icon communicates pending work. */
+button[aria-busy="true"]:not(:has(svg, [data-button-icon])) {
   background: color-mix(in srgb, var(--color-accent) 60%, var(--color-surface)) !important;
   border-color: color-mix(in srgb, var(--color-accent) 60%, var(--color-surface)) !important;
   color: var(--color-text-inverted) !important;
   opacity: 1 !important;
   cursor: wait;
+}
+button[aria-busy="true"]:has(svg, [data-button-icon]) {
+  opacity: 1 !important;
+  cursor: wait;
+}
+button[aria-busy="true"] svg {
+  color: var(--color-text-muted) !important;
+  fill: var(--color-text-muted) !important;
+  stroke: var(--color-text-muted) !important;
+}
+button[aria-busy="true"] svg [fill]:not([fill="none"]) {
+  fill: var(--color-text-muted) !important;
+}
+button[aria-busy="true"] svg [stroke]:not([stroke="none"]) {
+  stroke: var(--color-text-muted) !important;
+}
+button[aria-busy="true"] [data-button-icon] {
+  color: var(--color-text-muted) !important;
+}
+/* Quiet engagement actions have no resting boundary, including selected state.
+   Keep border width for stable geometry and the existing keyboard focus ring. */
+button[data-button-style="action"] {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--color-text-secondary) !important;
+}
+button[data-button-style="action"][aria-pressed="true"] {
+  color: var(--color-accent) !important;
+}
+/* Optional action boundary preserves the transparent surface and geometry. */
+button[data-button-style="action"][data-button-boundary="true"] {
+  border-color: var(--color-border) !important;
+}
+button[data-button-style="action"][data-button-boundary="true"][aria-pressed="true"] {
+  border-color: var(--color-accent) !important;
+}
+button[data-button-style="action"]:hover:not(:disabled) {
+  background: var(--color-bg-alt) !important;
 }
 input, textarea { font-family: inherit; }
 img { display: block; max-width: 100%; }
@@ -120,7 +181,7 @@ textarea.editor-writing-field {
 
 textarea.outline-none.editor-writing-field:focus-visible {
   outline: none;
-  box-shadow: inset 2px 0 0 var(--color-focus);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--color-focus) 55%, var(--color-bg));
 }
 
 /* The container already changes border on focus. Keep the field-level cue
@@ -284,6 +345,18 @@ textarea.outline-none.editor-writing-field:focus-visible {
 
 @media (max-width: 768px) {
   .toast-viewport { right: 16px; bottom: 88px; left: 16px; width: auto; }
+}
+
+.select-chevron { transition: transform 120ms ease; }
+.select-options { border-radius: 0 0 8px 8px; animation: selectRevealDown 120ms ease-out; }
+.select-options[data-placement="top"] { border-radius: 8px 8px 0 0; animation-name: selectRevealUp; }
+@keyframes selectRevealDown {
+  from { opacity: 0; clip-path: inset(0 0 100% 0); }
+  to { opacity: 1; clip-path: inset(0); }
+}
+@keyframes selectRevealUp {
+  from { opacity: 0; clip-path: inset(100% 0 0 0); }
+  to { opacity: 1; clip-path: inset(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {

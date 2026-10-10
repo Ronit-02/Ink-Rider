@@ -1,5 +1,5 @@
 import { useState, useRef, forwardRef, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { v4 as uuid } from 'uuid'
 import Button from '@/shared/components/ui/Button'
@@ -14,6 +14,7 @@ import useToast from '@/shared/hooks/useToast'
 import { useSelector } from 'react-redux'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import SignInPrompt from '@/shared/components/ui/SignInPrompt'
+import useLoginPrompt from '@/features/auth/hooks/useLoginPrompt'
 
 // Block Input Types
 const BLOCK_TYPES = [
@@ -40,17 +41,21 @@ function newBlock(type = 'text') {
 export default function WritePage() {
   const isReady = useSelector(state => state.auth.isReady)
   const user = useSelector(state => state.auth.user)
+  const [params] = useSearchParams()
   if (!isReady) return <PageFrame><p role="status">Restoring your session…</p></PageFrame>
-  if (!user) return <PageFrame className="flex min-h-full flex-col !pb-6"><SignInPrompt message="Sign in to start writing." /></PageFrame>
+  if (!user && (params.get('draft') || params.get('edit'))) return <PageFrame className="flex min-h-full flex-col !py-6"><SignInPrompt message="Sign in to access your saved story." /></PageFrame>
   return <MemberEditor />
 }
 
 function MemberEditor() {
+  const loggedIn = useSelector(state => Boolean(state.auth.user))
+  const signIn = useLoginPrompt()
 
   // State and refs
   const navigate  = useNavigate()
   const { notify } = useToast()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
+  const { hash } = useLocation()
   const sourceQuestionId = searchParams.get('question')
   const initialDraftId = searchParams.get('draft')
   const editPostId = searchParams.get('edit')
@@ -89,11 +94,11 @@ function MemberEditor() {
   const draftIdRef = useRef(initialDraftId)
   const draftVersionRef = useRef(null)
   const wordCount = blocks.reduce((count, block) => count + String(block.content || '').trim().split(/\s+/).filter(Boolean).length, 0)
-  const depthOptions = useQuery({ queryKey: ['depth-options'], queryFn: fetchDepthOptions, enabled: format === 'short' })
-  const entitlements = useEntitlements(true)
-  const canScheduleEarlyAccess = entitlements.data?.capabilities?.includes('early_access')
-  const draftQuery = useQuery({ queryKey: ['draft', initialDraftId], queryFn: () => fetchDraft(initialDraftId), enabled: Boolean(initialDraftId), retry: false })
-  const editQuery = useQuery({ queryKey: ['post', editPostId], queryFn: fetchPost, enabled: Boolean(editPostId), retry: false })
+  const depthOptions = useQuery({ queryKey: ['depth-options'], queryFn: fetchDepthOptions, enabled: loggedIn && format === 'short' })
+  const entitlements = useEntitlements(loggedIn)
+  const canScheduleEarlyAccess = loggedIn && entitlements.data?.capabilities?.includes('early_access')
+  const draftQuery = useQuery({ queryKey: ['draft', initialDraftId], queryFn: () => fetchDraft(initialDraftId), enabled: loggedIn && Boolean(initialDraftId), retry: false })
+  const editQuery = useQuery({ queryKey: ['post', editPostId], queryFn: fetchPost, enabled: loggedIn && Boolean(editPostId), retry: false })
 
   useEffect(() => {
     if (!draftQuery.data || hydratedDraftRef.current) return
@@ -131,7 +136,7 @@ function MemberEditor() {
   }, [draftId, draftVersion])
 
   useEffect(() => {
-    if (!hydratedDraftRef.current || draftQuery.isError) return
+    if (!loggedIn || !hydratedDraftRef.current || draftQuery.isError) return
     setAutosaveStatus('waiting')
     const timer = window.setTimeout(async () => {
       const payload = { title, format, blocks, tags, publicAt: publicAt ? new Date(publicAt).toISOString() : null }
@@ -145,7 +150,7 @@ function MemberEditor() {
           setDraftId(result.id)
           const next = new URLSearchParams(searchParams)
           next.set('draft', result.id)
-          setSearchParams(next, { replace: true })
+          navigate({ search: `?${next}`, hash }, { replace: true })
         }
         draftVersionRef.current = result.version
         setDraftVersion(result.version)
@@ -155,7 +160,7 @@ function MemberEditor() {
       }
     }, 1500)
     return () => window.clearTimeout(timer)
-  }, [title, format, blocks, tags, publicAt, draftQuery.isError, searchParams, setSearchParams])
+  }, [loggedIn, title, format, blocks, tags, publicAt, draftQuery.isError, searchParams, navigate, hash])
 
   // Creating Post
   const { mutate, isPending, isError, error } = useMutation({
@@ -176,6 +181,10 @@ function MemberEditor() {
   // Submitting Form
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!loggedIn) {
+      signIn()
+      return
+    }
     if (editPostId) {
       mutate({ postId: editPostId, expectedRevision: postRevision, title, body: JSON.stringify(blocks), tags, publicAt: publicAt ? new Date(publicAt).toISOString() : undefined })
       return
@@ -400,7 +409,7 @@ function MemberEditor() {
   // }, []);
 
   return (
-    <main className="mx-auto w-full max-w-[1180px] px-4 pt-6 pb-24 sm:px-6 lg:px-8 lg:pt-8">
+    <PageFrame className="!pt-6 lg:!pt-8">
 
       {/* <HoveringMenu position={menuPosition} onFormat={applyFormatting} /> */}
       
@@ -408,13 +417,13 @@ function MemberEditor() {
         <div>
           <h1 className="text-[24px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{editPostId ? 'Edit story' : 'Write'}</h1>
           <p role="status" aria-live="polite" className={`mt-1 text-[12px] ${['conflict', 'error'].includes(autosaveStatus) ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-secondary)]'}`}>
-            {autosaveStatus === 'loading' ? 'Loading draft…' : autosaveStatus === 'saving' ? 'Saving…' : autosaveStatus === 'conflict' ? 'Draft conflict' : autosaveStatus === 'error' ? 'Save failed' : autosaveStatus === 'saved' ? '✓ Saved' : autosaveStatus === 'waiting' ? 'Unsaved changes' : 'Autosave on'}
+            {!loggedIn ? 'Sign in to save your draft.' : autosaveStatus === 'loading' ? 'Loading draft…' : autosaveStatus === 'saving' ? 'Saving…' : autosaveStatus === 'conflict' ? 'Draft conflict' : autosaveStatus === 'error' ? 'Save failed' : autosaveStatus === 'saved' ? '✓ Saved' : autosaveStatus === 'waiting' ? 'Unsaved changes' : 'Autosave on'}
           </p>
         </div>
           <Button
             variant="primary"
             className="!min-h-11"
-            disabled={!title.trim() || !tags.length || (format === 'article' && !coverURL && !cover) || (format === 'short' && wordCount > 500) || isPending}
+            disabled={isPending || (loggedIn && (!title.trim() || !tags.length || (format === 'article' && !coverURL && !cover) || (format === 'short' && wordCount > 500)))}
             onClick={handleSubmit} aria-busy={isPending}>
             {editPostId ? 'Update' : 'Publish'}
           </Button>
@@ -517,24 +526,26 @@ function MemberEditor() {
 
       <section aria-label="Writing area" className="min-w-0">
         {/* ── Title input ── */}
-        <label htmlFor="editor-title" className="mb-3 block text-[12px] font-medium text-[var(--color-text-secondary)]">{format === 'short' ? 'Short title' : 'Article title'}</label>
-        <textarea
-          id="editor-title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder={format === 'short' ? 'A focused idea…' : 'Title…'}
-          maxLength={format === 'short' ? 120 : 180}
-          className="editor-writing-field w-full bg-transparent border-none outline-none resize-none font-bold text-[clamp(24px,4vw,36px)] leading-[1.3] tracking-[-0.5px] mb-8 text-(--color-text) placeholder:text-(--color-text-muted)"
-          style={{ fontFamily: "var(--font-display)", minHeight: "1.3em" }}
-          rows={1}
-          onInput={(e) => {
-            e.target.style.height = "auto";
-            e.target.style.height = e.target.scrollHeight + "px";
-          }}
-        />
+        <div className="pl-24">
+          <label htmlFor="editor-title" className="mb-3 block text-[12px] font-medium text-[var(--color-text-secondary)]">{format === 'short' ? 'Short title' : 'Article title'}</label>
+          <textarea
+            id="editor-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={format === 'short' ? 'A focused idea…' : 'Title…'}
+            maxLength={format === 'short' ? 120 : 180}
+            className="editor-writing-field w-full bg-transparent border-none outline-none resize-none font-bold text-[clamp(24px,4vw,36px)] leading-[1.3] tracking-[-0.5px] mb-8 text-(--color-text) placeholder:text-(--color-text-muted)"
+            style={{ fontFamily: "var(--font-display)", minHeight: "1.3em" }}
+            rows={1}
+            onInput={(e) => {
+              e.target.style.height = "auto";
+              e.target.style.height = e.target.scrollHeight + "px";
+            }}
+          />
+        </div>
 
         {/* ── Block editor ── */}
-        <p className="mb-3 text-[12px] font-medium text-[var(--color-text-secondary)]">Story</p>
+        <p className="mb-3 pl-24 text-[12px] font-medium text-[var(--color-text-secondary)]">Story</p>
         <div className="flex min-h-[240px] flex-col gap-2 mb-4 relative" ref={editorRef}>
           {blocks.map(bl => (
             <Block
@@ -574,7 +585,7 @@ function MemberEditor() {
 
       </section>
 
-    </main>
+    </PageFrame>
   );
 }
 
@@ -669,7 +680,7 @@ const Block = forwardRef(
     }
 
     return (
-      <div className="relative group flex items-start gap-2">
+      <div className="relative group flex min-h-10 items-start gap-2 pl-24">
         {/* Content */}
         {
           block.type === "divider"
@@ -700,23 +711,25 @@ const Block = forwardRef(
           </div>
         }
         
-        {/* Add block button (appears on hover) */}
-        <button
-          type="button"
-          aria-label="Add block after this block"
-          onClick={() => onAdd()}
-          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity mt-1 w-10 h-10 flex items-center justify-center rounded text-(--color-text-muted) hover:text-green-500 bg-transparent border-none cursor-pointer text-[18px] shrink-0"
-          title="Add block after"
-          tabIndex={0}
-        >
-          +
-        </button>
+        <div className="absolute left-0 top-0 flex gap-2">
+          {/* Add block button (appears on hover or keyboard focus) */}
+          <button
+            type="button"
+            aria-label="Add block after this block"
+            onClick={() => onAdd()}
+            className="sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity w-10 h-10 flex items-center justify-center rounded text-(--color-text-muted) hover:text-green-500 bg-transparent border-none cursor-pointer text-[18px] shrink-0"
+            title="Add block after"
+            tabIndex={0}
+          >
+            +
+          </button>
 
-        {/* Delete button */}
-        <button type="button" aria-label={`Delete ${block.type} block`} onClick={onDelete}
-          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity mt-1 w-10 h-10 flex items-center justify-center rounded text-(--color-text-muted) hover:text-red-500 bg-transparent border-none cursor-pointer text-[16px] shrink-0">
-          ×
-        </button>
+          {/* Delete button */}
+          <button type="button" aria-label={`Delete ${block.type} block`} onClick={onDelete}
+            className="sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity w-10 h-10 flex items-center justify-center rounded text-(--color-text-muted) hover:text-red-500 bg-transparent border-none cursor-pointer text-[16px] shrink-0">
+            ×
+          </button>
+        </div>
       </div>
     )
   }

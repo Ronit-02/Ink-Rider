@@ -321,7 +321,7 @@ test('Home recovery action is an explicit button outside form submission semanti
   expect((await retry.boundingBox())?.height).toBeGreaterThanOrEqual(40)
 })
 
-test('mobile primary navigation exposes phone-sized link targets', async ({ page }) => {
+test('mobile primary navigation exposes phone-sized links and an Account action', async ({ page }) => {
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const url = new URL(route.request().url())
     if (url.pathname === '/api/auth/refresh-token') {
@@ -336,12 +336,15 @@ test('mobile primary navigation exposes phone-sized link targets', async ({ page
   const navigation = page.getByRole('navigation', { name: 'Mobile primary navigation' })
   await expect(navigation).toBeVisible()
   const links = navigation.getByRole('link')
-  await expect(links).toHaveCount(5)
-  await expect(links).toHaveText(['Home', 'Explore', 'Shorts', 'Write', 'Profile'])
+  await expect(links).toHaveCount(4)
+  await expect(links).toHaveText(['Home', 'Explore', 'Shorts', 'Collections'])
   for (const link of await links.all()) {
     expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(40)
   }
   await expect(navigation.getByRole('link', { name: 'Shorts' })).toHaveAttribute('href', '/shorts')
+  const account = navigation.getByRole('button', { name: 'Account', exact: true })
+  await expect(account).toHaveAttribute('aria-haspopup', 'dialog')
+  expect((await account.boundingBox())?.height).toBeGreaterThanOrEqual(44)
 })
 
 test('desktop sidebar resize handle supports bounded keyboard controls', async ({ page }) => {

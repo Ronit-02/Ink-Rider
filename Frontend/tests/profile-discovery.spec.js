@@ -1,3 +1,4 @@
+import { expectModalHeader } from './helpers/modal-header'
 import { test, expect } from '@playwright/test'
 
 const memberEmail = process.env.E2E_MEMBER_EMAIL || 'member@inkrider.local'
@@ -138,6 +139,7 @@ test.describe('public writer profile discovery', () => {
     await requestButton.click()
     await expect(requestButton).toHaveAttribute('aria-expanded', 'true')
     const dialog = page.getByRole('dialog', { name: 'Direct request to Maya Sen' })
+    await expectModalHeader(dialog)
     await expect(dialog).toBeVisible()
     expect(await dialog.evaluate(node => node.matches(':modal'))).toBe(true)
 
@@ -187,6 +189,7 @@ test.describe('public writer profile discovery', () => {
         const trigger = page.getByRole('button', { name: 'Request an article' })
         await trigger.click()
         const dialog = page.getByRole('dialog', { name: 'Direct request to Maya Sen' })
+        await expectModalHeader(dialog)
         await expect(dialog).toBeVisible()
         expect(await dialog.evaluate(node => node.matches(':modal') && node.parentElement === document.body)).toBe(true)
         for (let i = 0; i < 8; i++) {

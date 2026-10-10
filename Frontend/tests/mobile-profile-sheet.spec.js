@@ -57,15 +57,16 @@ for (const size of [{ width: 320, height: 480 }, { width: 360, height: 640 }, { 
   })
 }
 
-test('login reveals Write in the profile menu while Home retains Collections; sign out hides Write', async ({ page }) => {
+test('login retains Write in Account while Home retains Collections; sign out keeps public writing available', async ({ page }) => {
   await mockApi(page)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/shorts')
   const nav = page.getByRole('navigation', { name: 'Mobile primary navigation' })
   await nav.getByRole('button', { name: 'Account' }).click()
   const dialog = page.getByRole('dialog', { name: 'Account', exact: true })
-  await dialog.getByRole('link', { name: 'Sign In' }).click()
-  await expect(page).toHaveURL(/\/login$/)
+  await dialog.getByRole('button', { name: 'Sign In' }).click()
+  await expect(page.getByRole('dialog', { name: 'Sign in to Ink Rider' })).toBeVisible()
+  await expect(page).toHaveURL(/\/shorts$/)
   await page.getByRole('textbox', { name: 'Email', exact: true }).fill(session.email)
   await page.getByRole('textbox', { name: 'Password', exact: true }).fill('test-password-123')
   await page.getByRole('button', { name: 'Login', exact: true }).click()
@@ -74,7 +75,7 @@ test('login reveals Write in the profile menu while Home retains Collections; si
   await nav.getByRole('button', { name: 'Account' }).click()
   await expect(dialog.getByRole('link', { name: /My profile/ })).toBeVisible()
   await expect(dialog.getByRole('link', { name: 'Write', exact: true })).toBeVisible()
-  await expect(dialog.getByRole('link', { name: 'Sign In' })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'Sign In' })).toHaveCount(0)
   await expect(dialog.getByRole('link', { name: 'Sign Up' })).toHaveCount(0)
   await dialog.getByRole('button', { name: 'Sign Out', exact: true }).click()
   await expect(page).toHaveURL(/\/login$/)
@@ -134,7 +135,7 @@ test('sheet exits on desktop resize and stays usable with reduced motion', async
   await expect(trigger).toBeHidden()
   const sidebar = page.getByRole('navigation', { name: 'Desktop primary navigation' })
   await expect(sidebar.getByRole('link', { name: 'Settings' })).toBeVisible()
-  await expect(sidebar.getByRole('link', { name: 'Write' })).toHaveCount(0)
+  await expect(sidebar.getByRole('link', { name: 'Write' })).toBeVisible()
   await page.setViewportSize({ width: 390, height: 640 })
   await trigger.click()
   await dialog.getByRole('button', { name: 'Close account menu' }).click()
@@ -195,7 +196,8 @@ for (const signedIn of [false, true]) {
     }
     await page.getByRole('navigation', { name: 'Desktop primary navigation' }).getByRole('link', { name: 'Settings' }).click()
     await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible()
-    await page.getByLabel('Theme', { exact: true }).selectOption('dark')
+    await page.getByLabel('Theme', { exact: true }).click()
+    await page.getByRole('option', { name: 'Dark', exact: true }).click()
     await expect(page.locator('html')).toHaveClass(/dark/)
   })
 }

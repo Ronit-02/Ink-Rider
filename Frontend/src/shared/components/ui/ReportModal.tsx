@@ -1,3 +1,4 @@
+import ModalHeader from '@/shared/components/ui/ModalHeader'
 import { useId, type ReactNode, type RefObject } from 'react'
 import ModalLayer from './ModalLayer'
 import useDialogFocus from '@/shared/hooks/useDialogFocus'
@@ -13,10 +14,7 @@ export default function ReportModal({ title, onClose, children, returnFocusRef }
   const panelRef = useDialogFocus(onClose)
   return <ModalLayer aria-labelledby={titleId} onDismiss={onClose} dismissOnBackdrop={false} returnFocusRef={returnFocusRef} className="flex items-center justify-center p-4">
     <section ref={panelRef} tabIndex={-1} className="w-full max-w-[560px] overflow-y-auto rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-float)]">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 id={titleId} className="text-[14px] font-semibold text-[var(--color-text)]">{title}</h2>
-        <button type="button" onClick={onClose} aria-label="Close report dialog" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">×</button>
-      </div>
+      <ModalHeader title={title} titleId={titleId} onClose={onClose} closeLabel="Close report dialog" className="-mx-5 -mt-5 mb-4" />
       {children}
     </section>
   </ModalLayer>
