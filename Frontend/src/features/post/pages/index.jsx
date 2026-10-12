@@ -1,4 +1,5 @@
 import retainRetryView from '@/shared/utils/retainRetryView'
+import { AddToCollectionDialog } from '@/features/collection'
 import ReportForm from '@/shared/components/ui/ReportForm'
 import ReportModal, { reportTitle } from '@/shared/components/ui/ReportModal'
 import ShareMenu from '@/shared/components/ui/ShareMenu'
@@ -17,7 +18,6 @@ import AuthorBio from './AuthorBio'
 import CommentsSection from './CommentsSection'
 import { AIStickyButtons, AccessPanel, SummaryPanel, ReadAloudPanel } from './AIPanel'
 import useFetchPost from '../hooks/useFetchPost'
-import useBookmarkPost from '../hooks/useBookmarkPost'
 import usePostLike from '../hooks/usePostLike'
 import AppreciationButton from '@/features/post/components/AppreciationButton'
 import useReportPost from '../hooks/useReportPost'
@@ -47,6 +47,18 @@ const parsePostBlocks = body => {
 }
 
 export default function PostPage() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const query = useFetchPost(id)
+  if (query.data?.format === 'short') {
+    const blocks = parsePostBlocks(query.data.body)
+    const close = () => window.history.state?.idx > 0 ? navigate(-1) : navigate('/shorts', { replace: true })
+    return <PageFrame>{blocks && <PostMetadata post={query.data} blocks={blocks} />}<ShortReadModal key={id} postId={id} onClose={close} onNavigateAway={() => {}} onNavigate={nextId => navigate(`/post/${nextId}`, { replace: true })} /></PageFrame>
+  }
+  return <ArticlePage />
+}
+
+function ArticlePage() {
   const navigate  = useNavigate()
   const { id: postId } = useParams();
   const { loggedIn, signIn } = useAuth()
@@ -56,19 +68,21 @@ export default function PostPage() {
   const [showSummary, setShowSummary] = useState(false)
   const [readAloud,   setReadAloud]   = useState(false)
   const [showShare,   setShowShare]   = useState(false)
+  const [showSave, setShowSave] = useState(false)
   const [showReport,  setShowReport]  = useState(false)
   const [shortReadId, setShortReadId] = useState(null)
-  const [isWideScreen, setIsWideScreen] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
+  const [isWideScreen, setIsWideScreen] = useState(() => window.matchMedia('(min-width: 1280px)').matches)
   const hasSidePanel = showSummary || readAloud;
 
   // Hooks
   const { data: postData, isLoading: fetchPostIsLoading, isError, error, refetch } = retainRetryView(useFetchPost(postId));
-  const BookmarkMutation = useBookmarkPost(postId);
   const likeMutation = usePostLike(postId)
   const reportMutation = useReportPost(postId)
   const pageRef = useRef(null)
+  const readingEndRef = useRef(null)
   const shareTriggerRef = useRef(null)
-  const progress = useReadingProgress(pageRef);
+  const saveTriggerRef = useRef(null)
+  const progress = useReadingProgress(pageRef, readingEndRef)
   const recordedPostId = useRef(null)
   const recordedCompletion = useRef(false)
   const recordedDepths = useRef(new Set())
@@ -80,7 +94,7 @@ export default function PostPage() {
 
   // Page Effects
   useEffect(() => {
-    const media = window.matchMedia('(min-width: 1024px)')
+    const media = window.matchMedia('(min-width: 1280px)')
     const update = () => setIsWideScreen(media.matches)
     media.addEventListener('change', update)
     return () => media.removeEventListener('change', update)
@@ -132,7 +146,7 @@ export default function PostPage() {
   // Action Handlers
   const handleBookmark = () => {
     if (!loggedIn) return signIn()
-    BookmarkMutation.mutate(!postData.isBookmarked);
+    setShowSave(true)
   }
 
   const handleLike = () => {
@@ -150,7 +164,7 @@ export default function PostPage() {
   // Session restoration temporarily disables the reader-specific detail query.
   // Keep the existing skeleton visible until a post response is available so a
   // reload cannot dereference an absent response and blank the page.
-  if (fetchPostIsLoading || (!postData && !isError)) return <PostDetailSkeleton />;
+  if (fetchPostIsLoading || (!postData && !isError)) return <PageFrame><PostDetailSkeleton as="div" className="!m-0 !max-w-[760px] !p-0" /></PageFrame>;
   if (isError && isMissingResourceError(error)) return <MissingResourceState eyebrow="Article unavailable" title="This article is no longer available" detail="It may have been removed, unpublished, or the link may be incorrect. Explore recent stories instead." recoveryTo="/" recoveryLabel="Explore stories" />;
   if (isError) return <PostErrorState onRetry={refetch} />;
   const postBlocks = parsePostBlocks(postData.body)
@@ -193,7 +207,7 @@ export default function PostPage() {
       </div>
 
       {/* ── Page body — LEFT aligned (matches sidebar layout) ── */}
-      <PageFrame className="flex flex-col gap-8 lg:flex-row">
+      <PageFrame className="flex flex-col gap-8 xl:flex-row">
 
         {/* ── Article column ── */}
         <div className={`min-w-0 w-full flex-1 ${hasSidePanel ? '' : 'max-w-[760px]'}`}>
@@ -215,22 +229,23 @@ export default function PostPage() {
           </h1>
 
           {/* Author row + actions */}
-          <div className="flex flex-col items-start justify-between mb-6 gap-4 lg:flex-row lg:items-center lg:flex-wrap">
-            <div className="w-full min-w-0 lg:w-auto lg:flex-1">
-              <AuthorMeta author={postData.author} readTime={postData?.readTime || '5 mins'} date={postData.createdAt} size="md" stacked={!isWideScreen} />
+          <div className="flex flex-col items-start justify-between mb-6 gap-5 sm:flex-row sm:items-center sm:flex-wrap sm:gap-6">
+            <div className="w-full min-w-0 sm:w-auto sm:flex-1 sm:min-w-[200px]">
+              <AuthorMeta author={postData.author} readTime={postData?.readTime || '5 mins'} date={postData.createdAt} size="md" stacked variant="article" />
             </div>
 
-            <div className="flex gap-2 shrink-0">
+            <div role="group" aria-label="Article actions" className="flex flex-wrap items-center gap-1.5 shrink-0 max-w-full">
               
               <AppreciationButton isLiked={postData.isLiked} count={postData.likesCount} label={postData.isLiked ? 'Remove appreciation' : 'Appreciate this article'} disabled={likeMutation.isPending} onClick={handleLike} />
 
-              <button type="button" onClick={handleBookmark}
-                disabled={BookmarkMutation.isPending}
-                aria-label={postData.isBookmarked ? 'Remove from saved articles' : 'Save this article'}
+              <button ref={saveTriggerRef} data-button-style="action" type="button" onClick={handleBookmark}
+                aria-label={postData.isBookmarked ? 'Manage saved article' : 'Save this article'}
+                aria-haspopup="dialog"
                 aria-pressed={postData.isBookmarked}
-                className={`w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-(--color-border) flex items-center justify-center cursor-pointer transition-all duration-150
-                  disabled:opacity-60 ${postData.isBookmarked ? 'bg-(--color-accent) text-(--color-text-inverted)' : 'bg-(--color-surface) text-(--color-text-secondary)'}`} aria-busy={BookmarkMutation.isPending}>
+                className={`min-h-11 rounded-full border border-(--color-border) px-3 flex items-center justify-center gap-2 text-[13px] font-medium cursor-pointer transition-all duration-150 hover:opacity-80
+                  disabled:opacity-60 ${postData.isBookmarked ? 'bg-(--color-accent) text-(--color-text-inverted)' : 'bg-(--color-surface) text-(--color-text-secondary)'}`}>
                 <BookmarkIcon filled={postData.isBookmarked} />
+                <span>{postData.isBookmarked ? 'Saved' : 'Save'}</span>
               </button>
               
               {/* Share */}
@@ -240,8 +255,9 @@ export default function PostPage() {
                   aria-expanded={showShare}
                   aria-haspopup="dialog"
                   aria-controls={showShare ? 'article-share-menu' : undefined}
-                  className="w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-(--color-border) bg-(--color-surface) text-(--color-text-secondary) flex items-center justify-center cursor-pointer transition-all">
+                  className="min-h-11 px-3 rounded-full text-(--color-text-secondary) flex items-center justify-center gap-2 text-[13px] font-medium cursor-pointer transition-all hover:bg-(--color-bg-alt)">
                   <ShareIcon />
+                  <span>Share</span>
                 </button>
                 {showShare && <ShareMenu anchorRef={shareTriggerRef} onClose={closeShareMenu} id="article-share-menu" label="Share article" contentName="Article" url={`${window.location.origin}/post/${postId}`} />}
               </div>
@@ -252,8 +268,8 @@ export default function PostPage() {
                 aria-label={reportTitle(postData.format === 'short' ? 'short' : 'post')}
                 aria-haspopup="dialog"
                 aria-expanded={showReport}
-                  className="w-10 h-10 sm:w-9 sm:h-9 rounded-full border border-(--color-border) bg-(--color-surface)
-                  text-(--color-text-secondary) flex items-center justify-center cursor-pointer transition-all">
+                title={reportTitle(postData.format === 'short' ? 'short' : 'post')}
+                  className="w-11 h-11 rounded-full text-(--color-text-muted) hover:bg-(--color-bg-alt) hover:text-(--color-text-secondary) flex items-center justify-center cursor-pointer transition-all">
                 <FlagIcon />
               </button>
             </div>
@@ -267,11 +283,11 @@ export default function PostPage() {
 
           <Divider className="mb-6" />
 
-          {postData.seriesContext && <nav aria-label="Short series progression" className="mb-7 rounded-[14px] border border-(--color-border) bg-(--color-bg-alt) p-4"><div className="flex flex-wrap items-center justify-between gap-4"><div className="min-w-0"><Link to={`/shorts/series/${postData.seriesContext.id}`} className="rounded-[4px] text-[12px] font-semibold text-(--color-accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">{postData.seriesContext.title}</Link><p className="mt-1 text-[11px] text-(--color-text-muted)">Part {postData.seriesContext.position + 1} of {postData.seriesContext.total}</p></div><div className="flex flex-wrap gap-2">{postData.seriesContext.previous && <Link to={`/post/${postData.seriesContext.previous.id}`} className="inline-flex min-h-10 items-center justify-center rounded-full border border-(--color-border) bg-(--color-surface) px-[18px] py-2 text-[13px] font-medium whitespace-nowrap text-(--color-text) transition-all duration-150 hover:bg-(--color-bg-alt) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">← Previous</Link>}{postData.seriesContext.next && <Link to={`/post/${postData.seriesContext.next.id}`} className="inline-flex min-h-10 items-center justify-center rounded-full border border-(--color-accent) bg-(--color-accent) px-[18px] py-2 text-[13px] font-medium whitespace-nowrap text-(--color-text-inverted) transition-all duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Next →</Link>}</div></div></nav>}
+          {postData.seriesContext && <nav aria-label="Short series progression" className="mb-7 rounded-[14px] border border-(--color-border) bg-(--color-bg-alt) p-4"><div className="flex flex-wrap items-center justify-between gap-4"><div className="min-w-0"><Link to={`/shorts/series/${postData.seriesContext.id}`} className="rounded-[4px] text-[12px] font-semibold text-(--color-accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">{postData.seriesContext.title}</Link><p className="mt-1 text-[11px] text-(--color-text-muted)">Part {postData.seriesContext.position + 1} of {postData.seriesContext.total}</p></div><div className="flex flex-wrap gap-2">{postData.seriesContext.previous && <Link to={`/post/${postData.seriesContext.previous.id}`} className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-(--color-border) bg-(--color-surface) px-[18px] py-2 text-[13px] font-medium whitespace-nowrap text-(--color-text) transition-all duration-150 hover:bg-(--color-bg-alt) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">← Previous</Link>}{postData.seriesContext.next && <Link to={`/post/${postData.seriesContext.next.id}`} style={{ color: 'var(--color-text-inverted)' }} className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-(--color-accent) bg-(--color-accent) px-[18px] py-2 text-[13px] font-medium whitespace-nowrap text-(--color-text-inverted) transition-all duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Next →</Link>}</div></div></nav>}
 
-          {postData.depthContext && <aside className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-[14px] border border-(--color-border) bg-(--color-bg-alt) p-4"><div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-(--color-text-muted)">{postData.depthContext.deeper ? 'Go deeper' : 'Need the quick version?'}</p><p className="mt-1 text-[13px] font-semibold text-(--color-text)">{postData.depthContext.deeper?.title || postData.depthContext.quick?.title}</p></div>{postData.depthContext.deeper ? <Link to={`/post/${postData.depthContext.deeper.id}`} className="inline-flex min-h-10 items-center justify-center rounded-full border border-(--color-border) bg-(--color-surface) px-[18px] py-2 text-[13px] font-medium whitespace-nowrap text-(--color-text) transition-all duration-150 hover:bg-(--color-bg-alt) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Read full article →</Link> : <Button className="min-h-10 sm:min-h-0" variant="secondary" onClick={() => setShortReadId(postData.depthContext.quick.id)}>Read short →</Button>}</aside>}
+          {postData.depthContext && <aside className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-[14px] border border-(--color-border) bg-(--color-bg-alt) p-4"><div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-(--color-text-muted)">{postData.depthContext.deeper ? 'Go deeper' : 'Need the quick version?'}</p><p className="mt-1 text-[13px] font-semibold text-(--color-text)">{postData.depthContext.deeper?.title || postData.depthContext.quick?.title}</p></div>{postData.depthContext.deeper ? <Link to={`/post/${postData.depthContext.deeper.id}`} className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-(--color-border) bg-(--color-surface) px-[18px] py-2 text-[13px] font-medium whitespace-nowrap text-(--color-text) transition-all duration-150 hover:bg-(--color-bg-alt) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Read full article →</Link> : <Button className="min-h-10 sm:min-h-0" variant="secondary" onClick={() => setShortReadId(postData.depthContext.quick.id)}>Read short →</Button>}</aside>}
 
-          {(BookmarkMutation.isError || likeMutation.isError) && (
+          {likeMutation.isError && (
             <p role="alert" className="text-[12px] text-[var(--color-danger)] mb-4">
               We couldn't update that article action. Please try again.
             </p>
@@ -295,6 +311,8 @@ export default function PostPage() {
 
           <Divider className="my-10" />
 
+          <div ref={readingEndRef} />
+
           {/* Comments (renamed from Responses) */}
           <CommentsSection postId={postId} initialCount={postData.commentsCount || 0} />
         </div>
@@ -309,6 +327,7 @@ export default function PostPage() {
           </div>
         )}
       </PageFrame>
+      {showSave && <AddToCollectionDialog postId={postId} title={postData.title} isBookmarked={Boolean(postData.isBookmarked)} saveMode returnFocusRef={saveTriggerRef} onClose={() => setShowSave(false)} />}
       {shortReadId && <ShortReadModal postId={shortReadId} onClose={() => setShortReadId(null)} />}
     </div>
   )
@@ -328,7 +347,7 @@ function PostErrorState({ invalidContent = false, onRetry }) {
         <p className="mt-4 text-[14px] leading-7 text-[var(--color-text-secondary)]">{detail}</p>
         <div className="mt-7 flex flex-wrap gap-2">
           {!invalidContent && <Button variant="secondary" onClick={onRetry}>Try again</Button>}
-          <Link to="/" className="inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-accent)] px-[18px] py-2 text-[13px] font-medium transition-all duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0" style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-text-inverted)' }}>Return home</Link>
+          <Link to="/" className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-accent)] px-[18px] py-2 text-[13px] font-medium transition-all duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0" style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-text-inverted)' }}>Return home</Link>
         </div>
       </div>
     </PageFrame>

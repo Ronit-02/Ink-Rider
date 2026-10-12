@@ -24,6 +24,10 @@ const commentSchema = new mongoose.Schema({
         ref: 'Comment',
         default: null,  // null = top-level comment
     },
+    deletedAt: {
+        type: Date,
+        default: null,
+    },
 
 }, {
     timestamps: true,

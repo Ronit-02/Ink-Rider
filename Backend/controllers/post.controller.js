@@ -624,7 +624,7 @@ const getEarlyAccessFeed = async (req, res) => {
             .populate({ path: 'author', select: 'picture username' })
             .sort({ publicAt: 1, _id: 1 })
             .limit(50);
-        const data = (await presentDiscoveryPosts(documents)).map((post, index) => ({ ...post, isEarlyAccess: true, publicAt: documents[index].publicAt }));
+        const data = (await presentDiscoveryPosts(documents, req.auth.userId)).map((post, index) => ({ ...post, isEarlyAccess: true, publicAt: documents[index].publicAt }));
         return res.status(200).json({ data });
     } catch {
         return res.status(500).json({ message: 'Unable to load early access articles' });

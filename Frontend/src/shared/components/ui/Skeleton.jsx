@@ -17,10 +17,10 @@ export function PostFeedSkeleton({ count = 3, grid = false, label = 'Loading art
   return <div role="status" aria-label={label} className={grid ? 'card-grid card-grid--post gap-4' : 'flex flex-col gap-4'}>{Array.from({ length: count }, (_, index) => <PostCardSkeleton key={index} />)}</div>
 }
 
-export function PostDetailSkeleton({ as = 'main', label = 'Loading article' }) {
+export function PostDetailSkeleton({ as = 'main', label = 'Loading article', className = '' }) {
   const Container = as
   return (
-    <Container role="status" aria-label={label} className="mx-auto w-full max-w-[800px] px-4 pt-8 pb-20 sm:px-6 lg:px-8">
+    <Container role="status" aria-label={label} className={`mx-auto w-full max-w-[800px] px-4 pt-8 pb-20 sm:px-6 lg:px-8 ${className}`}>
       <Skeleton className="mb-7 h-8 w-20 rounded-full" />
       <Skeleton className="mb-8 h-[clamp(180px,30vw,320px)] w-full rounded-[20px]" />
       <Skeleton className="h-10 w-11/12" /><Skeleton className="mt-3 h-10 w-3/5" />

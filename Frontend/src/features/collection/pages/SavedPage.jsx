@@ -1,15 +1,18 @@
+import { useSelector } from 'react-redux'
 import retainRetryView from '@/shared/utils/retainRetryView'
+import ReadingHistoryPage from '@/features/discovery/pages/ReadingHistory'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import PageHeader from '@/shared/components/ui/PageHeader'
 import Pill from '@/shared/components/ui/Pill'
 import Button from '@/shared/components/ui/Button'
+import FilterBar from '@/shared/components/ui/FilterBar'
 import DiscoveryPostCard from '@/features/discovery/components/DiscoveryPostCard'
 import CollectionCard from '../components/CollectionCard'
 import { PostCardSkeleton } from '@/shared/components/ui/Skeleton'
 import { fetchBookmarks } from '@/features/user/api/profile'
-import { useSavedCollections } from '../hooks/useCollections'
+import { useCollections, useSavedCollections } from '../hooks/useCollections'
 
 const getExcerpt = body => {
   try {
@@ -23,13 +26,14 @@ const getExcerpt = body => {
 const toStoryPost = post => ({
   id: post._id || post.id,
   title: post.title,
+  format: post.format,
   image: post.coverImage || post.image || null,
   excerpt: getExcerpt(post.body),
   tags: post.tags || [],
   likesCount: post.likesCount || 0,
   commentsCount: post.commentsCount || 0,
   isLiked: Boolean(post.isLiked),
-  isBookmarked: true,
+  isBookmarked: post.isBookmarked ?? true,
   createdAt: post.createdAt,
   readTime: post.readTime || (post.format === 'short' ? 'Short read' : 'Article'),
   author: {
@@ -40,21 +44,23 @@ const toStoryPost = post => ({
   },
 })
 
-function SavedStoryList({ posts }) {
-  if (!posts.length) return <p className="py-16 text-center text-[13px] text-[var(--color-text-muted)]">Stories you save will appear here.</p>
+function SavedStoryList({ posts, shorts = false }) {
+  if (!posts.length) return <p className="py-16 text-center text-[13px] text-[var(--color-text-muted)]">{shorts ? 'Shorts you save will appear here.' : 'Stories you save will appear here.'}</p>
   return <div>{posts.map(post => <DiscoveryPostCard key={post._id || post.id} post={toStoryPost(post)} />)}</div>
 }
 
-export default function SavedPage() {
+function SavedContent() {
+  const viewer = useSelector(state => state.auth.user)
   const [params, setParams] = useSearchParams()
-  const section = ['stories', 'collections'].includes(params.get('savedSection')) ? params.get('savedSection') : 'stories'
-  const sections = ['stories', 'collections']
+  const section = ['stories', 'shorts'].includes(params.get('savedSection')) ? params.get('savedSection') : params.get('savedFormat') === 'short' ? 'shorts' : 'stories'
+  const sections = ['stories', 'shorts']
   const sort = ['latest', 'popular'].includes(params.get('savedSort')) ? params.get('savedSort') : 'latest'
   const updateFilter = (key, value, defaultValue) => {
     setParams(current => {
       const next = new URLSearchParams(current)
-    if (value === defaultValue) next.delete(key)
-    else next.set(key, value)
+      if (key === 'savedSection') next.delete('savedFormat')
+      if (value === defaultValue) next.delete(key)
+      else next.set(key, value)
       return next
     })
   }
@@ -71,22 +77,85 @@ export default function SavedPage() {
     updateFilter('savedSection', nextSection, 'stories')
     requestAnimationFrame(() => document.querySelectorAll('[role="tab"][aria-controls="saved-tabpanel"]')[nextIndex]?.focus())
   }
-  const stories = retainRetryView(useQuery({ queryKey: ['me', 'bookmarks'], queryFn: fetchBookmarks, enabled: section === 'stories' }))
-  const collections = retainRetryView(useSavedCollections(sort))
-  const savedCollections = collections.data?.pages.flatMap(page => page.data) || []
+  const stories = retainRetryView(useQuery({ queryKey: ['me', 'bookmarks', viewer], queryFn: fetchBookmarks }))
+  const savedStories = (stories.data || []).filter(post => (post.format || 'article') === (section === 'shorts' ? 'short' : 'article'))
+  if (sort === 'popular') savedStories.sort((left, right) => (right.likesCount || 0) - (left.likesCount || 0))
+  const resetFilters = () => setParams(current => {
+    const next = new URLSearchParams(current)
+    next.delete('savedSort')
+    if (section === 'shorts') next.set('savedSection', 'shorts')
+    next.delete('savedFormat')
+    return next
+  })
 
-  return <PageFrame>
-    <PageHeader eyebrow="Your library" title="Saved" description="Keep the stories and collections you want to return to." />
+  return <>
     <div className="mb-8 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex max-w-full gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Saved library sections">
         <Pill label="Stories" role="tab" ariaControls="saved-tabpanel" tabIndex={section === 'stories' ? 0 : -1} active={section === 'stories'} onKeyDown={handleSectionKeyDown} onClick={() => updateFilter('savedSection', 'stories', 'stories')} />
-        <Pill label="Collections" role="tab" ariaControls="saved-tabpanel" tabIndex={section === 'collections' ? 0 : -1} active={section === 'collections'} onKeyDown={handleSectionKeyDown} onClick={() => updateFilter('savedSection', 'collections', 'stories')} />
+        <Pill label="Shorts" role="tab" ariaControls="saved-tabpanel" tabIndex={section === 'shorts' ? 0 : -1} active={section === 'shorts'} onKeyDown={handleSectionKeyDown} onClick={() => updateFilter('savedSection', 'shorts', 'stories')} />
       </div>
-      {section === 'collections' && <label className="flex items-center justify-between gap-2 text-[11px] text-[var(--color-text-secondary)] sm:justify-end">Sort <select value={sort} onChange={event => updateFilter('savedSort', event.target.value, 'latest')} className="min-h-11 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-[11px] text-[var(--color-text)] sm:min-h-0"><option value="latest">Latest saved</option><option value="popular">Most saved</option></select></label>}
+      <FilterBar label="Saved reads" options={[]} sortOptions={[{ id: 'latest', label: 'Latest saved' }, { id: 'popular', label: 'Most appreciated' }]} sortValue={sort} onSortChange={value => updateFilter('savedSort', value, 'latest')} onReset={resetFilters} />
     </div>
-    <div id="saved-tabpanel" role="tabpanel" aria-label={`${section === 'stories' ? 'Stories' : 'Collections'} content`}>
-      {section === 'stories' && (stories.isPending ? <div role="status" aria-label="Loading saved stories" className="space-y-4"><PostCardSkeleton compact /><PostCardSkeleton compact /><PostCardSkeleton compact /></div> : stories.isError ? <div className="py-12 text-center"><p role="alert" className="text-[13px] text-[var(--color-danger)]">Saved stories could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => stories.refetch()} aria-busy={stories.isFetching} disabled={stories.isFetching}>Try again</Button></div> : <SavedStoryList posts={stories.data || []} />)}
-      {section === 'collections' && (collections.isPending ? <div role="status" aria-label="Loading saved collections" className="card-grid card-grid--collection gap-5"><PostCardSkeleton compact /><PostCardSkeleton compact /></div> : collections.isError ? <div className="py-12 text-center"><p role="alert" className="text-[13px] text-[var(--color-danger)]">Saved collections could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => collections.refetch()} aria-busy={collections.isFetching} disabled={collections.isFetching}>Try again</Button></div> : savedCollections.length ? <><section className="card-grid card-grid--collection gap-5">{savedCollections.map(collection => <CollectionCard key={collection.id} collection={collection} />)}</section>{collections.hasNextPage && <div className="pt-9 text-center"><Button variant="secondary" onClick={() => collections.fetchNextPage()} disabled={collections.isFetchingNextPage} aria-busy={collections.isFetchingNextPage}>{'Load more'}</Button></div>}</> : <p className="py-16 text-center text-[13px] text-[var(--color-text-muted)]">Collections you save will appear here.</p>)}
+    <div id="saved-tabpanel" role="tabpanel" aria-label={`${section === 'stories' ? 'Stories' : 'Shorts'} content`}>
+      {stories.isPending ? <div role="status" aria-label="Loading saved stories" className="space-y-4"><PostCardSkeleton compact /><PostCardSkeleton compact /><PostCardSkeleton compact /></div> : stories.isError ? <div className="py-12 text-center"><p role="alert" className="text-[13px] text-[var(--color-danger)]">Saved stories could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => stories.refetch()} aria-busy={stories.isFetching} disabled={stories.isFetching}>Try again</Button></div> : <SavedStoryList posts={savedStories} shorts={section === 'shorts'} />}
+    </div>
+  </>
+}
+
+function LibraryCollections() {
+  const [params, setParams] = useSearchParams()
+  const sort = ['latest', 'popular'].includes(params.get('collectionSort')) ? params.get('collectionSort') : 'latest'
+  const visibility = ['public', 'unlisted', 'private'].includes(params.get('collectionVisibility')) ? params.get('collectionVisibility') : 'all'
+  const mine = retainRetryView(useCollections(true, sort))
+  const saved = retainRetryView(useSavedCollections(sort))
+  const owned = (mine.data?.pages.flatMap(page => page.data) || []).filter(item => visibility === 'all' || item.visibility === visibility)
+  const savedItems = (saved.data?.pages.flatMap(page => page.data) || []).filter(item => visibility === 'all' || item.visibility === visibility)
+  const update = (key, value, defaultValue) => setParams(current => {
+    const next = new URLSearchParams(current)
+    if (value === defaultValue) next.delete(key)
+    else next.set(key, value)
+    return next
+  })
+  const list = (query, items, label, empty) => <section className="mb-10" aria-label={label}>
+    <h2 className="mb-5 text-[15px] font-semibold text-[var(--color-text)]">{label}</h2>
+    {query.isPending ? <div role="status" aria-label={`Loading ${label.toLowerCase()}`} className="card-grid card-grid--collection gap-5"><PostCardSkeleton compact /><PostCardSkeleton compact /></div>
+      : query.isError ? <div className="py-8 text-center"><p role="alert" className="text-[13px] text-[var(--color-danger)]">{label} could not be loaded.</p><Button variant="secondary" className="mt-3" onClick={() => query.refetch()}>Try again</Button></div>
+        : items.length ? <div className="card-grid card-grid--collection gap-5">{items.map(item => <CollectionCard key={item.id} collection={item} />)}</div>
+          : <p className="py-8 text-[13px] text-[var(--color-text-muted)]">{empty}</p>}
+    {!query.isPending && !query.isError && query.hasNextPage && <div className="pt-7 text-center"><Button variant="secondary" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage} aria-busy={query.isFetchingNextPage}>Load more</Button></div>}
+  </section>
+  return <>
+    <div className="mb-8 flex justify-end"><FilterBar label="Collections" options={[{ id: 'all', label: 'All collections' }, { id: 'public', label: 'Public' }, { id: 'unlisted', label: 'Unlisted' }, { id: 'private', label: 'Private' }]} value={visibility} onChange={value => update('collectionVisibility', value, 'all')} sortOptions={[{ id: 'latest', label: 'Newest collections' }, { id: 'popular', label: 'Most saved' }]} sortValue={sort} onSortChange={value => update('collectionSort', value, 'latest')} onReset={() => setParams(current => { const next = new URLSearchParams(current); next.delete('collectionVisibility'); next.delete('collectionSort'); return next })} /></div>
+    {list(mine, owned, 'My collections', 'Collections you create will appear here.')}
+    {list(saved, savedItems, 'Saved collections', 'Collections you save will appear here.')}
+  </>
+}
+
+export default function SavedPage() {
+  const [params, setParams] = useSearchParams()
+  const tab = ['saved', 'history', 'collections'].includes(params.get('libraryTab')) ? params.get('libraryTab') : params.get('savedSection') === 'collections' ? 'collections' : 'saved'
+  const tabs = ['saved', 'history', 'collections']
+  const setTab = nextTab => {
+    const next = new URLSearchParams(params)
+    if (next.get('savedSection') === 'collections') next.delete('savedSection')
+    if (nextTab === 'saved') next.delete('libraryTab')
+    else next.set('libraryTab', nextTab)
+    setParams(next)
+  }
+  const handleTabKeyDown = event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+    event.preventDefault()
+    const index = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (tabs.indexOf(tab) + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length
+    setTab(tabs[index])
+    requestAnimationFrame(() => document.querySelectorAll('[role="tab"][aria-controls="library-tabpanel"]')[index]?.focus())
+  }
+  return <PageFrame>
+    <PageHeader eyebrow="Reading" title="Library" description="Find saved stories and collections, continue reading, or revisit past reads." />
+    <div role="tablist" aria-label="Library sections" className="mb-8 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-[var(--color-border)]">
+      {tabs.map(item => <button key={item} type="button" role="tab" aria-controls="library-tabpanel" aria-selected={tab === item} tabIndex={tab === item ? 0 : -1} onClick={() => setTab(item)} onKeyDown={handleTabKeyDown} className={`button-target inline-flex min-h-11 shrink-0 items-center rounded-t-[10px] border-b-2 px-3 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0 ${tab === item ? 'border-[var(--color-accent)] text-[var(--color-text)]' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}>{item === 'saved' ? 'Saved' : item === 'history' ? 'History' : 'Collections'}</button>)}
+    </div>
+    <div id="library-tabpanel" role="tabpanel" aria-label={tab === 'saved' ? 'Saved content' : tab === 'history' ? 'History content' : 'Collections content'}>
+      {tab === 'saved' ? <SavedContent /> : tab === 'history' ? <ReadingHistoryPage embedded /> : <LibraryCollections />}
     </div>
   </PageFrame>
 }

@@ -9,6 +9,7 @@ const InteractionEvent = require('../schemas/interaction-event.schema');
 const { hasCapability } = require('../services/entitlement.service');
 const { toggleFollow: toggleFollowWorkflow, toggleSave: toggleSaveWorkflow } = require('../services/user-relationship.service');
 const { setLike, addComment: addCommentWorkflow } = require('../services/engagement.service');
+const { presentDiscoveryPosts } = require('../services/post-presenter.service');
 
 const isValidId = (id) => mongoose.isValidObjectId(id);
 
@@ -47,9 +48,15 @@ const getMe = async (req, res) => {
 const getMyPosts = async (req, res) => {
   try {
     const posts = await Post.find({ author: req.auth.userId })
-      .select('title coverImage format tags likesCount commentsCount metadata publicationStatus currentRevision publicAt createdAt')
+      .select('title coverImage format tags likesCount commentsCount metadata publicationStatus currentRevision publicAt createdAt author body')
+      .populate({ path: 'author', select: 'username picture' })
       .sort({ createdAt: -1 });
-    return res.status(200).json({ data: posts });
+    const summaries = await presentDiscoveryPosts(posts, req.auth.userId);
+    return res.status(200).json({ data: posts.map((post, index) => {
+      const record = post.toObject();
+      delete record.body;
+      return { ...record, ...summaries[index] };
+    }) });
   } catch {
     return res.status(500).json({ message: 'Unable to load your posts' });
   }
@@ -182,7 +189,9 @@ const getBookmarks = async (req, res) => {
         path: 'postId',
         populate: { path: 'author', select: 'picture username bio' },
       });
-    return res.status(200).json(saves.map(save => save.postId).filter(Boolean));
+    const posts = saves.map(save => save.postId).filter(Boolean);
+    const summaries = await presentDiscoveryPosts(posts, req.auth.userId);
+    return res.status(200).json(posts.map((post, index) => ({ ...post.toObject(), ...summaries[index], author: { ...post.author?.toObject(), ...summaries[index].author } })));
   } catch (err) {
     return res.status(500).send({ message: 'Error' });
   }

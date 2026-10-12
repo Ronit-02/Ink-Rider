@@ -1,68 +1,54 @@
 import retainRetryView from '@/shared/utils/retainRetryView'
-import { useId, useState } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import Button from '@/shared/components/ui/Button'
 import Avatar from '@/shared/components/ui/Avatar'
 import useAuth from '@/features/auth/hooks/useAuth'
 import { createComment } from '../api/comments'
+import CommentItem from '../components/CommentItem'
 import useComments, { commentsKey } from '../hooks/useComments'
 import { updatePostCaches } from '../hooks/postCache'
 import { ListSkeleton } from '@/shared/components/ui/Skeleton'
 import useToast from '@/shared/hooks/useToast'
 
-const formatCommentDate = value => new Intl.DateTimeFormat('en', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-}).format(new Date(value))
-
-function Comment({ comment, compact = false }) {
-  return (
-    <article className={compact ? 'py-3 border-b border-[var(--color-border)]' : 'py-5 border-b border-[var(--color-border)]'}>
-      <div className="flex items-start gap-3">
-        <Avatar src={comment.author?.avatar} name={comment.author?.name || 'Former member'} size={compact ? 30 : 36} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-[6px]">
-            <span className={compact ? 'font-semibold text-[12px] text-[var(--color-text)]' : 'font-semibold text-[13px] text-[var(--color-text)]'}>
-              {comment.author?.name || 'Former member'}
-            </span>
-            <time dateTime={comment.createdAt} className={compact ? 'text-[10px] text-[var(--color-text-muted)]' : 'text-[11px] text-[var(--color-text-muted)]'}>
-              {formatCommentDate(comment.createdAt)}
-            </time>
-          </div>
-          <p className={compact ? 'text-[12px] text-[var(--color-text)] leading-[1.6] break-words whitespace-pre-wrap' : 'text-[13px] text-[var(--color-text)] leading-[1.6] break-words whitespace-pre-wrap'}>
-            {comment.content}
-          </p>
-        </div>
-      </div>
-    </article>
-  )
-}
-
-export default function CommentsSection({ postId, initialCount = 0, compact = false }) {
+export default function CommentsSection({ postId, initialCount = 0, compact = false, collapsible = !compact }) {
   const [text, setText] = useState('')
+  const commentInputRef = useRef(null)
+  const [expanded, setExpanded] = useState(!collapsible)
+  const inlineCompact = compact && collapsible
   const idPrefix = useId()
   const commentsHeadingId = `${idPrefix}-comments-heading`
   const commentInputId = `${idPrefix}-new-comment`
   const commentCountId = `${idPrefix}-comment-count`
   const queryClient = useQueryClient()
-  const { loggedIn, signIn, user } = useAuth()
-  const commentsQuery = retainRetryView(useComments(postId))
+  const { loggedIn, signIn, user, avatarUrl } = useAuth()
+  const commentsQuery = retainRetryView(useComments(postId, null, expanded))
   const { notify } = useToast()
 
-  const comments = commentsQuery.data?.pages.flatMap(page => page.data) || []
-  const count = Math.max(initialCount, comments.length)
+  useLayoutEffect(() => {
+    const input = commentInputRef.current
+    if (!input) return
+    input.style.height = 'auto'
+    input.style.height = `${input.scrollHeight}px`
+  }, [text, expanded])
+
+  const comments = commentsQuery.data?.pages.flatMap(page => page.data).filter(comment => !comment.isDeleted || comment.repliesCount > 0) || []
+  const count = commentsQuery.data?.pages[0]?.meta.totalCount ?? Math.max(initialCount, comments.length)
+  const commentsHeading = <h2 id={commentsHeadingId} className={`font-bold ${compact ? `text-[17px] ${collapsible ? 'mb-0' : 'mb-4'}` : 'text-[22px] mb-6'} text-[var(--color-text)]`}
+    style={{ fontFamily: 'var(--font-display)' }}>
+    {collapsible ? <Button variant="disclosure" flush data-comment-disclosure className={`!min-h-11 !px-0 !py-0 !font-bold ${compact ? '!text-[17px]' : '!text-[22px]'}`} style={{ fontFamily: 'var(--font-display)' }} aria-expanded={expanded} aria-controls={`${idPrefix}-comments-body`} onClick={() => setExpanded(value => !value)}>Comments ({count})</Button> : <>Comments ({count})</>}
+  </h2>
 
   const commentMutation = useMutation({
     mutationFn: content => createComment({ postId, text: content }),
     onSuccess: comment => {
-      queryClient.setQueryData(commentsKey(postId), previous => {
+      queryClient.setQueryData(commentsKey(postId, user || 'anonymous'), previous => {
         if (!previous) return previous
         const [firstPage, ...remainingPages] = previous.pages
         return {
           ...previous,
           pages: [
-            { ...firstPage, data: [comment, ...firstPage.data] },
+            { ...firstPage, data: [comment, ...firstPage.data], meta: { ...firstPage.meta, ...(firstPage.meta.totalCount !== undefined ? { totalCount: firstPage.meta.totalCount + 1 } : {}) } },
             ...remainingPages,
           ],
         }
@@ -72,6 +58,7 @@ export default function CommentsSection({ postId, initialCount = 0, compact = fa
         commentsCount: (post.commentsCount || 0) + 1,
       }))
       setText('')
+      setExpanded(true)
       notify('Comment posted.')
     },
     onError: () => notify("We couldn't post your comment.", { tone: 'error' }),
@@ -84,42 +71,50 @@ export default function CommentsSection({ postId, initialCount = 0, compact = fa
     commentMutation.mutate(content)
   }
 
-  return (
-    <section aria-labelledby={commentsHeadingId}>
-      <h2 id={commentsHeadingId} className={`font-bold ${compact ? 'text-[17px] mb-4' : 'text-[22px] mb-6'} text-[var(--color-text)]`}
-        style={{ fontFamily: 'var(--font-display)' }}>
-        Comments ({count})
-      </h2>
-
-      <div data-comment-composer="true" className={`bg-[var(--color-bg-alt)] border border-[var(--color-border)] focus-within:border-[var(--color-focus)] focus-within:ring-2 focus-within:ring-[var(--color-focus)]/15 ${compact ? 'rounded-[12px] p-3 mb-5' : 'rounded-[20px] p-5 mb-8'}`}>
+  const commentField = <textarea
+    ref={commentInputRef}
+    id={commentInputId}
+    rows={1}
+    value={text}
+    maxLength={1000}
+    required
+    aria-label={inlineCompact ? 'Add a comment' : undefined}
+    aria-describedby={commentCountId}
+    onChange={event => setText(event.target.value)}
+    placeholder="Add your comment…"
+    className={`min-h-[1.6em] resize-none overflow-hidden bg-transparent p-0 text-[14px] leading-[1.6] font-[inherit] text-[var(--color-text)] placeholder:text-[var(--color-text-secondary)] !shadow-none ${inlineCompact ? 'mb-1 block w-full border-0 border-b border-solid border-[var(--color-border)] focus-visible:border-[var(--color-focus)] !outline-none' : 'block w-full border-none !outline-none'}`}
+  />
+  const composer = (
+      <div data-comment-composer="true" className={inlineCompact ? 'mt-3 mb-3' : `rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface)] focus-within:border-[var(--color-focus)] focus-within:ring-2 focus-within:ring-[var(--color-focus)]/15 ${compact ? 'p-2 mb-3' : 'p-3 mb-6'}`}>
         {loggedIn ? (
-          <div className="flex gap-3 items-start">
-            <Avatar name={user || 'You'} size={compact ? 30 : 36} />
+          <div className="flex items-start gap-3">
+            {!compact && <Avatar name={user || 'You'} size={36} />}
+            {inlineCompact && <Avatar src={avatarUrl} name={user || 'You'} size={32} />}
             <form className="min-w-0 flex-1" onSubmit={handleSubmit}>
-              <label htmlFor={commentInputId} className="mb-2 block text-[12px] font-semibold text-[var(--color-text)]">Add a comment</label>
-              <textarea
-                id={commentInputId}
-                value={text}
-                maxLength={1000}
-                required
-                aria-describedby={commentCountId}
-                onChange={event => setText(event.target.value)}
-                placeholder="Add your comment…"
-                className={`w-full border-none bg-transparent text-[13px] text-[var(--color-text)]
-                  ${compact ? 'min-h-[56px]' : 'min-h-[80px]'}
-                  leading-[1.6] resize-none font-[inherit] outline-none`}
-              />
-              <div className="flex items-center justify-between flex-wrap gap-3 mt-[10px]">
-                <span id={commentCountId} className="text-[11px] text-[var(--color-text-muted)]">{text.length}/1000</span>
-                {text.trim() && (
-                  <div className="flex justify-end gap-2">
-                    <Button className="min-h-10 sm:min-h-0" variant="secondary" onClick={() => setText('')} disabled={commentMutation.isPending} aria-busy={commentMutation.isPending}>Cancel</Button>
-                    <Button className="min-h-10 sm:min-h-0" type="submit" variant="primary" disabled={commentMutation.isPending} aria-busy={commentMutation.isPending}>
-                      {'Comment'}
-                    </Button>
+              {!inlineCompact && <label htmlFor={commentInputId} className={`block font-semibold text-[var(--color-text)] ${compact ? 'mb-1 text-[12px]' : 'mb-1 text-[13px]'}`}>Add a comment</label>}
+              {inlineCompact ? (
+                <>
+                  {commentField}
+                  <div className="flex min-w-0 items-center justify-end gap-2">
+                    <span id={commentCountId} className="shrink-0 text-[11px] tabular-nums text-[var(--color-text-secondary)]">{text.length}/1000</span>
+                    <div className="flex items-center gap-1">
+                      {text.trim() && <Button size="sm" className="!min-h-9 !px-1.5" variant="ghost" onClick={() => setText('')} disabled={commentMutation.isPending}>Cancel</Button>}
+                      <Button size="sm" className="!min-h-9 !px-1.5 !font-semibold" data-compact-comment-submit type="submit" variant="ghost" disabled={!text.trim() || commentMutation.isPending} aria-busy={commentMutation.isPending}>Comment</Button>
+                    </div>
                   </div>
-                )}
-              </div>
+                </>
+              ) : (
+                <>
+                  {commentField}
+                  <div className={`flex flex-wrap items-center justify-between gap-2 border-t border-[var(--color-border)] ${compact ? 'mt-1 pt-1' : 'mt-2 pt-2'}`}>
+                    <span id={commentCountId} className="text-[12px] tabular-nums text-[var(--color-text-secondary)]">{text.length}/1000</span>
+                    <div className="ml-auto flex justify-end flex-wrap gap-2">
+                      {text.trim() && <Button className="!min-h-11 !px-3" variant="ghost" onClick={() => setText('')} disabled={commentMutation.isPending}>Cancel</Button>}
+                      <Button className="!min-h-11 !px-4" type="submit" variant="primary" disabled={!text.trim() || commentMutation.isPending} aria-busy={commentMutation.isPending}>Comment</Button>
+                    </div>
+                  </div>
+                </>
+              )}
               {commentMutation.isError && (
                 <p role="alert" className="text-[12px] text-[var(--color-danger)] mt-2">
                   We couldn't post your comment. Please try again.
@@ -130,11 +125,20 @@ export default function CommentsSection({ postId, initialCount = 0, compact = fa
         ) : (
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <p className="text-[13px] text-[var(--color-text-secondary)]">Sign in to join the conversation.</p>
-            <Button className="min-h-10 sm:min-h-0" variant="primary" onClick={signIn}>Sign in</Button>
+            <Button className="!min-h-11" variant="primary" onClick={signIn}>Sign in</Button>
           </div>
         )}
       </div>
+  )
 
+  return (
+    <section aria-labelledby={commentsHeadingId}>
+      {compact && commentsHeading}
+      {!inlineCompact && composer}
+      {!compact && commentsHeading}
+
+      <div id={`${idPrefix}-comments-body`} hidden={!expanded}>
+      {inlineCompact && composer}
       {commentsQuery.isLoading && (
         <ListSkeleton count={3} label="Loading comments" />
       )}
@@ -145,9 +149,9 @@ export default function CommentsSection({ postId, initialCount = 0, compact = fa
         </div>
       )}
       {!commentsQuery.isLoading && !commentsQuery.isError && comments.length === 0 && (
-        <p className="text-[13px] text-[var(--color-text-muted)] py-6">No comments yet. Start the conversation.</p>
+        <p className="text-[13px] text-[var(--color-text-secondary)] py-6">No comments yet. Start the conversation.</p>
       )}
-      {comments.map(comment => <Comment key={comment.id} comment={comment} compact={compact} />)}
+      {comments.map((comment, index) => <CommentItem key={comment.id} comment={comment} postId={postId} compact={compact} hideBottomBorder={collapsible && index === comments.length - 1} />)}
 
       {commentsQuery.hasNextPage && (
         <div className="pt-6">
@@ -161,6 +165,7 @@ export default function CommentsSection({ postId, initialCount = 0, compact = fa
           </Button>
         </div>
       )}
+      </div>
     </section>
   )
 }

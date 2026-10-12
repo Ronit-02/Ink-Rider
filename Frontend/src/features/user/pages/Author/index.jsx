@@ -1,11 +1,16 @@
+import ModalHeader from '@/shared/components/ui/ModalHeader'
+import PageFrame from '@/shared/components/layout/PageFrame'
 import retainRetryView from '@/shared/utils/retainRetryView'
 import { useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import Button from '@/shared/components/ui/Button'
+import FilterBar from '@/shared/components/ui/FilterBar'
 import Avatar from '@/shared/components/ui/Avatar'
-import Tag from '@/shared/components/ui/Tag'
-import PostEngagementControls from '@/features/discovery/components/PostEngagementControls'
+import DiscoveryPostCard from '@/features/discovery/components/DiscoveryPostCard'
+import PublishedWritingTabs from '../../components/PublishedWritingTabs'
+import CollectionCard from '@/features/collection/components/CollectionCard'
+import { useAuthorCollections } from '@/features/collection/hooks/useCollections'
 import useAuth from '@/features/auth/hooks/useAuth'
 import useWriter from '../../hooks/useWriter'
 import useWriterFollow from '../../hooks/useWriterFollow'
@@ -20,41 +25,29 @@ const formatJoinedDate = value => new Intl.DateTimeFormat('en', {
   year: 'numeric',
 }).format(new Date(value))
 
-function WriterPostCard({ post }) {
-  return (
-    <article className="group min-w-0">
-      <Link to={`/post/${post.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] rounded-[14px]">
-        {post.image ? (
-          <img
-            src={post.image}
-            alt=""
-            className="w-full aspect-[16/10] object-cover rounded-[14px] mb-4 bg-[var(--color-bg-alt)]"
-          />
-        ) : (
-          <div aria-hidden="true" className="w-full aspect-[16/10] rounded-[14px] mb-4 bg-[var(--color-bg-alt)]" />
-        )}
-        <p className="text-[12px] text-[var(--color-text-muted)] mb-2">
-          {post.readTime} · {new Date(post.createdAt).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}
-        </p>
-        <h2 className="font-bold text-[18px] leading-[1.35] text-[var(--color-text)] group-hover:underline underline-offset-4"
-          style={{ fontFamily: 'var(--font-display)' }}>
-          {post.title}
-        </h2>
-      </Link>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-      {post.tags?.length > 0 && (
-        <div className="flex min-w-0 flex-1 gap-2 flex-wrap [&>a]:max-w-full [&>a]:whitespace-normal [&>a]:break-words">
-          {post.tags.slice(0, 3).map(tag => <Tag key={tag} label={tag} clickable />)}
-        </div>
-      )}
-      <PostEngagementControls post={post} />
-      </div>
-    </article>
-  )
-}
-
 export default function AuthorPage() {
   const { handle } = useParams()
+  const [params] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const setParams = update => {
+    const next = update(params)
+    navigate({ search: next.size ? `?${next}` : '', hash: location.hash }, { preventScrollReset: true })
+  }
+  const format = ['short', 'collections'].includes(params.get('authorFormat')) ? params.get('authorFormat') : 'article'
+  const collectionsSort = params.get('authorCollectionSort') === 'popular' ? 'popular' : 'latest'
+  const sort = ['oldest', 'popular'].includes(params.get('authorSort')) ? params.get('authorSort') : 'latest'
+  const updateFilter = (key, value, defaultValue) => setParams(current => {
+    const next = new URLSearchParams(current)
+    if (value === defaultValue) next.delete(key)
+    else next.set(key, value)
+    return next
+  })
+  const resetFilters = () => setParams(current => {
+    const next = new URLSearchParams(current)
+    next.delete(format === 'collections' ? 'authorCollectionSort' : 'authorSort')
+    return next
+  })
   const { loggedIn, signIn } = useAuth()
   const [requestOpen, setRequestOpen] = useState(false)
   const [subject, setSubject] = useState('')
@@ -64,13 +57,20 @@ export default function AuthorPage() {
   const entitlements = retainRetryView(useEntitlements(loggedIn))
   const writerQuery = retainRetryView(useWriter(handle))
   const writer = writerQuery.data
+  const collections = retainRetryView(useAuthorCollections(writer?.id, collectionsSort, format === 'collections'))
+  const publicCollections = collections.data?.pages.flatMap(page => page.data) || []
+  const visiblePosts = (writer?.posts || []).filter(post => (post.format || 'article') === format).sort((left, right) => {
+    const dateOrder = new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    if (sort === 'popular') return (right.likesCount || 0) - (left.likesCount || 0) || dateOrder
+    return sort === 'oldest' ? -dateOrder : dateOrder
+  })
   const followMutation = useWriterFollow({ writerId: writer?.id, handle })
   const requestMutation = useMutation({ mutationFn: sendCreatorRequest, onSuccess: () => { setSubject(''); setDetails('') } })
   const supportMutation = useMutation({ mutationFn: supportCreator })
 
   if (!handle) {
     return (
-      <main className="max-w-[720px] mx-auto px-6 py-20 text-center">
+      <PageFrame className="py-20 text-center">
         <h1 className="font-bold text-[28px] text-[var(--color-text)] mb-3" style={{ fontFamily: 'var(--font-display)' }}>
           Choose a writer to view their profile
         </h1>
@@ -81,18 +81,18 @@ export default function AuthorPage() {
         >
           Search writers
         </Link>
-      </main>
+      </PageFrame>
     )
   }
 
   if (writerQuery.isPending) {
-    return <main className="max-w-[900px] mx-auto px-6 md:px-8 pt-10 pb-20"><div role="status" aria-label="Loading writer profile"><div className="flex items-start gap-5"><Skeleton className="h-20 w-20 rounded-full" /><div className="flex-1"><Skeleton className="h-7 w-48" /><Skeleton className="mt-3 h-3 w-32" /><Skeleton className="mt-4 h-3 w-full max-w-xl" /></div></div><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></main>
+    return <PageFrame className="pb-20"><div role="status" aria-label="Loading writer profile"><div className="flex items-start gap-5"><Skeleton className="h-20 w-20 rounded-full" /><div className="flex-1"><Skeleton className="h-7 w-48" /><Skeleton className="mt-3 h-3 w-32" /><Skeleton className="mt-4 h-3 w-full max-w-xl" /></div></div><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
   }
 
   if (writerQuery.isError) {
     const notFound = writerQuery.error?.response?.status === 404
     return (
-      <main className="max-w-[720px] mx-auto px-6 py-20 text-center">
+      <PageFrame className="py-20 text-center">
         <div role="alert">
         <h1 className="font-bold text-[28px] text-[var(--color-text)] mb-3" style={{ fontFamily: 'var(--font-display)' }}>
           {notFound ? 'Writer not found' : 'Profile unavailable'}
@@ -104,7 +104,7 @@ export default function AuthorPage() {
           ? <Link to="/" className="text-[13px] font-semibold underline underline-offset-4">Return home</Link>
           : <Button variant="secondary" onClick={() => writerQuery.refetch()} aria-busy={writerQuery.isFetching} disabled={writerQuery.isFetching}>Try again</Button>}
         </div>
-      </main>
+      </PageFrame>
     )
   }
 
@@ -114,7 +114,7 @@ export default function AuthorPage() {
   }
 
   return (
-    <main className="max-w-[1080px] mx-auto px-6 md:px-8 pb-20">
+    <PageFrame className="!pb-20">
       <div className="h-[180px] md:h-[220px] rounded-b-[20px] mb-0 relative overflow-hidden
         bg-[var(--color-bg-alt)] border-x border-b border-[var(--color-border)]">
         <div className="absolute inset-0 opacity-70"
@@ -189,12 +189,9 @@ export default function AuthorPage() {
         )}
         {supportMutation.isError && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">Creator support could not be updated. Please try again.</p>}
         {requestOpen && (
-          <ModalLayer id="direct-request-dialog" onDismiss={() => setRequestOpen(false)} dismissOnBackdrop={!subject && !details} aria-labelledby="direct-request-heading" className="flex items-center justify-center p-4">
+          <ModalLayer id="direct-request-dialog" onDismiss={() => setRequestOpen(false)} aria-labelledby="direct-request-heading" className="flex items-center justify-center p-4">
           <section ref={requestDialogRef} tabIndex={-1} className="w-full max-w-[620px] overflow-y-auto rounded-[16px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-5">
-            <div className="flex items-center justify-between gap-4">
-              <h2 id="direct-request-heading" className="font-semibold text-[14px] text-[var(--color-text)]">Direct request to {writer.displayName}</h2>
-              <button ref={closeRequestRef} type="button" onClick={() => setRequestOpen(false)} aria-label="Close article request" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)]">×</button>
-            </div>
+            <ModalHeader title={`Direct request to ${writer.displayName}`} titleId="direct-request-heading" onClose={() => setRequestOpen(false)} closeLabel="Close article request" closeRef={closeRequestRef} className="-mx-5 -mt-5 mb-4" />
             {entitlements.isPending ? (
               <p role="status" className="mt-2 text-[12px] text-[var(--color-text-secondary)]">Checking membership…</p>
             ) : entitlements.isError ? (
@@ -250,26 +247,37 @@ export default function AuthorPage() {
       </section>
 
       <section className="pt-10" aria-labelledby="writer-posts-heading">
-        <div className="flex items-end justify-between gap-4 mb-7">
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-7">
           <div>
             <p className="text-[12px] text-[var(--color-text-muted)] mb-1">Published by {writer.displayName}</p>
             <h2 id="writer-posts-heading" className="font-bold text-[24px] text-[var(--color-text)]"
               style={{ fontFamily: 'var(--font-display)' }}>
-              Articles
+              Published work
             </h2>
           </div>
         </div>
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <PublishedWritingTabs value={format} onChange={value => updateFilter('authorFormat', value, 'article')} controlsId="author-writing-panel" includeCollections />
+          <FilterBar label={format === 'collections' ? 'Collections' : 'Published writing'} options={[]} sortOptions={format === 'collections' ? [{ id: 'latest', label: 'Newest' }, { id: 'popular', label: 'Most saved' }] : [{ id: 'latest', label: 'Newest' }, { id: 'oldest', label: 'Oldest' }, { id: 'popular', label: 'Most appreciated' }]} sortValue={format === 'collections' ? collectionsSort : sort} onSortChange={value => updateFilter(format === 'collections' ? 'authorCollectionSort' : 'authorSort', value, 'latest')} onReset={resetFilters} />
+        </div>
+        <div id="author-writing-panel" role="tabpanel" aria-label={`${format === 'collections' ? 'Collections' : format === 'short' ? 'Shorts' : 'Posts'} content`}>
+        {format === 'collections' ? <>
+          {collections.isPending ? <ListSkeleton label="Loading author collections" /> : collections.isError ? <div role="alert"><p className="text-[13px] text-[var(--color-danger)]">Collections could not be loaded.</p><Button className="mt-4" variant="secondary" disabled={collections.isFetching} aria-busy={collections.isFetching} onClick={() => collections.refetch()}>Try again</Button></div> : publicCollections.length ? <div className="card-grid card-grid--collection gap-5">{publicCollections.map(collection => <CollectionCard key={collection.id} collection={collection} />)}</div> : <p className="py-14 text-[15px] text-[var(--color-text-secondary)]">No public collections yet.</p>}
+          {collections.hasNextPage && <div className="pt-9 text-center"><Button variant="secondary" disabled={collections.isFetchingNextPage} aria-busy={collections.isFetchingNextPage} onClick={() => collections.fetchNextPage()}>Load more</Button></div>}
+        </> : <>
 
-        {writer.posts.length > 0 ? (
-          <div className="card-grid card-grid--post gap-x-6 gap-y-10">
-            {writer.posts.map(post => <WriterPostCard key={post.id} post={post} />)}
+        {visiblePosts.length > 0 ? (
+          <div className={`card-grid ${format === 'short' ? 'card-grid--short' : 'card-grid--post'} gap-x-6 gap-y-10`}>
+            {visiblePosts.map(post => <DiscoveryPostCard key={post.id} post={post} variant="grid" />)}
           </div>
         ) : (
           <div className="py-14 border-y border-[var(--color-border)]">
-            <p className="text-[15px] text-[var(--color-text-secondary)]">No published articles yet.</p>
+            <p className="text-[15px] text-[var(--color-text-secondary)]">{format === 'short' ? 'No published shorts yet.' : 'No published posts yet.'}</p>
           </div>
         )}
+        </>}
+        </div>
       </section>
-    </main>
+    </PageFrame>
   )
 }

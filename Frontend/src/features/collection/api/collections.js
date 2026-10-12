@@ -1,7 +1,7 @@
 import api from '@/app/api'
 
-export async function fetchCollections({ mine, saved, sort, cursor }) {
-  const response = await api.get('/api/collection', { params: { mine: mine || undefined, saved: saved || undefined, sort: sort || undefined, cursor: cursor || undefined, limit: 12 } })
+export async function fetchCollections({ mine, saved, authorId, sort, cursor }) {
+  const response = await api.get('/api/collection', { params: { mine: mine || undefined, saved: saved || undefined, authorId: authorId || undefined, sort: sort || undefined, cursor: cursor || undefined, limit: 12 } })
   return response.data
 }
 
@@ -15,6 +15,10 @@ export async function fetchCollectionEligiblePosts() {
 
 export async function createCollection(input) {
   return (await api.post('/api/collection', input)).data.data
+}
+
+export async function addCollectionPost({ collectionId, postId }) {
+  return (await api.put(`/api/v1/collections/${collectionId}/posts/${postId}`)).data.data
 }
 
 export async function updateCollection({ collectionId, ...input }) {

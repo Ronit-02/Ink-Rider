@@ -1,28 +1,47 @@
 # Back-button visual audit
 
+## Sticky Back row — 2026-10-10
+
+The existing AppLayout Back row now uses `position: sticky; top: 0` inside the independent application scroll container. That container starts below the fixed 56 px navbar, so Back stays visible beneath it throughout scrolling without a second control, scroll listener, or route/component restructuring. The row uses the existing opaque page-background token and layer 20, below navigation and overlays. The arrow/label styling, focus treatment, initial spacing, eligible routes, guest History exclusion, history navigation, and direct-entry parent fallbacks are preserved. Onboarding keeps its feature-owned previous-step control.
+
+The current working tree uses the shared 1120 px `.app-page-frame` and responsive 16/20/32 px gutters for page Back rows. This supersedes the separate Search/History/writer widths in the historical October 8 audit below; sticky positioning retains the current shared alignment. The old widths and findings describe that earlier run, not the current frame contract.
+
+Frontend audit: BackButton owns the existing transparent 13 px DM Sans arrow/label and navigation callback; AppLayout owns route opt-in and the row; global.css owns frame/scroll/spacing rules. Libre Baskerville headings, semantic Light/Dark colors, existing content/cards, fixed navbar/sidebar/mobile navigation, and article tools remain unchanged. Backend audit: Express routes/controllers/services and Mongoose records remain authoritative for existing data reads/mutations; scroll presentation adds no API call, contract, schema, or persistence change.
+
+Change scope: `Frontend/src/styles/global.css`, `Frontend/tests/back-layout-audit.spec.js`, this audit, `context/ui-rules.md`, `context/ui-registry.md`, and `context/progress-tracker.md`. No optional redesign, refactor, or approval-dependent decision is included. The added browser cases use long mocked article bodies at 320/1280 px in Light/Dark to verify position, hit-area access, opaque background, focus, and keyboard Back after multiple scroll distances. Dated completed verification belongs in the progress tracker.
+
+The earlier sticky-Back run reproduced an existing writer-profile `!pt-0` override that removed initial content clearance. The subsequent 2026-10-10 [page alignment audit](page-alignment-audit.md) removed that override. All four Back surface matrices now pass at 320/1280 px in Light/Dark, including writer-cover clearance, and all 13 navigation checks pass. The earlier temporary non-sticky baseline and five failures describe the historical run; physical-device, screen-reader, and other-engine verification remain unclaimed.
+
 Audited and corrected: 2026-10-08. Scope: every BackButton caller and every route opted in by AppLayout in the existing working tree.
+
+## Profile editing — 2026-10-10
+
+The requested separate `/profile/edit` route opts into the existing shell Back row. History navigation returns to the previous route; a direct entry falls back to `/profile`. The existing sticky control, styling, frame, and all other route destinations are preserved. Profile editing verification is recorded in the progress tracker.
 
 ## Inventory
 
 | Surface | Placement owner | Completed placement |
 |---|---|---|
 | Article `/post/:id` | AppLayout | Dedicated row aligned with article content, before tags/cover and reading tools |
-| Writer `/author/:handle` | AppLayout | Matches the 1080 px profile wrapper and 24/32 px gutters; leaves space above the cover |
+| Writer `/author/:handle` | AppLayout | Matches the shared 1120 px PageFrame and 16/20/32 px gutters (2026-10-10); leaves space above the cover |
 | Question `/explore/questions/:id` | AppLayout | Dedicated row before question identity/title |
 | Competition `/explore/competitions/:id` | AppLayout | Dedicated row before competition cover |
 | Collection `/collections/:id` | AppLayout | Dedicated row before collection cover |
 | Series `/shorts/series/:id` | AppLayout | Dedicated row before series label/title |
-| Search `/search` | AppLayout | Matches the existing 920 px wrapper and 20/32 px gutters |
-| History `/history` | AppLayout | Matches the existing 850 px wrapper and 20/32 px gutters |
+| Search `/search` | AppLayout | Matches the shared 1120 px PageFrame and 16/20/32 px gutters (2026-10-10) |
+| History `/history` | AppLayout | Signed-in view matches shared PageFrame and its gutters (2026-10-10); guest access prompt omits Back (2026-10-10) |
 | Membership `/membership` | AppLayout | Dedicated row before page heading |
-| Settings `/settings` | AppLayout | Dedicated row before page heading |
-| Help `/help` | AppLayout | Dedicated row before page heading |
-| Login `/login` | Login form | Existing form position above the brand |
-| Signup `/signup` | Login form | Existing form position above the brand |
-| Email verification | Verification form | Existing form position above the brand |
+| Edit profile `/profile/edit` | AppLayout | Existing shared Back row; direct-entry Profile fallback |
+| Settings `/settings` | AppLayout | No Back control, per the 2026-10-09 settings request |
+| Help `/help` | AppLayout | No Back control, per the 2026-10-09 settings request |
+| Login `/login` | Login form | Removed on 2026-10-09; brand link returns home |
+| Signup `/signup` | Login form | Removed on 2026-10-09; brand link returns home |
+| Email verification | Verification form | Removed on 2026-10-09; brand link returns home |
 | Onboarding steps 2 and 3 | Onboarding | Existing previous-step position beside Skip and Next/Get Started; step 1 has no Back |
 
-Source search found no other Back controls or independent history-back handlers. Primary routes retain no Back. Authentication verification is a state inside the existing login/signup component, not a new route.
+Source search found no other Back controls or independent history-back handlers. Primary routes, Settings, and Help retain no Back. Authentication verification is a state inside the existing login/signup component, not a new route.
+
+The 2026-10-10 [page alignment audit](page-alignment-audit.md) supersedes the earlier independent page-width contract: every application content page and shell Back row now share PageFrame geometry. The findings below retain their original dated evidence.
 
 ## Findings and corrections
 
@@ -36,12 +55,14 @@ No covering element was found over the actual Back hit area on the audited popul
 
 ## Architecture and change boundary
 
-React Router still owns browser-history Back and fresh-entry parent fallbacks. AppLayout owns application Back rows; authentication and onboarding reuse the same component in their existing positions. The existing DM Sans/Libre Baskerville typography, semantic theme palette, global navigation, feature content, and page widths remain intact. The backend's Express routes, controllers/services, Mongoose records, API DTOs, authentication, and entitlement flow require no change for this presentation correction. Mocked HTTP responses supply populated UI for repeatable verification without live data mutations.
+React Router still owns browser-history Back and fresh-entry parent fallbacks. AppLayout owns application Back rows; onboarding reuses the same component for previous-step navigation. Authentication Back was removed on 2026-10-09. The existing DM Sans/Libre Baskerville typography, semantic theme palette, global navigation, feature content, and page widths remain intact. The backend's Express routes, controllers/services, Mongoose records, API DTOs, authentication, and entitlement flow require no change for this presentation correction. Mocked HTTP responses supply populated UI for repeatable verification without live data mutations.
 
 Implementation files: `Frontend/src/shared/components/ui/BackButton.tsx`, `Frontend/src/shared/components/layout/AppLayout.jsx`, and `Frontend/src/styles/global.css`. Verification files: new `Frontend/tests/back-layout-audit.spec.js` and updated `Frontend/tests/back-navigation.spec.js`. This report owns detailed audit findings; UI rules and registry own the reusable contract.
 
+The 2026-10-09 settings change removes only Settings and Help from the shell Back opt-in list. Other history/parent and auth/onboarding controls retain their existing behavior; the current browser matrix omits these two surfaces from Back measurements and checks their absence instead.
+
 ## Verification boundary
 
-The visual matrix captures all 15 route/state variants at 320 and 1280 px in saved Light/Dark themes. Automated checks cover loaded content alignment, at least 16 px clearance, unobstructed hit areas, 44 px targets, keyboard focus, horizontal overflow, detail loading/missing/ordinary-error recovery, intermediate responsive widths, short authentication/onboarding forms, and existing history/parent behavior. Screenshots and measurements are local generated evidence under `Frontend/node_modules/.cache/back-layout-audit/`.
+The visual matrix captures all 15 route/state variants at 320 and 1280 px in saved Light/Dark themes, with four additional captures of onboarding step 3 beside Skip/Get Started. Automated checks cover loaded content alignment, at least 16 px clearance, unobstructed hit areas, 44 px targets, keyboard focus, horizontal overflow, detail loading/missing/ordinary-error recovery, intermediate responsive widths, short authentication/onboarding forms, and existing history/parent behavior. All 23 distinct browser checks passed across completed runs and the focused timeout rerun. Screenshots and measurements are local generated evidence under `Frontend/node_modules/.cache/back-layout-audit/`.
 
 Final dated command results are recorded in the progress tracker after completion. Physical phone safe areas/keyboards, real browser zoom, screen-reader announcements, Firefox/WebKit, and live persistence are outside these Chromium/mock-API checks. The repository lint configuration excludes TSX; Vite compilation and browser checks cover BackButton. No optional redesign or backend migration is part of this task.

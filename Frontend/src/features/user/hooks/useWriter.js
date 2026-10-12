@@ -2,13 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { useSelector } from 'react-redux'
 import fetchWriter from '../api/fetchWriter'
 
-export const writerKey = (handle, authenticated = false) => ['writer', handle, authenticated ? 'authenticated' : 'anonymous']
+export const writerKey = (handle, viewer = 'anonymous') => ['writer', handle, viewer || 'anonymous']
 
 export default function useWriter(handle) {
-  const token = useSelector(state => state.auth.token)
+  const user = useSelector(state => state.auth.user)
   const isAuthReady = useSelector(state => state.auth.isReady)
   return useQuery({
-    queryKey: writerKey(handle, Boolean(token)),
+    queryKey: writerKey(handle, user),
     queryFn: fetchWriter,
     enabled: Boolean(handle) && isAuthReady,
     retry: (failureCount, error) => (

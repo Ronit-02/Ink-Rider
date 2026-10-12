@@ -24,6 +24,8 @@ const markAllRead = ({ recipientId, now = new Date() }) => Notification.updateMa
   { recipientId, readAt: null }, { $set: { readAt: now } },
 );
 
+const deleteForRecipient = ({ notificationId, recipientId }) => Notification.findOneAndDelete({ _id: notificationId, recipientId });
+
 const notify = async input => {
   if (!input.recipientId || input.recipientId.toString() === input.actorId?.toString()) return null;
   try {
@@ -46,4 +48,4 @@ const notify = async input => {
   }
 };
 
-module.exports = { notify, listForRecipient, markRead, markAllRead };
+module.exports = { notify, listForRecipient, markRead, markAllRead, deleteForRecipient };

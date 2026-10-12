@@ -25,7 +25,7 @@ export default function BottomBar() {
         return (
           <Link key={item.to} to={item.to}
             aria-current={active ? 'page' : undefined}
-            className={`flex min-h-10 min-w-12 flex-col items-center justify-center gap-1 px-3 py-1.5 no-underline transition-all duration-150
+            className={`button-target flex min-h-10 min-w-12 flex-col items-center justify-center gap-1 px-3 py-1.5 no-underline transition-all duration-150
               text-[10px] font-medium
               ${active || item.to === '/explore/trending' ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'}`}
           >

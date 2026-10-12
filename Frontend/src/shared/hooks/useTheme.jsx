@@ -5,6 +5,10 @@ import { useState, useEffect } from 'react'
  * Follows the system until the user explicitly saves a theme choice.
  */
 export function useTheme() {
+  const [themePreference, setThemePreference] = useState(() => {
+    const saved = localStorage.getItem('ink-theme')
+    return saved === 'dark' || saved === 'light' ? saved : 'system'
+  })
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem('ink-theme')
     if (saved === 'dark' || saved === 'light') return saved === 'dark'
@@ -25,10 +29,13 @@ export function useTheme() {
     return () => media?.removeEventListener('change', followSystem)
   }, [])
 
-  const toggle = () => {
-    const nextDark = !dark
-    localStorage.setItem('ink-theme', nextDark ? 'dark' : 'light')
-    setDark(nextDark)
+  const setTheme = preference => {
+    if (!['system', 'light', 'dark'].includes(preference)) return
+    if (preference === 'system') localStorage.removeItem('ink-theme')
+    else localStorage.setItem('ink-theme', preference)
+    setThemePreference(preference)
+    setDark(preference === 'system' ? (window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true) : preference === 'dark')
   }
-  return { dark, toggle }
+  const toggle = () => setTheme(dark ? 'light' : 'dark')
+  return { dark, toggle, themePreference, setTheme }
 }

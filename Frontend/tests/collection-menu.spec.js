@@ -11,7 +11,7 @@ const collection = {
   author: { username: 'Maya Sen' },
 }
 
-test('collection-card menu supports keyboard navigation and focus return', async ({ page }) => {
+test('collection-card menu supports keyboard navigation and focus return', async ({ page }, testInfo) => {
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const url = new URL(route.request().url())
     if (url.pathname === '/api/auth/refresh-token') {
@@ -38,7 +38,11 @@ test('collection-card menu supports keyboard navigation and focus return', async
   const share = menu.getByRole('menuitem', { name: 'Share link' })
   const hide = menu.getByRole('menuitem', { name: 'Not interested' })
   await expect(menu).toBeVisible()
+  await expect(trigger.locator('svg circle')).toHaveCount(3)
+  await expect(menu).toHaveCSS('width', '256px')
+  for (const item of [save, share, hide]) await expect(item.locator('svg')).toHaveCount(1)
   await expect(save).toBeFocused()
+  await page.screenshot({ path: testInfo.outputPath('collection-action-menu.png') })
 
   await save.press('ArrowDown')
   await expect(share).toBeFocused()
@@ -51,6 +55,15 @@ test('collection-card menu supports keyboard navigation and focus return', async
   await expect(menu).toBeHidden()
   await expect(trigger).toHaveAttribute('aria-expanded', 'false')
   await expect(trigger).toBeFocused()
+
+  await trigger.click()
+  await hide.focus()
+  await hide.press('Tab')
+  await expect(menu).toBeHidden()
+
+  await trigger.click()
+  await page.getByRole('heading', { name: 'Collections', exact: true }).click()
+  await expect(menu).toBeHidden()
 
   const hasHorizontalOverflow = await page.evaluate(() => (
     document.documentElement.scrollWidth > document.documentElement.clientWidth

@@ -1,9 +1,13 @@
+import Select from '@/shared/components/ui/Select'
 import { useState, useRef, forwardRef, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { v4 as uuid } from 'uuid'
 import Button from '@/shared/components/ui/Button'
 import SlashMenu from '../components/SlashMenu'
+import TagPicker from '../components/TagPicker'
+import WriteDrafts from '../components/WriteDrafts'
+import MobileBlockMenu from '../components/MobileBlockMenu'
 import createPost from '../api/createPost'
 import fetchDepthOptions from '../api/fetchDepthOptions'
 import useEntitlements from '@/features/membership/hooks/useEntitlements'
@@ -14,6 +18,7 @@ import useToast from '@/shared/hooks/useToast'
 import { useSelector } from 'react-redux'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import SignInPrompt from '@/shared/components/ui/SignInPrompt'
+import useLoginPrompt from '@/features/auth/hooks/useLoginPrompt'
 
 // Block Input Types
 const BLOCK_TYPES = [
@@ -40,22 +45,27 @@ function newBlock(type = 'text') {
 export default function WritePage() {
   const isReady = useSelector(state => state.auth.isReady)
   const user = useSelector(state => state.auth.user)
+  const [params] = useSearchParams()
   if (!isReady) return <PageFrame><p role="status">Restoring your session…</p></PageFrame>
-  if (!user) return <PageFrame className="flex min-h-full flex-col !pb-6"><SignInPrompt message="Sign in to start writing." /></PageFrame>
+  if (!user && (params.get('draft') || params.get('edit'))) return <PageFrame className="flex min-h-full flex-col !py-6"><SignInPrompt message="Sign in to access your saved story." /></PageFrame>
+  if (!params.get('draft') && !params.get('edit') && !params.get('new') && !params.get('question')) return <WriteDrafts loggedIn={Boolean(user)} />
   return <MemberEditor />
 }
 
 function MemberEditor() {
+  const loggedIn = useSelector(state => Boolean(state.auth.user))
+  const signIn = useLoginPrompt()
 
   // State and refs
   const navigate  = useNavigate()
   const { notify } = useToast()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
+  const { hash } = useLocation()
   const sourceQuestionId = searchParams.get('question')
   const initialDraftId = searchParams.get('draft')
   const editPostId = searchParams.get('edit')
   const [title,   setTitle]   = useState('')
-  const [format, setFormat] = useState('article')
+  const [format, setFormat] = useState(searchParams.get('new') === 'short' ? 'short' : 'article')
   const [depthParentId, setDepthParentId] = useState('')
   const [publicAt, setPublicAt] = useState('')
   const [blocks, setBlocks] = useState(() => [newBlock()])
@@ -66,10 +76,12 @@ function MemberEditor() {
     filter: '' 
   })
   const [tags,    setTags]    = useState([])
-  const [tagInput,setTagInput]= useState('')
   const [cover,   setCover]   = useState(null)
   const [coverURL, setCoverURL] = useState('')
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [activeBlockId, setActiveBlockId] = useState(null)
+  const [mobileMenu, setMobileMenu] = useState(null)
+  const [isPhone, setIsPhone] = useState(() => window.matchMedia('(max-width: 639px)').matches)
   const [draftId, setDraftId] = useState(initialDraftId)
   const [draftVersion, setDraftVersion] = useState(null)
   const [postRevision, setPostRevision] = useState(null)
@@ -89,14 +101,21 @@ function MemberEditor() {
   const draftIdRef = useRef(initialDraftId)
   const draftVersionRef = useRef(null)
   const wordCount = blocks.reduce((count, block) => count + String(block.content || '').trim().split(/\s+/).filter(Boolean).length, 0)
-  const depthOptions = useQuery({ queryKey: ['depth-options'], queryFn: fetchDepthOptions, enabled: format === 'short' })
-  const entitlements = useEntitlements(true)
-  const canScheduleEarlyAccess = entitlements.data?.capabilities?.includes('early_access')
-  const draftQuery = useQuery({ queryKey: ['draft', initialDraftId], queryFn: () => fetchDraft(initialDraftId), enabled: Boolean(initialDraftId), retry: false })
-  const editQuery = useQuery({ queryKey: ['post', editPostId], queryFn: fetchPost, enabled: Boolean(editPostId), retry: false })
+  const depthOptions = useQuery({ queryKey: ['depth-options'], queryFn: fetchDepthOptions, enabled: loggedIn && format === 'short' })
+  const entitlements = useEntitlements(loggedIn)
+  const canScheduleEarlyAccess = loggedIn && entitlements.data?.capabilities?.includes('early_access')
+  const draftQuery = useQuery({ queryKey: ['draft', initialDraftId], queryFn: () => fetchDraft(initialDraftId), enabled: loggedIn && Boolean(initialDraftId), retry: false, refetchOnMount: 'always' })
+  const editQuery = useQuery({ queryKey: ['post', editPostId], queryFn: fetchPost, enabled: loggedIn && Boolean(editPostId), retry: false })
 
   useEffect(() => {
-    if (!draftQuery.data || hydratedDraftRef.current) return
+    const media = window.matchMedia('(max-width: 639px)')
+    const update = () => { setIsPhone(media.matches); setMobileMenu(null) }
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  useEffect(() => {
+    if (!draftQuery.data || draftQuery.isFetching || hydratedDraftRef.current) return
     const draft = draftQuery.data
     setTitle(draft.title || '')
     setFormat(draft.format || 'article')
@@ -107,7 +126,7 @@ function MemberEditor() {
     draftVersionRef.current = draft.version
     hydratedDraftRef.current = true
     setAutosaveStatus('saved')
-  }, [draftQuery.data])
+  }, [draftQuery.data, draftQuery.isFetching])
 
   useEffect(() => {
     if (!editQuery.data || initialDraftId || hydratedDraftRef.current) return
@@ -131,7 +150,7 @@ function MemberEditor() {
   }, [draftId, draftVersion])
 
   useEffect(() => {
-    if (!hydratedDraftRef.current || draftQuery.isError) return
+    if (!loggedIn || !hydratedDraftRef.current || draftQuery.isError) return
     setAutosaveStatus('waiting')
     const timer = window.setTimeout(async () => {
       const payload = { title, format, blocks, tags, publicAt: publicAt ? new Date(publicAt).toISOString() : null }
@@ -145,7 +164,7 @@ function MemberEditor() {
           setDraftId(result.id)
           const next = new URLSearchParams(searchParams)
           next.set('draft', result.id)
-          setSearchParams(next, { replace: true })
+          navigate({ search: `?${next}`, hash }, { replace: true })
         }
         draftVersionRef.current = result.version
         setDraftVersion(result.version)
@@ -155,7 +174,7 @@ function MemberEditor() {
       }
     }, 1500)
     return () => window.clearTimeout(timer)
-  }, [title, format, blocks, tags, publicAt, draftQuery.isError, searchParams, setSearchParams])
+  }, [loggedIn, title, format, blocks, tags, publicAt, draftQuery.isError, searchParams, navigate, hash])
 
   // Creating Post
   const { mutate, isPending, isError, error } = useMutation({
@@ -176,6 +195,10 @@ function MemberEditor() {
   // Submitting Form
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!loggedIn) {
+      signIn()
+      return
+    }
     if (editPostId) {
       mutate({ postId: editPostId, expectedRevision: postRevision, title, body: JSON.stringify(blocks), tags, publicAt: publicAt ? new Date(publicAt).toISOString() : undefined })
       return
@@ -200,15 +223,6 @@ function MemberEditor() {
       setCover(URL.createObjectURL(f));
       
     } 
-  }
-
-  // Tag operations
-  const addTag = () => {
-    const t = tagInput.trim().toLowerCase()
-    if (t && !tags.includes(t)) { 
-      setTags(v => [...v, t]);
-      setTagInput('') 
-    }
   }
 
   // Block update and edit operations
@@ -240,8 +254,8 @@ function MemberEditor() {
     }, 0);
   }
   // Add a block after the given block, optionally with initial content
-  const addAfter = (id, initialContent = '') => {
-    const newBlk = newBlock();
+  const addAfter = (id, initialContent = '', type = 'text') => {
+    const newBlk = newBlock(type);
     if (initialContent) newBlk.content = initialContent;
 
     setBlocks(b => {
@@ -293,6 +307,11 @@ function MemberEditor() {
     setSlashMenu({ open: false, blockId: null, position: { x: 0, y: 0 }, filter: '' })
   }
   const handleSlashSelect = (item) => {
+    if (slashMenu.mode === 'insert' && item) {
+      addAfter(slashMenu.blockId, '', item.type)
+      closeSlashMenu()
+      return
+    }
     if (slashMenu.blockId && item) {
       changeType(slashMenu.blockId, item.type)
       // Optionally clear the "/" and filter from content
@@ -303,6 +322,20 @@ function MemberEditor() {
     setTimeout(() => {
       blockRefs.current[slashMenu.blockId]?.focus();
     }, 0)
+  }
+
+  const openBlockInsert = (blockId, event) => {
+    if (isPhone) { setMobileMenu({ blockId, mode: 'insert' }); return }
+    slashAnchorRef.current = event.currentTarget
+    setSlashMenu({ open: true, blockId, mode: 'insert', position: { x: 0, y: 0 }, filter: '' })
+  }
+
+  const selectMobileBlock = option => {
+    const { blockId, mode } = mobileMenu
+    if (mode === 'insert') addAfter(blockId, '', option.type)
+    else { changeType(blockId, option.type); setTimeout(() => blockRefs.current[blockId]?.focus(), 0) }
+    setMobileMenu(null)
+    if (mode === 'type') requestAnimationFrame(() => requestAnimationFrame(() => blockRefs.current[blockId]?.focus()))
   }
 
   const moveFocus = (id, dir) => {
@@ -400,25 +433,37 @@ function MemberEditor() {
   // }, []);
 
   return (
-    <main className="mx-auto w-full max-w-[1180px] px-4 pt-6 pb-24 sm:px-6 lg:px-8 lg:pt-8">
+    <PageFrame className="!pt-6 lg:!pt-8">
 
       {/* <HoveringMenu position={menuPosition} onFormat={applyFormatting} /> */}
       
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-[var(--color-border)] pb-5">
         <div>
-          <h1 className="text-[24px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{editPostId ? 'Edit story' : 'Write'}</h1>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">Publishing</p>
+          <h1 className="mt-2 text-[24px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{editPostId ? 'Edit story' : 'Write'}</h1>
           <p role="status" aria-live="polite" className={`mt-1 text-[12px] ${['conflict', 'error'].includes(autosaveStatus) ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-secondary)]'}`}>
-            {autosaveStatus === 'loading' ? 'Loading draft…' : autosaveStatus === 'saving' ? 'Saving…' : autosaveStatus === 'conflict' ? 'Draft conflict' : autosaveStatus === 'error' ? 'Save failed' : autosaveStatus === 'saved' ? '✓ Saved' : autosaveStatus === 'waiting' ? 'Unsaved changes' : 'Autosave on'}
+            {!loggedIn ? 'Sign in to save your draft.' : autosaveStatus === 'loading' ? 'Loading draft…' : autosaveStatus === 'saving' ? 'Saving…' : autosaveStatus === 'conflict' ? 'Draft conflict' : autosaveStatus === 'error' ? 'Save failed' : autosaveStatus === 'saved' ? '✓ Saved' : autosaveStatus === 'waiting' ? 'Unsaved changes' : 'Autosave on'}
           </p>
         </div>
+
+      <div className="ml-auto flex items-center gap-3">
+        <span className="text-[13px] text-[var(--color-text-secondary)]">{format === 'short' ? 'Short' : 'Post'}</span>
+        {loggedIn && <Button variant="secondary" className="!min-h-11" title={coverURL ? 'Publish or remove the selected cover before leaving; covers upload at publication.' : undefined} disabled={['waiting', 'saving', 'error', 'conflict'].includes(autosaveStatus) || Boolean(coverURL)} onClick={() => navigate('/write')}>Drafts</Button>}
           <Button
             variant="primary"
             className="!min-h-11"
-            disabled={!title.trim() || !tags.length || (format === 'article' && !coverURL && !cover) || (format === 'short' && wordCount > 500) || isPending}
+            disabled={isPending || (loggedIn && (!title.trim() || !tags.length || (format === 'article' && !coverURL && !cover) || (format === 'short' && wordCount > 500)))}
             onClick={handleSubmit} aria-busy={isPending}>
             {editPostId ? 'Update' : 'Publish'}
           </Button>
+      </div>
+
       </header>
+      {loggedIn && <p className="mb-6 text-[12px] text-[var(--color-text-secondary)]" aria-live="polite">
+        {(!title.trim() || !tags.length || (format === 'article' && !coverURL && !cover) || (format === 'short' && wordCount > 500))
+          ? `Before publishing: ${[!title.trim() && 'add a title', !tags.length && 'choose a tag', format === 'article' && !coverURL && !cover && 'add a cover image', format === 'short' && wordCount > 500 && 'reduce your short to 500 words'].filter(Boolean).join(', ')}.`
+          : 'Ready to publish.'}
+      </p>}
 
       {sourceQuestionId && <div className="mb-6 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] px-4 py-3 text-[12px] text-[var(--color-text-secondary)]">This article will be published as a response to a reader question.</div>}
       {draftQuery.isError && <p role="alert" className="mb-6 rounded-[12px] border border-[var(--color-danger)] px-4 py-3 text-[12px] text-[var(--color-danger)]">This draft could not be loaded. Return to your profile and choose it again.</p>}
@@ -426,20 +471,14 @@ function MemberEditor() {
 
       {isError && <p role="alert" className="mb-5 text-[12px] text-[var(--color-danger)]">{error?.response?.data?.message || 'The post could not be published.'}</p>}
 
-      <div className="mb-8 flex max-w-[400px] items-center gap-2 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-2">
-        {[{ id: 'article', label: 'Long-form article' }, { id: 'short', label: 'Short read' }].map(option => <button key={option.id} type="button" onClick={() => setFormat(option.id)} aria-pressed={format === option.id} className={`min-h-11 flex-1 rounded-[10px] px-3 py-2 text-[12px] font-semibold ${format === option.id ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm' : 'text-[var(--color-text-muted)]'}`}>{option.label}</button>)}
-      </div>
 
-      <section aria-label="Publishing details" className="mb-8 min-w-0">
-        <details open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)} className="rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)]">
-          <summary className="cursor-pointer px-4 py-4 text-[14px] font-semibold text-[var(--color-text)]">
-            Story details
-            <span className="mt-1 block text-[12px] font-normal text-[var(--color-text-secondary)]">Cover, tags &amp; publishing options</span>
-          </summary>
-          <div className="border-t border-[var(--color-border)] p-4">
+
+      <section aria-label="Publishing details" className="mb-8 min-w-0 sm:pl-24">
+        <div>
+          <div className="grid items-start gap-6">
             {/* ── Cover image ── */}
-            <div className="mb-6">
-              <h2 className="mb-3 text-[13px] font-semibold text-[var(--color-text)]">Cover image <span className="font-normal text-[var(--color-text-secondary)]">{format === 'short' ? '(optional)' : '(required)'}</span></h2>
+            {format === 'article' && <div>
+              <h2 className="mb-3 text-[13px] font-semibold text-[var(--color-text)]">Cover image <span className="font-normal text-[var(--color-text-secondary)]">(required)</span></h2>
               {cover ? (
                 <div className="relative">
                   <img src={cover} alt="cover" className="w-full h-40 object-cover rounded-[14px] block"/>
@@ -453,8 +492,8 @@ function MemberEditor() {
                 </div>
               ) : (
                 <button type="button" onClick={() => fileRef.current?.click()}
-                  className="w-full min-h-11 px-3 py-3 rounded-[14px] border-2 border-dashed border-(--color-border) flex items-center justify-center text-(--color-text-muted) text-[13px] font-medium cursor-pointer bg-transparent hover:bg-(--color-bg-alt) transition-colors">
-                  {format === 'short' ? '+ Add optional cover image' : '+ Add cover image'}
+                  className="w-full min-h-40 px-3 py-3 rounded-[14px] border-2 border-dashed border-(--color-border) flex items-center justify-center text-(--color-text-muted) text-[13px] font-medium cursor-pointer bg-transparent hover:bg-(--color-bg-alt) transition-colors">
+                  + Add cover image
                 </button>
               )}
               <input
@@ -464,77 +503,45 @@ function MemberEditor() {
                 className="hidden"
                 onChange={handleCoverImage}
               />
-            </div>
+            </div>}
 
-            {/* ── Tags ── */}
-            <div className="mb-6">
-              <h2 className="mb-3 text-[13px] font-semibold text-[var(--color-text)]">Tags <span className="font-normal text-[var(--color-text-secondary)]">(at least one)</span></h2>
-              <div className="flex gap-2 flex-wrap mb-3">
-                {tags.map((t) => (
-                  <span
-                    key={t}
-                    className="inline-flex max-w-full items-center gap-1 break-all px-2.5 py-1.25 rounded-full
-                    bg-(--color-surface) border border-(--color-border) text-[12px] text-(--color-text-secondary)"
-                  >
-                    {t}
-                    <button
-                      type="button"
-                      aria-label={`Remove ${t} tag`}
-                      onClick={() => setTags((v) => v.filter((x) => x !== t))}
-                      className="ml-1 text-(--color-text-muted) bg-transparent border-none cursor-pointer text-[14px]">
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <label htmlFor="editor-tag-input" className="sr-only">Add a tag</label>
-                <input
-                  id="editor-tag-input"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addTag();
-                    }
-                  }}
-                  placeholder="Add a tag…"
-                  className="min-w-0 min-h-11 flex-1 px-3 py-2 border border-(--color-border) rounded-full bg-(--color-surface) text-[13px] text-(--color-text) outline-none"
-                />
-                <Button variant="secondary" className="!min-h-11" onClick={addTag}>
-                  Add
-                </Button>
-              </div>
-            </div>
-
-            {format === 'short' && <div className="mb-7"><label htmlFor="depth-parent" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Deeper article <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><select id="depth-parent" value={depthParentId} onChange={event => setDepthParentId(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]"><option value="">This short stands alone</option>{depthOptions.data?.map(post => <option key={post.id} value={post.id}>{post.title}</option>)}</select><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Readers will be able to move between this quick explanation and the full article.</p></div>}
-            {canScheduleEarlyAccess && <div className="mb-7"><label htmlFor="public-at" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Public release <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><input id="public-at" type="datetime-local" value={publicAt} min={scheduleBounds.min} max={scheduleBounds.max} onChange={event => setPublicAt(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]" /><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Members can read immediately; everyone else gets access at this time.</p></div>}
+            <TagPicker tags={tags} onChange={setTags} />
           </div>
-        </details>
-        <p className="mt-3 text-[12px] leading-5 text-[var(--color-text-secondary)]">{format === 'article' ? 'To publish, add a title, at least one tag, and a cover image.' : 'To publish, add a title and at least one tag. Keep your short within 500 words.'}</p>
+          {(format === 'short' || canScheduleEarlyAccess) && <details open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)} className="mt-4 border-t border-[var(--color-border)] pt-3">
+            <summary className="min-h-11 cursor-pointer py-3 text-[13px] font-semibold">Publishing options</summary>
+            <div className="pt-3">
+            {format === 'short' && <div className="mb-7"><Select id="depth-parent" label="Deeper article (optional)" value={depthParentId} options={[{ value: '', label: 'This short stands alone' }, ...(depthOptions.data || []).map(post => ({ value: post.id, label: post.title }))]} onChange={setDepthParentId} className="max-w-none" describedBy="depth-parent-help" /><p id="depth-parent-help" className="mt-2 text-[11px] text-[var(--color-text-muted)]">Readers will be able to move between this quick explanation and the full article.</p></div>}
+            {canScheduleEarlyAccess && <div className="mb-7"><label htmlFor="public-at" className="block mb-2 text-[12px] font-semibold text-[var(--color-text)]">Public release <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label><input id="public-at" type="datetime-local" value={publicAt} min={scheduleBounds.min} max={scheduleBounds.max} onChange={event => setPublicAt(event.target.value)} className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)]" /><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">Members can read immediately; everyone else gets access at this time.</p></div>}
+            </div>
+          </details>}
+        </div>
+        {!loggedIn && <p className="mt-3 text-[12px] leading-5 text-[var(--color-text-secondary)]">{format === 'article' ? 'To publish, add a title, at least one tag, and a cover image.' : 'To publish, add a title and at least one tag. Keep your short within 500 words.'}</p>}
       </section>
 
-      <section aria-label="Writing area" className="min-w-0">
+      <section aria-label="Writing area" className="min-w-0 sm:pl-24">
         {/* ── Title input ── */}
-        <label htmlFor="editor-title" className="mb-3 block text-[12px] font-medium text-[var(--color-text-secondary)]">{format === 'short' ? 'Short title' : 'Article title'}</label>
-        <textarea
-          id="editor-title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder={format === 'short' ? 'A focused idea…' : 'Title…'}
-          maxLength={format === 'short' ? 120 : 180}
-          className="editor-writing-field w-full bg-transparent border-none outline-none resize-none font-bold text-[clamp(24px,4vw,36px)] leading-[1.3] tracking-[-0.5px] mb-8 text-(--color-text) placeholder:text-(--color-text-muted)"
-          style={{ fontFamily: "var(--font-display)", minHeight: "1.3em" }}
-          rows={1}
-          onInput={(e) => {
-            e.target.style.height = "auto";
-            e.target.style.height = e.target.scrollHeight + "px";
-          }}
-        />
+        <div>
+          <label htmlFor="editor-title" className="mb-3 block text-[12px] font-medium text-[var(--color-text-secondary)]">{format === 'short' ? 'Short title' : 'Article title'}</label>
+          <textarea
+            id="editor-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={format === 'short' ? 'A focused idea…' : 'Title…'}
+            maxLength={format === 'short' ? 120 : 180}
+            className="editor-writing-field w-full bg-transparent border-none outline-none resize-none font-bold text-[clamp(24px,4vw,36px)] leading-[1.3] tracking-[-0.5px] mb-8 text-(--color-text) placeholder:text-(--color-text-muted)"
+            style={{ fontFamily: "var(--font-display)", minHeight: "1.3em" }}
+            rows={1}
+            onInput={(e) => {
+              e.target.style.height = "auto";
+              e.target.style.height = e.target.scrollHeight + "px";
+            }}
+          />
+        </div>
 
         {/* ── Block editor ── */}
-        <p className="mb-3 text-[12px] font-medium text-[var(--color-text-secondary)]">Story</p>
+        <div className="mb-3">
+          <p className="text-[12px] font-medium text-[var(--color-text-secondary)]">Story</p>
+        </div>
         <div className="flex min-h-[240px] flex-col gap-2 mb-4 relative" ref={editorRef}>
           {blocks.map(bl => (
             <Block
@@ -545,7 +552,9 @@ function MemberEditor() {
               onAltChange={(value) => updateBlockField(bl.id, 'alt', value)}
               onDelete={() => deleteBlock(bl.id)}
               onAdd={(content) => addAfter(bl.id, content)}
-              onTypeChange={(t) => changeType(bl.id, t)}
+              onInsert={event => openBlockInsert(bl.id, event)}
+              onActivate={() => setActiveBlockId(bl.id)}
+              active={activeBlockId === bl.id}
               openSlashMenu={openSlashMenu}
               closeSlashMenu={closeSlashMenu}
               isSlashMenuOpen={slashMenu.open && slashMenu.blockId === bl.id}
@@ -567,6 +576,15 @@ function MemberEditor() {
 
         </div>
 
+        {isPhone && activeBlockId && blocks.some(block => block.id === activeBlockId) && <div role="toolbar" aria-label="Active block actions" className="sticky bottom-0 z-20 mb-4 flex flex-wrap items-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
+          <Button variant="action" className="!min-h-11" onClick={() => setMobileMenu({ blockId: activeBlockId, mode: 'insert' })}>+ Insert block</Button>
+          <Button variant="action" className="!min-h-11" onClick={() => setMobileMenu({ blockId: activeBlockId, mode: 'type' })}>Block type</Button>
+          <Button variant="action" className="!min-h-11" onClick={() => deleteBlock(activeBlockId)}>× Delete block</Button>
+        </div>}
+        {mobileMenu && <MobileBlockMenu title={mobileMenu.mode === 'insert' ? 'Insert block' : 'Block type'} options={BLOCK_TYPES} onSelect={selectMobileBlock} onClose={() => setMobileMenu(null)} />}
+
+
+
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--color-text-secondary)]">
           <p>Type / in a block for formatting options.</p>
           <p className={format === 'short' && wordCount > 500 ? 'text-[var(--color-danger)]' : ''}>{format === 'short' ? `${wordCount}/500 words` : `${wordCount} ${wordCount === 1 ? 'word' : 'words'}`}</p>
@@ -574,14 +592,14 @@ function MemberEditor() {
 
       </section>
 
-    </main>
+    </PageFrame>
   );
 }
 
 // Single editable block
 const Block = forwardRef(
   function Block(
-    { block, onChange, onAltChange, onDelete, onAdd, openSlashMenu, closeSlashMenu, isSlashMenuOpen, moveFocus, mergeToPrevBlock, copyPasteContent },
+    { block, onChange, onAltChange, onDelete, onAdd, onInsert, onActivate, active, openSlashMenu, closeSlashMenu, isSlashMenuOpen, moveFocus, mergeToPrevBlock, copyPasteContent },
     ref
   ) {
 
@@ -669,12 +687,12 @@ const Block = forwardRef(
     }
 
     return (
-      <div className="relative group flex items-start gap-2">
+      <div data-editor-block data-active={active || undefined} onFocusCapture={onActivate} className="relative group flex min-h-11 items-start gap-2">
         {/* Content */}
         {
           block.type === "divider"
         ? 
-          <div className="h-px bg-(--color-border) my-4 w-full" />
+          <button ref={ref} type="button" aria-label="Divider block" onClick={onActivate} className="flex min-h-11 w-full items-center"><span className="h-px bg-(--color-border) w-full" /></button>
         :
           <div className="flex-1 min-w-0">
             {block.type === 'image' && block.content && (
@@ -700,23 +718,26 @@ const Block = forwardRef(
           </div>
         }
         
-        {/* Add block button (appears on hover) */}
-        <button
-          type="button"
-          aria-label="Add block after this block"
-          onClick={() => onAdd()}
-          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity mt-1 w-10 h-10 flex items-center justify-center rounded text-(--color-text-muted) hover:text-green-500 bg-transparent border-none cursor-pointer text-[18px] shrink-0"
-          title="Add block after"
-          tabIndex={0}
-        >
-          +
-        </button>
+        <div data-editor-block-controls className="absolute -left-24 top-0 hidden gap-1 sm:flex">
+          {/* Add block button (appears on hover or keyboard focus) */}
+          <button
+            type="button"
+            aria-label="Add block after this block"
+            onClick={onInsert}
+            aria-haspopup="listbox"
+            className="w-11 h-11 flex items-center justify-center rounded text-(--color-text-muted) hover:text-(--color-text) bg-transparent border-none cursor-pointer text-[18px] shrink-0"
+            title="Add block after"
+            tabIndex={0}
+          >
+            +
+          </button>
 
-        {/* Delete button */}
-        <button type="button" aria-label={`Delete ${block.type} block`} onClick={onDelete}
-          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity mt-1 w-10 h-10 flex items-center justify-center rounded text-(--color-text-muted) hover:text-red-500 bg-transparent border-none cursor-pointer text-[16px] shrink-0">
-          ×
-        </button>
+          {/* Delete button */}
+          <button type="button" aria-label={`Delete ${block.type} block`} onClick={onDelete}
+            className="w-11 h-11 flex items-center justify-center rounded text-(--color-text-muted) hover:text-(--color-danger) bg-transparent border-none cursor-pointer text-[16px] shrink-0">
+            ×
+          </button>
+        </div>
       </div>
     )
   }

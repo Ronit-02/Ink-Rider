@@ -4,6 +4,8 @@ const Post = require('../schemas/post.schema');
 const Profile = require('../schemas/profile.schema');
 const User = require('../schemas/user.schema');
 const Like = require('../schemas/like.schema');
+const Save = require('../schemas/save.schema');
+const { notifyFollow } = require('../services/user-relationship.service');
 
 const isValidId = id => mongoose.isValidObjectId(id);
 
@@ -35,7 +37,7 @@ const getWriterByHandle = async (req, res) => {
     const [posts, following] = await Promise.all([
       Post.find({ author: profile.userId._id, publicationStatus: { $ne: 'unpublished' }, $or: [{ publicAt: { $lte: new Date() } }, { publicAt: null }, { publicAt: { $exists: false } }] })
         .sort({ createdAt: -1 })
-        .select('title coverImage tags likesCount commentsCount createdAt body'),
+        .select('title format coverImage tags likesCount commentsCount createdAt body'),
       req.auth
         ? Follow.exists({ followerId: req.auth.userId, followingId: profile.userId._id })
         : Promise.resolve(null),
@@ -45,6 +47,10 @@ const getWriterByHandle = async (req, res) => {
       ? await Like.find({ userId: req.auth.userId, postId: { $in: posts.map(post => post._id) } }).select('postId').lean()
       : [];
     const likedPostIds = new Set(likes.map(like => like.postId.toString()));
+    const saves = req.auth
+      ? await Save.find({ userId: req.auth.userId, postId: { $in: posts.map(post => post._id) } }).select('postId').lean()
+      : [];
+    const savedPostIds = new Set(saves.map(save => save.postId.toString()));
 
     const author = {
       id: profile.userId._id,
@@ -72,10 +78,12 @@ const getWriterByHandle = async (req, res) => {
         posts: posts.map(post => ({
           id: post._id,
           title: post.title,
+          format: post.format || 'article',
           image: post.coverImage,
           tags: post.tags,
           likesCount: post.likesCount,
           isLiked: likedPostIds.has(post._id.toString()),
+          isBookmarked: savedPostIds.has(post._id.toString()),
           commentsCount: post.commentsCount,
           createdAt: post.createdAt,
           readTime: estimateReadTime(post.body),
@@ -116,6 +124,7 @@ const followWriter = async (req, res) => {
     }
 
     const writer = await User.findById(followingId).select('followersCount');
+    if (result.upsertedCount === 1) await notifyFollow({ followerId, followingId });
     return res.status(200).json({ isFollowing: true, followersCount: writer.followersCount });
   } catch (error) {
     console.error(`[${req.requestId}] Follow writer failed`);

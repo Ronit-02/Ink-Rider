@@ -1,5 +1,6 @@
 import { useSelector } from "react-redux"
 import { Navigate, useLocation } from "react-router-dom"
+import { safeReturnTo } from '@/features/auth/utils/returnTo'
 
 export default function PublicRoute({children}) {
     const location = useLocation()
@@ -11,7 +12,7 @@ export default function PublicRoute({children}) {
     }
 
     if (user) {
-        return <Navigate to={location.state?.returnTo === '/membership' ? '/membership' : '/'} replace />
+        return <Navigate to={safeReturnTo(location.state?.returnTo)} replace />
     }
 
     return children

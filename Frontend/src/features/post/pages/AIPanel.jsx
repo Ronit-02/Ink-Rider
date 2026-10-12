@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { fetchPostSummary, startMembershipCheckout } from '@/features/membership/api/membership'
+import Button from '@/shared/components/ui/Button'
+import IconButton from '@/shared/components/ui/IconButton'
 
 const SummaryIcon = ({ active }) => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={active ? 'white' : 'var(--color-text-muted)'} strokeWidth="2">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={active ? 'var(--color-text-inverted)' : 'var(--color-text-muted)'} strokeWidth="2">
     <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
     <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
   </svg>
 )
 
 const AudioIcon = ({ active }) => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={active ? 'white' : 'var(--color-text-muted)'} strokeWidth="2">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={active ? 'var(--color-text-inverted)' : 'var(--color-text-muted)'} strokeWidth="2">
     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
     <path d="M15.54 8.46a5 5 0 010 7.07" />
   </svg>
@@ -18,15 +20,15 @@ const AudioIcon = ({ active }) => (
 
 export function AIStickyButtons({ onSummary, onAudio, showSummary, readAloud }) {
   return (
-    <div role="group" aria-label="Article tools" className="flex flex-row flex-wrap gap-[10px] lg:sticky lg:top-20 lg:flex-col">
+    <div role="group" aria-label="Article tools" className="flex flex-row flex-wrap gap-[10px] xl:sticky xl:top-20 xl:flex-col">
       {[
         { fn: onSummary, active: showSummary, icon: <SummaryIcon active={showSummary} />, title: 'Article overview' },
         { fn: onAudio, active: readAloud, icon: <AudioIcon active={readAloud} />, title: 'Read aloud' },
       ].map(button => (
         <button type="button" key={button.title} onClick={button.fn} title={button.title} aria-label={button.title} aria-pressed={button.active}
-          className={`min-h-11 px-3 gap-2 lg:p-0 lg:w-10 lg:min-h-10 rounded-[10px] flex items-center justify-center cursor-pointer border transition-all duration-150 ${button.active ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-[var(--color-text-inverted)]' : 'bg-[var(--color-bg-alt)] border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}>
+          className={`button-size-md px-3 gap-2 xl:p-0 xl:w-11 rounded-[10px] flex items-center justify-center cursor-pointer border transition-all duration-150 ${button.active ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-[var(--color-text-inverted)]' : 'bg-[var(--color-bg-alt)] border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}>
           {button.icon}
-          <span className="text-[12px] lg:hidden">{button.title}</span>
+          <span className="text-[12px] xl:hidden">{button.title}</span>
         </button>
       ))}
     </div>
@@ -42,9 +44,9 @@ export function AccessPanel({ capability }) {
       <p className="mt-2 text-[13px] leading-[1.65] text-[var(--color-text-secondary)]">
         {isSummary ? 'Article overviews' : 'Read aloud'} is included with an Ink-Rider membership. The full article always remains free to read.
       </p>
-      <button type="button" disabled={checkout.isPending} onClick={() => checkout.mutate()} className="mt-4 px-4 py-2 rounded-full bg-[var(--color-accent)] text-white text-[12px] font-semibold disabled:opacity-70" aria-busy={checkout.isPending}>
+      <Button size="sm" disabled={checkout.isPending} onClick={() => checkout.mutate()} className="mt-4" aria-busy={checkout.isPending}>
         {'Become a member'}
-      </button>
+      </Button>
       {checkout.isError && <p role="alert" className="mt-3 text-[11px] text-[var(--color-danger)]">{checkout.error?.response?.data?.message || 'Billing is temporarily unavailable.'}</p>}
     </section>
   )
@@ -132,10 +134,8 @@ export function ReadAloudPanel({ text }) {
   return (
     <section className="mt-6 px-5 py-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px]">
       <div className="flex items-center gap-4">
-        <button type="button" onClick={play} disabled={!supported || !text.trim()} aria-label={playing ? 'Pause reading' : 'Read article aloud'}
-          className="w-10 h-10 rounded-full bg-[var(--color-accent)] border-none flex items-center justify-center cursor-pointer flex-shrink-0 disabled:opacity-50">
-          {playing ? <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg> : <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3" /></svg>}
-        </button>
+        <IconButton variant="primary" onClick={play} disabled={!supported || !text.trim()} label={playing ? 'Pause reading' : 'Read article aloud'}
+          icon={playing ? <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg> : <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>} />
         <div className="flex-1">
           <p className="text-[12px] text-[var(--color-text-muted)] mb-[6px]">Browser read aloud</p>
           <div className="h-1 bg-[var(--color-bg-alt)] rounded-full" role="progressbar" aria-valuemin="0" aria-valuemax={estimatedSeconds} aria-valuenow={elapsed}>
@@ -145,7 +145,7 @@ export function ReadAloudPanel({ text }) {
         <span className="text-[12px] text-[var(--color-text-muted)] flex-shrink-0">{formatTime(elapsed)} / ≈{formatTime(estimatedSeconds)}</span>
       </div>
       {!supported && <p role="alert" className="mt-3 text-[11px] text-[var(--color-danger)]">Read aloud is not supported by this browser.</p>}
-      {elapsed > 0 && <button type="button" onClick={restart} className="mt-3 text-[11px] font-semibold text-[var(--color-accent)]">Restart</button>}
+      {elapsed > 0 && <button type="button" onClick={restart} className="button-target mt-3 text-[11px] font-semibold text-[var(--color-accent)]">Restart</button>}
     </section>
   )
 }

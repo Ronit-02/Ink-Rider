@@ -19,8 +19,8 @@ async function mockApi(page, { member = true } = {}) {
   })
 }
 
-const detailRoutes = ['/search?q=memory', `/post/${postId}`, '/author/maya-sen', '/collections/missing', '/shorts/series/missing', '/history', '/membership', '/settings', '/help', '/explore/questions/missing', '/explore/competitions/missing']
-const primaryRoutes = ['/', '/explore/trending', '/explore/questions', '/explore/competitions', '/opportunities', '/author', '/collections', '/saved', '/shorts', '/members', '/notifications', '/staff', '/write', '/profile', '/unknown-page']
+const detailRoutes = ['/search?q=memory', `/post/${postId}`, '/author/maya-sen', '/collections/missing', '/shorts/series/missing', '/history', '/membership', '/explore/questions/missing', '/explore/competitions/missing']
+const primaryRoutes = ['/', '/explore/trending', '/explore/questions', '/explore/competitions', '/opportunities', '/author', '/collections', '/saved', '/shorts', '/members', '/notifications', '/staff', '/write', '/profile', '/settings', '/help', '/unknown-page']
 
 for (const width of [320, 1280]) {
   test(`only detail and drill-down pages have a consistent Back control at ${width}px`, async ({ page }) => {
@@ -73,7 +73,7 @@ for (const width of [320, 1280]) {
   })
 }
 
-for (const [path, parent] of [[`/post/${postId}`, '/'], ['/author/maya-sen', '/'], ['/explore/questions/missing', '/explore/questions'], ['/explore/competitions/missing', '/explore/competitions'], ['/collections/missing', '/collections'], ['/shorts/series/missing', '/shorts'], ['/settings', '/profile']]) {
+for (const [path, parent] of [[`/post/${postId}`, '/'], ['/author/maya-sen', '/'], ['/explore/questions/missing', '/explore/questions'], ['/explore/competitions/missing', '/explore/competitions'], ['/collections/missing', '/collections'], ['/shorts/series/missing', '/shorts']]) {
   test(`direct entry ${path} falls back to ${parent}`, async ({ page }) => {
     await mockApi(page)
     await page.goto(path)
@@ -83,16 +83,15 @@ for (const [path, parent] of [[`/post/${postId}`, '/'], ['/author/maya-sen', '/'
   })
 }
 
-test('auth and verification use the same Back control without submitting the form', async ({ page }) => {
+test('auth and verification omit Back and retain the home logo link', async ({ page }) => {
   await mockApi(page, { member: false })
   await page.setViewportSize({ width: 320, height: 560 })
   for (const path of ['/login', '/signup']) {
     await page.goto(path)
     const back = page.getByRole('button', { name: 'Back', exact: true })
-    await expect(back).toBeVisible()
-    await expect(back).toHaveAttribute('type', 'button')
-    expect((await back.boundingBox()).height).toBeGreaterThanOrEqual(44)
-    await back.click()
+    await expect(page.getByRole('heading', { name: path === '/login' ? 'Welcome Back' : 'Create Account' })).toBeVisible()
+    await expect(back).toHaveCount(0)
+    await page.getByRole('link', { name: 'Return to Ink-Rider home' }).click()
     await expect(page).toHaveURL('/')
   }
   await page.goto('/login')
@@ -100,8 +99,8 @@ test('auth and verification use the same Back control without submitting the for
   await page.getByLabel('Password', { exact: true }).fill('fixture-value')
   await page.getByRole('button', { name: 'Login', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Enter Verification Code' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(1)
-  await page.getByRole('button', { name: 'Back', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0)
+  await page.getByRole('link', { name: 'Return to Ink-Rider home' }).click()
   await expect(page).toHaveURL('/')
 })
 

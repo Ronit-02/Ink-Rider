@@ -48,7 +48,7 @@ for (const width of [320, 390, 767, 768, 1280]) {
     await expect(main.getByRole('heading', { level: 3 })).toHaveCount(7)
     await expect(main.getByRole('heading', { name: 'Ink Rider Pro', exact: true })).toBeVisible()
     await expect(main.getByText('₹199 / month', { exact: true })).toBeVisible()
-    await expect(main.getByRole('link', { name: 'Sign In to join' })).toBeVisible()
+    await expect(main.getByRole('button', { name: 'Sign In to join' })).toBeVisible()
     expect(calls.entitlementPaths).toHaveLength(0)
     expect(calls.billingPaths).toHaveLength(0)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
@@ -63,7 +63,7 @@ for (const width of [320, 390, 767, 768, 1280]) {
 test('guest sign-in returns to membership without automatically starting checkout', async ({ page }) => {
   const calls = await mockMembership(page)
   await page.goto('/membership')
-  await page.getByRole('link', { name: 'Sign In to join' }).click()
+  await page.getByRole('button', { name: 'Sign In to join' }).click()
   await page.getByRole('textbox', { name: 'Email', exact: true }).fill('reader@example.test')
   await page.getByRole('textbox', { name: 'Password', exact: true }).fill('test-password-123')
   await page.getByRole('button', { name: 'Login', exact: true }).click()

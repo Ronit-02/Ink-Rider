@@ -12,12 +12,16 @@ import { loginFailure, loginStart, loginSuccess } from '../store/authSlice'
 import { googleLogin as requestGoogleLogin } from '../api/googleLogin'
 import useToast from '@/shared/hooks/useToast'
 import { useTheme } from '@/shared/hooks/useTheme'
-import BackButton from '@/shared/components/ui/BackButton'
+import { safeReturnTo } from '../utils/returnTo'
 
-export default function Login({ signUp = false }) {
+export default function Login({ signUp = false, embedded = false, returnTo, onSignedIn }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const afterSignIn = location.state?.returnTo === '/membership' ? '/membership' : '/'
+  const afterSignIn = safeReturnTo(returnTo ?? location.state?.returnTo)
+  const finishSignIn = () => {
+    onSignedIn?.()
+    if (!embedded || afterSignIn !== `${location.pathname}${location.search}${location.hash}`) navigate(afterSignIn, { replace: true })
+  }
   const dispatch = useDispatch()
   const { notify } = useToast()
   const { dark } = useTheme()
@@ -36,7 +40,7 @@ export default function Login({ signUp = false }) {
     onSuccess: (data) => { 
       dispatch(loginSuccess(data));
       notify('Welcome back.')
-      navigate(afterSignIn)
+      finishSignIn()
     },
     
     onError: (error) => {
@@ -67,7 +71,10 @@ export default function Login({ signUp = false }) {
       setIsEmailVerified(true)
       dispatch(loginSuccess(data));
       notify('Email verified.')
-      navigate('/onboarding') 
+      if (mode === 'signup') {
+        onSignedIn?.()
+        navigate('/onboarding')
+      } else finishSignIn()
     },
 
     onError: error => notify(error?.response?.data?.message || 'Email verification failed.', { tone: 'error' }),
@@ -86,7 +93,7 @@ export default function Login({ signUp = false }) {
     onSuccess: data => {
       dispatch(loginSuccess(data))
       notify('Welcome to Ink Rider.')
-      navigate(afterSignIn)
+      finishSignIn()
     },
     onSettled: () => { googlePendingRef.current = false },
   })
@@ -163,13 +170,13 @@ export default function Login({ signUp = false }) {
   const passwordsDiffer = mode === 'signup' && creds.confirmPassword && creds.password !== creds.confirmPassword
 
   return (
-    <main className="flex h-[100dvh] overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
+    <div className={embedded ? 'text-[var(--color-text)]' : 'flex h-[100dvh] overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)]'} role={embedded ? undefined : 'main'}>
 
       {/* Left image (hidden on mobile) */}
-      <div className="hidden md:block min-w-0 flex-1 overflow-hidden">
+      {!embedded && <div className="hidden md:block min-w-0 flex-1 overflow-hidden">
         <img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee"
           alt="" className="w-full h-full object-cover" />
-      </div>
+      </div>}
 
       {/* Right form */}
       {!isEmailVerified 
@@ -182,19 +189,19 @@ export default function Login({ signUp = false }) {
           boxInputRefs={boxInputRefs}
           verifying={verifyEmailMutation.isPending}
           resending={resendOtpMutation.isPending}
+          embedded={embedded}
         />
         :
-        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-[var(--color-bg)] px-4 py-4 sm:px-6 sm:py-6">
-          <form id="auth-form" onSubmit={handleSubmit} className="m-auto w-full max-w-95 shrink-0 flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-6 sm:px-8 sm:py-10 shadow-[0_14px_36px_rgba(0,0,0,0.12)]">
-            <BackButton className="mb-5 self-start" />
+        <div className={embedded ? 'flex min-w-0 flex-1 flex-col overflow-y-auto bg-[var(--color-bg)] px-4 pb-4 sm:px-6 sm:pb-6 lg:px-10 lg:pb-10' : 'flex min-w-0 flex-1 flex-col overflow-y-auto bg-[var(--color-bg)] px-4 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-10'}>
+          <form id="auth-form" onSubmit={handleSubmit} className={embedded ? 'w-full flex flex-col px-0 py-2' : 'm-auto w-full max-w-95 lg:max-w-md shrink-0 flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-6 sm:px-8 sm:py-10 lg:px-10 lg:py-12 shadow-[0_14px_36px_rgba(0,0,0,0.12)]'}>
 
             {/* Logo */}
-            <Link to="/" 
+            {!embedded && <Link to="/"
               aria-label="Return to Ink-Rider home"
               className="mx-auto mb-5 inline-flex items-center gap-2 rounded-[10px] no-underline text-[var(--color-text)]">
               <span className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-accent)]"><LogoIcon /></span>
               <span className="text-[17px] font-bold">Ink Rider</span>
-            </Link>
+            </Link>}
 
             {/* Authentication Tabs */}
             <div role="tablist" aria-label="Authentication mode" className="mb-5 flex rounded-lg border border-[var(--color-border-light)] bg-[var(--color-bg)] p-1">
@@ -209,7 +216,7 @@ export default function Login({ signUp = false }) {
                   onKeyDown={handleAuthTabKeyDown}
                   key={m} 
                   onClick={() => setMode(m)}
-                  className={`flex-1 py-2.5 rounded-md border-none text-[14px] font-medium cursor-pointer transition-all duration-150
+                  className={`button-target flex-1 py-2.5 rounded-md border-none text-[14px] font-medium cursor-pointer transition-all duration-150
                     ${mode === m ? 'border border-[var(--color-border)] bg-[var(--color-surface-hover)] shadow-[0_2px_6px_rgba(0,0,0,0.12)] text-[var(--color-text)]' : 'border border-transparent bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}`}>
                   {m === 'login' ? 'Login' : 'Sign Up'}
                 </button>
@@ -271,7 +278,7 @@ export default function Login({ signUp = false }) {
 
             {/* Submit */}
             <button type="submit" disabled={loginMutation.isPending || signupMutation.isPending || passwordsDiffer}
-              className="mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-60" aria-busy={loginMutation.isPending || signupMutation.isPending}>
+              className="button-target mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-60" aria-busy={loginMutation.isPending || signupMutation.isPending}>
               {mode === 'login' ? 'Login' : 'Sign Up'}
             </button>
             {import.meta.env.VITE_GOOGLE_CLIENT_ID && <><div className="my-5 flex items-center gap-3 text-[11px] text-[var(--color-text-muted)]"><span className="h-px flex-1 bg-[var(--color-border)]" />or<span className="h-px flex-1 bg-[var(--color-border)]" /></div><div ref={googleButtonRef} aria-busy={googleMutation.isPending} inert={googleMutation.isPending ? "" : undefined} className="flex min-h-10 justify-center" />{googleMutation.error && <p role="alert" className="mt-2 text-center text-[12px] text-[var(--color-danger)]">{googleMutation.error?.response?.data?.message || 'Google sign-in failed.'}</p>}</>}
@@ -279,11 +286,11 @@ export default function Login({ signUp = false }) {
           </form>
         </div>
       }
-    </main>
+    </div>
   )
 }
 
-function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResendOtp, verifying, resending}) {
+function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResendOtp, verifying, resending, embedded}) {
 
   const handleChange = (value, index) => {
     const newOtp = [...otp]
@@ -304,17 +311,16 @@ function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResend
   }
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-[var(--color-bg)] px-4 py-4 sm:px-6 sm:py-6">
-      <div className="m-auto w-full max-w-95 shrink-0 flex flex-col items-center gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-6 sm:px-8 sm:py-10 shadow-[0_14px_36px_rgba(0,0,0,0.12)]">
-        <BackButton className="self-start" />
+    <div className={embedded ? 'flex min-w-0 flex-1 flex-col overflow-y-auto bg-[var(--color-bg)] px-4 pb-4 sm:px-6 sm:pb-6 lg:px-10 lg:pb-10' : 'flex min-w-0 flex-1 flex-col overflow-y-auto bg-[var(--color-bg)] px-4 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-10'}>
+      <div className={embedded ? 'w-full flex flex-col items-center gap-4 py-2' : 'm-auto w-full max-w-95 lg:max-w-md shrink-0 flex flex-col items-center gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-6 sm:px-8 sm:py-10 lg:px-10 lg:py-12 shadow-[0_14px_36px_rgba(0,0,0,0.12)]'}>
 
         {/* Logo */}
-        <Link to="/" 
+        {!embedded && <Link to="/"
           aria-label="Return to Ink-Rider home"
           className="mx-auto mb-5 inline-flex items-center gap-2 rounded-[10px] no-underline text-[var(--color-text)]">
           <span className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-accent)]"><LogoIcon /></span>
           <span className="text-[17px] font-bold">Ink Rider</span>
-        </Link>
+        </Link>}
 
         <h2 className="text-[24px] font-bold mb-1.5 text-(--color-text-primary)">
           Enter Verification Code
@@ -340,14 +346,14 @@ function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResend
         </div>
 
         <button type="button" onClick={handleResendOtp} disabled={verifying || resending} aria-busy={resending}
-          className='text-[12px] text-(--color-text-muted) hover:text-(--color-accent) transition-colors mr-auto'
+          className='button-target text-[12px] text-(--color-text-muted) hover:text-(--color-accent) transition-colors mr-auto'
         >
           Resend OTP
         </button>
 
           {/* Submit */}
         <button type="button" onClick={handleVerifyEmail} disabled={verifying || resending} aria-busy={verifying}
-          className="mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)]">
+          className="button-target mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)]">
           Verify Email
         </button>
       </div>

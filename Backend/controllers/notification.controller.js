@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { decodeCursor } = require('../utils/cursor');
-const { listForRecipient, markRead, markAllRead: markAllReadNotifications } = require('../services/notification.service');
+const { listForRecipient, markRead, markAllRead: markAllReadNotifications, deleteForRecipient } = require('../services/notification.service');
 const { success, failure, noContent } = require('../utils/api-response');
 
 const listNotifications = async (req, res) => {
@@ -24,4 +24,11 @@ const markAllRead = async (req, res) => {
   return noContent(res);
 };
 
-module.exports = { listNotifications, markNotificationRead, markAllRead };
+const deleteNotification = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.notificationId)) return failure(res, 400, 'Invalid notification id', 'INVALID_NOTIFICATION_ID');
+  const notification = await deleteForRecipient({ notificationId: req.params.notificationId, recipientId: req.auth.userId });
+  if (!notification) return failure(res, 404, 'Notification not found', 'NOTIFICATION_NOT_FOUND');
+  return noContent(res);
+};
+
+module.exports = { listNotifications, markNotificationRead, markAllRead, deleteNotification };

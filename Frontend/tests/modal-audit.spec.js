@@ -1,3 +1,4 @@
+import { expectModalHeader } from './helpers/modal-header'
 import { test, expect } from '@playwright/test'
 
 const id = '507f1f77bcf86cd799439021'
@@ -40,6 +41,7 @@ async function open(page, surface) {
   if (surface.key === 'delete') await page.getByRole('menuitem', { name: 'Delete collection', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: surface.name, exact: true })
   await expect(dialog).toBeVisible()
+  await expectModalHeader(dialog)
   return { trigger, dialog }
 }
 
@@ -118,7 +120,6 @@ for (const theme of ['light', 'dark']) {
         if (surface.dirty) result.draftLostOnEscape = await dialog.getByLabel(surface.dirty, { exact: surface.dirty === 'Question' || surface.dirty === 'Add a comment' }).inputValue() === ''
         if (surface.key !== 'search') {
           await dialog.click({ position: { x: 2, y: 2 } })
-          if (surface.key === 'delete') { await expect(dialog).toBeVisible(); await page.keyboard.press('Escape') }
           await expect(dialog).toHaveCount(0)
           await expect(trigger).toBeFocused()
         } else await page.keyboard.press('Escape')
@@ -181,7 +182,7 @@ for (const key of ['account', 'search', 'comments', 'short']) {
     await mockApi(page, { guest: true })
     await page.goto(surface.path)
     const { dialog } = await open(page, surface)
-    if (key === 'account') await expect(dialog.getByRole('link', { name: 'Sign In', exact: true })).toBeVisible()
+    if (key === 'account') await expect(dialog.getByRole('button', { name: 'Sign In', exact: true })).toBeVisible()
     if (key === 'comments' || key === 'short') await expect(dialog.getByText('Sign in to join the conversation.')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
@@ -197,11 +198,15 @@ for (const key of ['question', 'collection', 'series', 'entry', 'comments', 'sho
     const { dialog } = await open(page, surface)
     if (surface.dirty) await dialog.getByLabel(surface.dirty, { exact: surface.dirty === 'Question' || surface.dirty === 'Add a comment' }).fill('An unsaved audit draft')
     if (key === 'series') await dialog.getByRole('checkbox').evaluateAll(elements => elements.forEach(element => element.click()))
-    if (key === 'entry') await dialog.getByRole('combobox').selectOption(id)
+    if (key === 'entry') {
+      await dialog.getByRole('combobox').click()
+      await dialog.getByRole('option', { name: title, exact: true }).click()
+    }
     const submitName = { question: 'Post question', collection: 'Create collection', series: 'Create series', entry: 'Submit entry', comments: 'Comment', short: 'Comment', delete: 'Delete collection' }[key]
     await dialog.getByRole('button', { name: submitName, exact: true }).click()
     await expect(key === 'delete' ? page.getByText('The collection could not be deleted.') : dialog.getByRole('alert')).toBeVisible()
     await expect(dialog).toBeVisible()
+    await expectModalHeader(dialog)
     if (surface.dirty) await expect(dialog.getByLabel(surface.dirty, { exact: surface.dirty === 'Question' || surface.dirty === 'Add a comment' })).toHaveValue('An unsaved audit draft')
   })
 }

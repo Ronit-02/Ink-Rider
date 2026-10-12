@@ -21,7 +21,7 @@ export default function ExplorePage() {
               key={section.path}
               to={section.path}
               aria-current={isCurrent ? 'page' : undefined}
-              className={`inline-flex min-h-11 items-center rounded-t-[10px] border-b-2 px-3 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0 ${isCurrent
+              className={`button-target inline-flex min-h-11 items-center rounded-t-[10px] border-b-2 px-3 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0 ${isCurrent
                 ? 'border-[var(--color-accent)] text-[var(--color-text)]'
                 : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
               }`}

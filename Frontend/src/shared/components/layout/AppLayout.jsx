@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useSelector } from 'react-redux'
 import { matchPath, Outlet, useLocation } from 'react-router-dom'
 import Navbar from './Navbar'
 import Sidebar from './Sidebar'
@@ -12,21 +13,15 @@ import { useServerUnavailable } from '@/app/serverAvailability'
 const BACK_ROUTES = [
   '/post/:id', '/author/:handle', '/explore/questions/:id',
   '/explore/competitions/:id', '/collections/:id', '/shorts/series/:id',
-  '/search', '/membership', '/history', '/settings', '/help',
+  '/search', '/membership', '/history', '/profile/edit',
 ]
 
 export default function AppLayout() {
   const location = useLocation()
-  const { dark, toggle: toggleTheme } = useTheme()
+  const loggedIn = useSelector(state => Boolean(state.auth.user))
+  const { dark, toggle: toggleTheme, themePreference, setTheme } = useTheme()
   const isServerUnavailable = useServerUnavailable()
   const previousPathname = useRef(location.pathname)
-  const backRowClass = location.pathname === '/search'
-    ? 'max-w-[920px] px-5 md:px-8'
-    : location.pathname === '/history'
-      ? 'max-w-[850px] px-5 md:px-8'
-      : matchPath('/author/:handle', location.pathname)
-        ? 'max-w-[1080px] px-6 md:px-8'
-        : 'max-w-[1120px] px-4 sm:px-5 md:px-8'
 
   useEffect(() => {
     if (previousPathname.current === location.pathname) return
@@ -68,10 +63,10 @@ export default function AppLayout() {
 
         {/* Main — scrolls independently */}
         <div id="main-content" tabIndex={-1} data-app-scroll="true" className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden focus:outline-none max-md:pb-[calc(72px_+_env(safe-area-inset-bottom))]">
-          {BACK_ROUTES.some(path => matchPath({ path, end: true }, location.pathname)) && <div data-page-back="true" className={`mx-auto w-full pt-4 ${backRowClass}`}>
+          {(location.pathname !== '/history' || loggedIn) && BACK_ROUTES.some(path => matchPath({ path, end: true }, location.pathname)) && <div data-page-back="true" className="app-page-frame pt-4">
             <BackButton className="-ml-2" />
           </div>}
-          <Outlet context={{ dark, toggleTheme }} />
+          <Outlet context={{ dark, toggleTheme, themePreference, setTheme }} />
         </div>
       </div>
 

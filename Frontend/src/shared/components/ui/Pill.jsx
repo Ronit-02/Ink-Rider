@@ -1,5 +1,7 @@
 /* Pill — filter/tab toggle button */
-export default function Pill({ label, active = false, onClick, role, ariaControls, onKeyDown, tabIndex }) {
+import { getButtonClasses } from './buttonStyles'
+
+export default function Pill({ label, active = false, size = 'md', onClick, role, ariaControls, onKeyDown, tabIndex }) {
   return (
     <button
       type="button"
@@ -10,11 +12,9 @@ export default function Pill({ label, active = false, onClick, role, ariaControl
       aria-selected={role === 'tab' ? active : undefined}
       aria-controls={ariaControls}
       tabIndex={tabIndex}
-      className={`inline-flex min-h-11 items-center justify-center px-[18px] py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all duration-150 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2
-        ${active
-          ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)] border-[var(--color-accent)]'
-          : 'bg-[var(--color-bg-alt)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-accent)]'
-        } ${onClick ? 'cursor-pointer' : 'cursor-default'}`}
+      data-button-size={size}
+      data-button-variant={active ? 'primary' : 'selector'}
+      className={getButtonClasses({ variant: active ? 'primary' : 'selector', size, className: onClick ? 'cursor-pointer' : '!cursor-default' })}
     >
       {label}
     </button>

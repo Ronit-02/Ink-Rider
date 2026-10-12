@@ -9,6 +9,10 @@ const { encodeCursor, decodeCursor } = require('../utils/cursor');
 const { normalizeQuestionText } = require('../utils/question');
 const { publicPostClause, getPostAccessContext, accessiblePostClause } = require('../services/post-access.service');
 
+const { presentDiscoveryPosts } = require('../services/post-presenter.service');
+
+const presentResponses = async (posts, actorId) => (posts.length ? await presentDiscoveryPosts(posts, actorId) : []).map(post => ({ ...post, _id: post.id, coverImage: post.image }));
+
 const isValidId = id => mongoose.isValidObjectId(id);
 
 const presentAnswer = (answer, actorId) => ({
@@ -77,6 +81,8 @@ const presentQuestions = async (questions, actorId) => {
   const authorIds = questions.map(question => question.author?._id).filter(Boolean);
   const profiles = await Profile.find({ userId: { $in: authorIds } }).select('userId handle');
   const handles = new Map(profiles.map(profile => [profile.userId.toString(), profile.handle]));
+  const responses = await presentResponses(questions.flatMap(question => question.relatedArticles || []), actorId);
+  const responsesById = new Map(responses.map(post => [post.id.toString(), post]));
   return questions.map(question => ({
     id: question._id,
     text: question.text,
@@ -84,7 +90,7 @@ const presentQuestions = async (questions, actorId) => {
     tags: question.tags,
     upvotesCount: question.upvotesCount,
     answersCount: question.answers.length,
-    responsePosts: question.relatedArticles || [],
+    responsePosts: (question.relatedArticles || []).map(post => responsesById.get(post._id.toString())).filter(Boolean),
     status: question.status,
     createdAt: question.createdAt,
     isUpvoted: actorId ? question.upvotes.some(id => id.toString() === actorId) : false,
@@ -129,7 +135,7 @@ const getQuestions = async (req, res) => {
     const accessContext = await getPostAccessContext(req.auth?.userId);
     const documents = await Question.find(filter)
       .populate({ path: 'author', select: 'picture username' })
-      .populate({ path: 'relatedArticles', match: accessiblePostClause(accessContext), select: 'title coverImage author createdAt' })
+      .populate({ path: 'relatedArticles', match: accessiblePostClause(accessContext), select: 'title format coverImage author createdAt body tags likesCount commentsCount', populate: { path: 'author', select: 'username picture' } })
       .sort(order)
       .limit(limit + 1);
     const hasMore = documents.length > limit;
@@ -153,9 +159,11 @@ const getQuestionDetail = async (req, res) => {
     const question = await Question.findOne({ _id: req.params.id, status: { $ne: 'closed' } })
       .populate({ path: 'author', select: 'picture username' })
       .populate({ path: 'answers.author', select: 'picture username' })
-      .populate({ path: 'relatedArticles', match: accessiblePostClause(accessContext), select: 'title coverImage author createdAt' });
+      .populate({ path: 'relatedArticles', match: accessiblePostClause(accessContext), select: 'title format coverImage author createdAt body tags likesCount commentsCount', populate: { path: 'author', select: 'username picture' } });
     if (!question) return res.status(404).json({ message: 'Question not found' });
-    return res.status(200).json({ data: presentQuestionDetail(question, req.auth?.userId) });
+    const data = presentQuestionDetail(question, req.auth?.userId);
+    data.responsePosts = await presentResponses(question.relatedArticles || [], req.auth?.userId);
+    return res.status(200).json({ data });
   } catch (error) {
     console.error(`[${req.requestId}] Question detail failed`);
     return res.status(500).json({ message: 'Unable to load question' });
@@ -467,4 +475,4 @@ const linkResponsePost = async (req, res) => {
   }
 };
 
-module.exports = { getQuestions, getQuestionDetail, getQuestionOpportunities, suggestQuestions, createQuestion, upvoteQuestion, removeQuestionUpvote, createAnswer, upvoteAnswer, removeAnswerUpvote, followQuestion, unfollowQuestion, reportQuestion, reportAnswer, claimQuestion, unclaimQuestion, declineQuestion, linkResponsePost };
+module.exports = { presentQuestions, getQuestions, getQuestionDetail, getQuestionOpportunities, suggestQuestions, createQuestion, upvoteQuestion, removeQuestionUpvote, createAnswer, upvoteAnswer, removeAnswerUpvote, followQuestion, unfollowQuestion, reportQuestion, reportAnswer, claimQuestion, unclaimQuestion, declineQuestion, linkResponsePost };

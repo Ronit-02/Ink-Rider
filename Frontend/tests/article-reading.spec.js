@@ -134,6 +134,49 @@ test('published articles expose crawlable canonical, social, and structured meta
   })
 })
 
+test('article progress follows the application scroll container', async ({ page }) => {
+  const longPost = {
+    ...postData,
+    title: 'A long article for progress tracking',
+    body: JSON.stringify(Array.from({ length: 36 }, (_, index) => ({
+      id: `progress-block-${index}`,
+      type: 'text',
+      content: `Paragraph ${index + 1}. ${'This article contains enough text to require scrolling. '.repeat(18)}`,
+    }))),
+  }
+
+  await page.route(url => url.pathname.startsWith('/api/'), async route => {
+    const request = route.request()
+    const url = new URL(request.url())
+    if (url.pathname === '/api/auth/refresh-token') {
+      return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
+    }
+    if (url.pathname === `/api/post/${postId}` && request.method() === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ postData: longPost }) })
+    }
+    if (url.pathname === `/api/post/${postId}/comments`) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+    }
+    if (url.pathname === '/api/v1/events') {
+      return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ data: null }) })
+    }
+    return route.abort('blockedbyclient')
+  })
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`/post/${postId}`, { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: longPost.title, level: 1 })).toBeVisible()
+
+  const scroller = page.locator('[data-app-scroll="true"]')
+  const fill = page.locator('[data-reading-progress="true"] > div')
+  await expect.poll(() => scroller.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true)
+  await expect(fill).toHaveCSS('width', '0px')
+  await scroller.evaluate(element => element.scrollTo({ top: (element.scrollHeight - element.clientHeight) / 2, behavior: 'instant' }))
+  await expect.poll(() => fill.evaluate(element => parseFloat(element.getBoundingClientRect().width))).toBeGreaterThan(0)
+  await scroller.evaluate(element => element.scrollTo({ top: element.scrollHeight, behavior: 'instant' }))
+  await expect.poll(() => fill.evaluate(element => parseFloat(element.getBoundingClientRect().width))).toBeGreaterThan(300)
+})
+
 test('signed-in comment composer exposes field guidance and form semantics', async ({ page }) => {
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const request = route.request()
@@ -172,6 +215,7 @@ test('signed-in comment composer exposes field guidance and form semantics', asy
   await page.goto(`/post/${postId}`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: postData.title, level: 1 })).toBeVisible()
 
+  await page.getByRole('button', { name: /^Comments \(/  }).click()
   const comment = 'A keyboard-ready comment.'
   const commentInput = page.getByLabel('Add a comment')
   await expect(commentInput).toBeVisible()
@@ -181,7 +225,10 @@ test('signed-in comment composer exposes field guidance and form semantics', asy
   await expect(page.getByText(`${comment.length}/1000`, { exact: true })).toBeVisible()
   await expect.poll(() => commentInput.evaluate(element => getComputedStyle(element).outlineColor)).toBe('rgb(25, 25, 25)')
   await expect.poll(() => commentInput.evaluate(element => getComputedStyle(element).outlineStyle)).toBe('none')
-  await expect.poll(() => commentInput.evaluate(element => getComputedStyle(element).boxShadow)).toBe('none')
+  await expect.poll(() => commentInput.evaluate(element => {
+    const shadow = getComputedStyle(element).boxShadow
+    return shadow === 'none' || shadow.split(/,(?![^(]*\))/).every(part => part.trim() === 'rgba(0, 0, 0, 0) 0px 0px 0px 0px')
+  })).toBe(true)
 
   const submitButton = page.getByRole('button', { name: 'Comment', exact: true })
   await expect(submitButton).toHaveAttribute('type', 'submit')

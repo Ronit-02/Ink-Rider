@@ -246,7 +246,7 @@ async function seedRelationships(users, posts, topics) {
   ];
   for (const [user, post, content] of comments) await upsert(Comment, { userId: users.get(user)._id, postId: posts.get(post)._id, content }, { $setOnInsert: { userId: users.get(user)._id, postId: posts.get(post)._id, content, parentCommentId: null } });
   for (const post of posts.values()) {
-    const [likesCount, commentsCount] = await Promise.all([Like.countDocuments({ postId: post._id }), Comment.countDocuments({ postId: post._id })]);
+    const [likesCount, commentsCount] = await Promise.all([Like.countDocuments({ postId: post._id }), Comment.countDocuments({ postId: post._id, deletedAt: null })]);
     const fixture = postFixtures.find(item => item.key === [...posts.entries()].find(([, value]) => value._id.equals(post._id))?.[0]);
     await Post.updateOne({ _id: post._id }, { $set: { likesCount: Math.max(likesCount, fixture?.likesCount || 0), commentsCount } });
   }

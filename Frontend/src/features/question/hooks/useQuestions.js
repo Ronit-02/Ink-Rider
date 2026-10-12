@@ -1,10 +1,13 @@
+import { useSelector } from 'react-redux'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createQuestion, createQuestionAnswer, declineQuestion, fetchQuestion, fetchQuestionOpportunities, fetchQuestions, reportAnswer, reportQuestion, suggestQuestions, updateAnswerUpvote, updateQuestionClaim, updateQuestionFollow, updateQuestionUpvote } from '../api/questions'
+import { createQuestion, createQuestionAnswer, declineQuestion, fetchQuestion, fetchQuestionOpportunities, fetchQuestions, linkQuestionResponse, reportAnswer, reportQuestion, suggestQuestions, updateAnswerUpvote, updateQuestionClaim, updateQuestionFollow, updateQuestionUpvote } from '../api/questions'
 import useToast from '@/shared/hooks/useToast'
 
 export function useQuestions(sort) {
+  const { user, isReady } = useSelector(state => state.auth)
   return useInfiniteQuery({
-    queryKey: ['questions', sort],
+    queryKey: ['questions', sort, user || 'anonymous'],
+    enabled: isReady,
     queryFn: ({ pageParam }) => fetchQuestions({ sort, cursor: pageParam }),
     initialPageParam: null,
     getNextPageParam: page => page.meta.nextCursor || undefined,
@@ -12,7 +15,8 @@ export function useQuestions(sort) {
 }
 
 export function useQuestion(questionId) {
-  return useQuery({ queryKey: ['question', questionId], queryFn: () => fetchQuestion(questionId), enabled: Boolean(questionId) })
+  const { user, isReady } = useSelector(state => state.auth)
+  return useQuery({ queryKey: ['question', questionId, user || 'anonymous'], queryFn: () => fetchQuestion(questionId), enabled: Boolean(questionId) && isReady })
 }
 
 export function useQuestionOpportunities() {
@@ -65,12 +69,15 @@ export function useQuestionUpvote(sort) {
       } : old)
       return { previous, key }
     },
-    onSuccess: (data, { questionId, isUpvoted }, context) => {
+    onSuccess: async (data, { questionId, isUpvoted }, context) => {
       queryClient.setQueryData(context.key, old => old ? {
         ...old,
         pages: old.pages.map(page => ({ ...page, data: page.data.map(question => question.id === questionId ? { ...question, ...data } : question) })),
       } : old)
-      queryClient.invalidateQueries({ queryKey: ['question', questionId] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['question', questionId] }),
+        queryClient.invalidateQueries({ queryKey: ['discovery-search'], predicate: query => query.queryKey[2] === 'questions' }),
+      ])
       notify(isUpvoted ? 'Question upvoted.' : 'Question upvote removed.')
     },
     onError: (error, variables, context) => { if (context?.previous) queryClient.setQueryData(context.key, context.previous); notify('The question vote could not be updated.', { tone: 'error' }) },
@@ -84,6 +91,16 @@ export function useQuestionAnswer(questionId) {
     mutationFn: createQuestionAnswer,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['question', questionId] }); queryClient.invalidateQueries({ queryKey: ['questions'] }); notify('Answer posted.') },
     onError: error => notify(error?.response?.data?.message || 'The answer could not be posted.', { tone: 'error' }),
+  })
+}
+
+export function useLinkQuestionResponse(questionId) {
+  const queryClient = useQueryClient()
+  const { notify } = useToast()
+  return useMutation({
+    mutationFn: postId => linkQuestionResponse({ questionId, postId }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['question', questionId] }); queryClient.invalidateQueries({ queryKey: ['questions'] }); notify('Post attached to the question.') },
+    onError: error => notify(error?.response?.data?.message || 'The post could not be attached.', { tone: 'error' }),
   })
 }
 

@@ -16,6 +16,31 @@ const collection = {
   ],
 }
 
+test('owner adds a published story directly from collection detail', async ({ page }) => {
+  const story = { id: '507f1f77bcf86cd799439033', title: 'Third story', format: 'article', author: { username: 'Maya Sen' }, readTime: '2 min read' }
+  let added = false
+  const writes = []
+  await page.route(url => url.pathname.startsWith('/api/'), route => {
+    const pathname = new URL(route.request().url()).pathname
+    if (pathname === '/api/auth/refresh-token') return route.fulfill({ json: { accessToken: 'collection-owner', user: 'Maya Sen', email: 'maya@example.test', role: 'regular' } })
+    if (pathname === `/api/collection/${collectionId}`) return route.fulfill({ json: { data: { ...collection, posts: added ? [...collection.posts, story] : collection.posts, savedCount: 0, followersCount: 0 } } })
+    if (pathname === '/api/collection/eligible-posts') return route.fulfill({ json: { data: [story] } })
+    if (pathname === `/api/v1/collections/${collectionId}/posts/${story.id}`) { writes.push(route.request().method()); added = true; return route.fulfill({ json: { data: { added: true } } }) }
+    return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+  })
+  await page.goto(`/collections/${collectionId}`)
+  const opener = page.getByRole('button', { name: 'Add to collection', exact: true })
+  await opener.click()
+  const dialog = page.getByRole('dialog', { name: 'Add to collection', exact: true })
+  await dialog.getByRole('combobox', { name: 'Choose a published story' }).click()
+  await dialog.getByRole('option', { name: story.title }).click()
+  await dialog.getByRole('button', { name: 'Add to collection', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(opener).toBeFocused()
+  await expect(page.getByRole('heading', { name: story.title })).toBeVisible()
+  expect(writes).toEqual(['PUT'])
+})
+
 test('collection save stays visibly pending through the write and refresh, and recovers after failure', async ({ page }) => {
   let isSaved = false
   let pendingWrite
@@ -202,8 +227,8 @@ test('collection reading-order controls are keyboard reachable and phone-sized',
   const later = page.getByRole('button', { name: 'Move First story later' })
   await expect(earlier).toBeVisible()
   await expect(later).toBeVisible()
-  await expect(earlier).toHaveCSS('min-width', '40px')
-  await expect(earlier).toHaveCSS('min-height', '40px')
+  expect((await earlier.boundingBox()).width).toBeGreaterThanOrEqual(40)
+  expect((await earlier.boundingBox()).height).toBeGreaterThanOrEqual(40)
 
   await later.focus()
   await expect(later).toBeFocused()

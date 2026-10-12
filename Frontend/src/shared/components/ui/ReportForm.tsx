@@ -1,3 +1,4 @@
+import Select from '@/shared/components/ui/Select'
 import { useId, useState } from 'react'
 import Button from './Button'
 import type { ReportSubject } from './ReportModal'
@@ -45,17 +46,7 @@ export default function ReportForm({ subject, mutation, onClose }: Props) {
     <section>
       <p className="mb-4 text-[12px] text-(--color-text-secondary)">Reports are private and help the moderation team review harmful content.</p>
 
-      <label htmlFor={`${id}-reason`} className="block text-[12px] font-semibold text-(--color-text) mb-2">Reason</label>
-      <select
-        id={`${id}-reason`}
-        value={reason}
-        onChange={event => setReason(event.target.value)}
-        className="w-full px-3 py-2.5 rounded-[10px] border border-(--color-border) bg-(--color-surface)
-          text-[13px] text-(--color-text) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] mb-4"
-      >
-        <option value="">Select a reason</option>
-        {REPORT_REASONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
+      <div className="mb-4"><Select id={`${id}-reason`} label="Reason" value={reason} options={[{ value: '', label: 'Select a reason' }, ...REPORT_REASONS]} onChange={setReason} className="max-w-none" /></div>
 
       <label htmlFor={`${id}-details`} className="block text-[12px] font-semibold text-(--color-text) mb-2">
         Details <span className="font-normal text-(--color-text-muted)">(optional)</span>

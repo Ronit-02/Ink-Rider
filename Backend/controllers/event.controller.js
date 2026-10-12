@@ -88,7 +88,7 @@ const getReadingHistory = async (req, res) => {
     const context = await getPostAccessContext(req.auth.userId);
     const documents = await Post.find({ _id: { $in: states.map(state => state.postId) }, ...accessiblePostClause(context) })
       .populate({ path: 'author', select: 'picture username' });
-    const posts = await presentDiscoveryPosts(documents);
+    const posts = await presentDiscoveryPosts(documents, req.auth.userId);
     const postById = new Map(posts.map(post => [post.id.toString(), post]));
     const history = states.map(state => ({ ...postById.get(state.postId), ...state })).filter(item => item.id);
     return res.status(200).json({

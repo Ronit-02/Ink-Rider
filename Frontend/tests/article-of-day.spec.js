@@ -32,7 +32,7 @@ for (const width of [320, 1280]) {
     for (const target of [() => card.getByText('8 September 2026', { exact: true }), () => card.getByText(post.readTime, { exact: true })]) {
       await page.goto('/explore/trending')
       await clickArea(target())
-      await expect(page).toHaveURL('/author/leila-noor')
+      await expect(page).toHaveURL('/explore/trending')
     }
     for (const target of [() => card.getByText('Article of the day', { exact: true }), () => card.getByText(post.excerpt, { exact: true })]) {
       await page.goto('/explore/trending')
@@ -66,6 +66,17 @@ for (const width of [320, 390, 768, 1280]) {
     const dateBounds = await card.getByText('8 September 2026', { exact: true }).boundingBox()
     expect(titleBounds.y - dateBounds.y - dateBounds.height).toBeGreaterThanOrEqual(19)
     expect((await author.boundingBox()).y).toBeLessThan(dateBounds.y)
+    const metadata = author.locator('..')
+    await expect(metadata).toHaveCSS('row-gap', '8px')
+    const content = card.locator(':scope > div').last()
+    await expect(content).toHaveCSS('row-gap', '20px')
+    const bottomSpace = await content.evaluate(element => element.getBoundingClientRect().bottom - element.lastElementChild.getBoundingClientRect().bottom)
+    expect(bottomSpace).toBeCloseTo(width < 768 ? 20 : 28, 0)
+    if (width >= 768) {
+      expect(Math.abs(authorBounds.y - coverBounds.y)).toBeLessThanOrEqual(1)
+      const contentBounds = await content.boundingBox()
+      expect(Math.abs(coverBounds.height - contentBounds.height)).toBeLessThanOrEqual(1)
+    }
     await expect(card.getByRole('link', { name: `Read ${post.title}` })).toHaveAttribute('href', `/post/${post.id}`)
     expect(await card.locator('a button, a a').count()).toBe(0)
     const like = card.getByRole('button', { name: `Appreciate ${post.title}`, exact: true })
@@ -101,7 +112,8 @@ test('featured guest can read comments and is prompted to sign in to appreciate'
   await expect(page.getByText('Sign in to join the conversation.')).toBeVisible()
   await page.getByRole('button', { name: 'Close comments' }).click()
   await page.getByRole('button', { name: `Appreciate ${post.title}`, exact: true }).click()
-  await expect(page).toHaveURL(/\/login/)
+  await expect(page.getByRole('dialog', { name: 'Sign in to Ink Rider' })).toBeVisible()
+  await expect(page).not.toHaveURL(/\/login/)
 })
 
 test('featured appreciation failure restores count and state', async ({ page }) => {

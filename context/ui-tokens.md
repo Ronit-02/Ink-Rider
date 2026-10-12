@@ -150,6 +150,10 @@ Components should respond to available space rather than target a device name. P
 
 ## Radius
 
+### Button targets
+
+Runtime `--control-target` is 44 px and `--control-target-large` is 48 px. Shared sm/md buttons use the former; lg uses the latter. sm changes horizontal padding and label scale without shrinking the interactive target. Icon-only shared buttons use the same value for minimum width. Native feature controls can consume `button-target` without changing their existing appearance. The explicitly approved desktop Join link keeps its separate 36 px minimum. Detailed style/size APIs are owned by the UI registry; use theme-aware inverted text on action backgrounds.
+
 | Token | Value | Use |
 |---|---:|---|
 | `--radius-xs` | `0.25rem` | Small indicators |

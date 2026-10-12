@@ -30,7 +30,7 @@ const guides = [
   },
   {
     title: 'Manage your settings',
-    description: 'Choose Light or Dark appearance in Settings. English is the currently available language. Sign in to manage reading interests. On smaller screens, open Profile in the bottom navigation to find Settings and account actions.',
+    description: 'Choose Light, Dark, or Use system theme in Settings. English is the currently available language. Sign in to manage reading interests. On smaller screens, open Account in the bottom navigation to find Settings and account actions.',
     links: [{ label: 'Open Settings', to: '/settings' }],
   },
 ]

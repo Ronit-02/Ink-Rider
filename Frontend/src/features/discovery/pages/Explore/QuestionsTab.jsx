@@ -1,9 +1,11 @@
+import ModalHeader from '@/shared/components/ui/ModalHeader'
 import retainRetryView from '@/shared/utils/retainRetryView'
 import ModalLayer from '@/shared/components/ui/ModalLayer'
 import { useDeferredValue, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
+import Tag from '@/shared/components/ui/Tag'
 import Button from '@/shared/components/ui/Button'
 import useAuth from '@/features/auth/hooks/useAuth'
 import { useCreateQuestion, useQuestions, useQuestionSuggestions, useQuestionUpvote } from '@/features/question/hooks/useQuestions'
@@ -12,45 +14,43 @@ import { ListSkeleton } from '@/shared/components/ui/Skeleton'
 import FilterBar from '@/shared/components/ui/FilterBar'
 import useDialogFocus from '@/shared/hooks/useDialogFocus'
 import { searchDiscovery } from '@/features/discovery/api/search'
+import QuestionResponseModal from '@/features/question/components/QuestionResponseModal'
 
 const responseButtonClass = 'inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-[10px] border px-3 py-2 text-[12px] font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2'
 
-function QuestionCard({ question, sort }) {
-  const [params] = useSearchParams()
-  const categoryPath = tag => {
-    const next = new URLSearchParams(params)
-    next.set('questionTopic', tag.trim().toLowerCase())
-    return `/explore/questions?${next}`
-  }
+export function QuestionCard({ question, sort = 'hot' }) {
+  const categoryPath = tag => `/search?${new URLSearchParams({ q: tag.trim(), type: 'questions' })}`
   const { loggedIn, signIn } = useAuth()
   const vote = useQuestionUpvote(sort)
+  const [responseOpen, setResponseOpen] = useState(false)
   const toggleVote = () => loggedIn
     ? vote.mutate({ questionId: question.id, isUpvoted: !question.isUpvoted })
     : signIn()
 
   return (
     <article className="relative py-6 border-b border-[var(--color-border)]">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div className="relative z-10 min-w-0 flex-1 [&>div]:gap-2 [&>div>div]:flex-wrap [&>div>div>span:last-child]:hidden [&_a]:min-w-0 [&_a]:max-w-full [&_a]:after:absolute [&_a]:after:inset-0 [&_a]:after:content-[''] [&_a>span]:min-w-0 [&_a>span]:break-words">
+      <div className="mb-5 pr-16">
+        <div className="relative z-10 min-w-0 flex-1 [&>div]:gap-2 [&>div>div]:flex-wrap [&_a]:min-w-0 [&_a]:max-w-full [&_a]:after:absolute [&_a]:after:inset-0 [&_a]:after:content-[''] [&_a>span]:min-w-0 [&_a>span]:break-words">
           <AuthorMeta author={question.author} date={question.createdAt} size="sm" stacked />
         </div>
-        <button type="button" onClick={toggleVote} disabled={vote.isPending} aria-pressed={question.isUpvoted} aria-label={`${question.isUpvoted ? 'Remove upvote from' : 'Upvote'} question`}
-          className={`relative z-10 shrink-0 min-h-11 min-w-12 px-2 py-2 rounded-[12px] border text-center disabled:opacity-50 ${question.isUpvoted ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)] border-[var(--color-accent)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'}`} aria-busy={vote.isPending}>
-          <span aria-hidden="true" className="block text-[11px]">▲</span><span className="block text-[12px] font-semibold tabular-nums">{question.upvotesCount}</span>
+        <button data-button-style="action" data-button-boundary="true" type="button" onClick={toggleVote} disabled={vote.isPending} aria-pressed={question.isUpvoted} aria-label={`${question.isUpvoted ? 'Remove upvote from' : 'Upvote'} question`}
+          className={`absolute right-0 top-6 z-10 min-h-11 min-w-12 px-2 py-2 rounded-[12px] border text-center disabled:opacity-50 ${question.isUpvoted ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)] border-[var(--color-accent)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'}`} aria-busy={vote.isPending}>
+          <span data-button-icon aria-hidden="true" className="block text-[11px]">▲</span><span className="block text-[12px] font-semibold tabular-nums">{question.upvotesCount}</span>
         </button>
       </div>
       <h2 className="min-w-0 break-words text-[18px] leading-[1.35] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>
         <Link to={`/explore/questions/${question.id}`} className="rounded-[4px] after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">{question.text}</Link>
       </h2>
       {question.context && <p className="mt-4 break-words text-[14px] leading-6 text-[var(--color-text-secondary)] line-clamp-2">{question.context}</p>}
-      {question.tags.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{question.tags.map(tag => <Link key={tag} to={categoryPath(tag)} aria-label={`Questions about ${tag}`} className="relative z-10 inline-flex min-h-11 max-w-full items-center break-words px-2 py-1 rounded-full bg-[var(--color-bg-alt)] text-[11px] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">#{tag}</Link>)}</div>}
+      {question.tags.length > 0 && <div className="mt-3 flex flex-wrap gap-x-2">{question.tags.map(tag => <Link key={tag} to={categoryPath(tag)} aria-label={`Questions about ${tag}`} className="relative z-10 inline-flex min-h-11 max-w-full items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] [&>span]:max-w-full [&>span]:break-words [&>span]:whitespace-normal"><Tag label={`#${tag}`} /></Link>)}</div>}
       <div className="mt-5 flex flex-col items-start gap-4 text-[13px] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <span className="text-[var(--color-text-secondary)]"><strong className="font-semibold text-[var(--color-text)]">{question.answersCount}</strong> {question.answersCount === 1 ? 'short answer' : 'short answers'} · <strong className="font-semibold text-[var(--color-text)]">{question.responsePosts.length}</strong> {question.responsePosts.length === 1 ? 'article response' : 'article responses'}</span>
         <div className="relative z-10 flex items-center gap-2">
-          {loggedIn ? <Link to={`/write?question=${question.id}`} className={`${responseButtonClass} border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-text-inverted)]`}><span className="text-[var(--color-text-inverted)]">Add response</span></Link> : <button type="button" onClick={signIn} className={`${responseButtonClass} border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-text-inverted)]`}><span className="text-[var(--color-text-inverted)]">Add response</span></button>}
+          <button type="button" aria-haspopup="dialog" onClick={() => loggedIn ? setResponseOpen(true) : signIn()} className={`button-target ${responseButtonClass} border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-text-inverted)]`}><span className="text-[var(--color-text-inverted)]">Add response</span></button>
           {question.responsePosts.length > 0 && <Link to={`/explore/questions/${question.id}#response-posts-title`} className={`${responseButtonClass} border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)]`}>View responses</Link>}
         </div>
       </div>
+      {responseOpen && <QuestionResponseModal questionId={question.id} onClose={() => setResponseOpen(false)} />}
     </article>
   )
 }
@@ -86,19 +86,19 @@ function AskModal({ onClose }) {
 
   return <ModalLayer onDismiss={onClose} aria-labelledby="ask-title" className="flex items-center justify-center p-4">
     <section ref={dialogRef} tabIndex={-1} className="w-full max-w-[560px] max-h-[calc(var(--overlay-height)-2rem)] overflow-y-auto rounded-[20px] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[0_16px_48px_rgba(0,0,0,0.18)]">
-      <div className="flex items-center justify-between gap-4"><h2 id="ask-title" className="text-[19px] font-bold text-[var(--color-text)]">Ask the community</h2><button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Close" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)]">×</button></div>
+      <ModalHeader title="Ask the community" titleId="ask-title" onClose={onClose} closeLabel="Close" closeRef={closeButtonRef} className="-mx-6 -mt-6" />
       {create.isSuccess ? <div className="py-8"><h3 className="text-[17px] font-semibold text-[var(--color-text)]">{create.data.mergedExisting ? 'Your upvote was added to the existing question.' : 'Your question is now open to writers.'}</h3><Button className="mt-5" onClick={onClose}>Done</Button></div> : <form onSubmit={submit}>
         <label htmlFor="question-text" className="block mt-6 mb-2 text-[12px] font-semibold text-[var(--color-text)]">Question</label>
         <textarea id="question-text" value={text} minLength={10} maxLength={180} required onChange={event => setText(event.target.value)} placeholder="What would you like a writer to explore?" className="w-full min-h-24 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[14px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]" />
-        {suggestions.data?.length > 0 && <div className="mt-3 rounded-[12px] border border-[var(--color-border)] p-3"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">Similar questions</p>{suggestions.data.map(item => <button key={item.id} type="button" onClick={() => setText(item.text)} className="block w-full py-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">{item.text} · {item.upvotesCount} upvotes {item.exact ? '· exact match' : ''}</button>)}</div>}
+        {suggestions.data?.length > 0 && <div className="mt-3 rounded-[12px] border border-[var(--color-border)] p-3"><p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">Similar questions</p>{suggestions.data.map(item => <button key={item.id} type="button" onClick={() => setText(item.text)} className="button-target block w-full py-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">{item.text} · {item.upvotesCount} upvotes {item.exact ? '· exact match' : ''}</button>)}</div>}
         <label htmlFor="question-context" className="block mt-4 mb-2 text-[12px] font-semibold text-[var(--color-text)]">Context <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label>
         <textarea id="question-context" value={context} maxLength={1000} onChange={event => setContext(event.target.value)} className="w-full min-h-20 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-3 text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]" />
         <label htmlFor="question-tags" className="block mt-4 mb-2 text-[12px] font-semibold text-[var(--color-text)]">Tags <span className="font-normal text-[var(--color-text-muted)]">(comma separated, up to five)</span></label>
         <input id="question-tags" value={tagText} onChange={event => setTagText(event.target.value)} className="w-full rounded-[12px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] px-3 py-2.5 text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]" />
         <label htmlFor="question-target-writers" className="block mt-4 mb-2 text-[12px] font-semibold text-[var(--color-text)]">Target writers <span className="font-normal text-[var(--color-text-muted)]">(optional, up to five)</span></label>
         <input id="question-target-writers" value={targetWriterText} onChange={event => setTargetWriterText(event.target.value)} placeholder="Search by writer name or handle" className="w-full rounded-[12px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] px-3 py-2.5 text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]" />
-        {targetWriters.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{targetWriters.map(writer => <button key={writer.id} type="button" onClick={() => setTargetWriters(current => current.filter(item => item.id !== writer.id))} className="min-h-10 rounded-full bg-[var(--color-text)] px-3 text-[11px] text-[var(--color-text-inverted)]">{writer.displayName} ×</button>)}</div>}
-        {writerSuggestions.data?.data?.writers?.filter(writer => !targetWriters.some(selected => selected.id === writer.id)).length > 0 && <div className="mt-2 rounded-[12px] border border-[var(--color-border)] p-2">{writerSuggestions.data.data.writers.filter(writer => !targetWriters.some(selected => selected.id === writer.id)).map(writer => <button key={writer.id} type="button" disabled={targetWriters.length >= 5} onClick={() => { setTargetWriters(current => [...current, writer]); setTargetWriterText('') }} className="block min-h-10 w-full rounded-[8px] px-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] disabled:opacity-50">{writer.displayName} <span className="text-[var(--color-text-muted)]">@{writer.handle}</span></button>)}</div>}
+        {targetWriters.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{targetWriters.map(writer => <button key={writer.id} type="button" onClick={() => setTargetWriters(current => current.filter(item => item.id !== writer.id))} className="button-target min-h-11 rounded-full bg-[var(--color-text)] px-3 text-[11px] text-[var(--color-text-inverted)]">{writer.displayName} ×</button>)}</div>}
+        {writerSuggestions.data?.data?.writers?.filter(writer => !targetWriters.some(selected => selected.id === writer.id)).length > 0 && <div className="mt-2 rounded-[12px] border border-[var(--color-border)] p-2">{writerSuggestions.data.data.writers.filter(writer => !targetWriters.some(selected => selected.id === writer.id)).map(writer => <button key={writer.id} type="button" disabled={targetWriters.length >= 5} onClick={() => { setTargetWriters(current => [...current, writer]); setTargetWriterText('') }} className="button-target block min-h-11 w-full rounded-[8px] px-2 text-left text-[12px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] disabled:opacity-50">{writer.displayName} <span className="text-[var(--color-text-muted)]">@{writer.handle}</span></button>)}</div>}
         {create.isError && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">{create.error?.response?.data?.message || 'The question could not be posted.'}</p>}
         <div className="mt-5 flex justify-end gap-2"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" disabled={text.trim().length < 10 || create.isPending} aria-busy={create.isPending}>{'Post question'}</Button></div>
       </form>}
