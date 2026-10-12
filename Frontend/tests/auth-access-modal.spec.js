@@ -23,6 +23,7 @@ async function mockAuth(page, { signedIn = false, failLogin = false } = {}) {
       return route.fulfill({ json: { token: 'auth-modal-test', username: 'Reader', email: 'reader@example.test', role: 'regular' } })
     }
     if (path.startsWith('/api/user') || path.startsWith('/api/v1/') && !path.startsWith('/api/v1/events') || path.startsWith('/api/drafts')) privateReads.push(path)
+    if (path === '/api/user/bookmarks') return route.fulfill({ json: [] })
     if (path === '/api/v1/reading-history') return route.fulfill({ json: { data: { continueReading: [], history: [] } } })
     if (path === '/api/v1/onboarding') return route.fulfill({ json: { data: { topics: [], writers: [], selectedTopicSlugs: [], followedWriterIds: [] } } })
     return route.fulfill({ json: { data: [], meta: { unreadCount: 0, nextCursor: null } } })
@@ -134,7 +135,7 @@ for (const width of [320, 1280]) {
     await signIn(page)
     await expect(dialog).toHaveCount(0)
     await expect(page).toHaveURL(/\/saved\?view=collections#library$/)
-    await expect(page.getByRole('heading', { name: 'Saved' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible()
   })
 }
 

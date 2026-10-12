@@ -35,6 +35,11 @@ export async function createQuestionAnswer({ questionId, text }) {
   return response.data.data
 }
 
+export async function linkQuestionResponse({ questionId, postId }) {
+  const response = await api.put(`/api/question/${questionId}/responses/${postId}`)
+  return response.data.data
+}
+
 export async function updateAnswerUpvote({ questionId, answerId, isUpvoted }) {
   const response = await api({ method: isUpvoted ? 'put' : 'delete', url: `/api/question/${questionId}/answers/${answerId}/upvote` })
   return response.data.data

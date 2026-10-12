@@ -3,6 +3,7 @@ const Post = require('../schemas/post.schema');
 const Profile = require('../schemas/profile.schema');
 const ShortSeries = require('../schemas/short-series.schema');
 const { encodeCursor, decodeCursor } = require('../utils/cursor');
+const { presentDiscoveryPosts } = require('../services/post-presenter.service');
 
 const isValidId = value => mongoose.isValidObjectId(value);
 const orderedItems = series => [...series.items].sort((left, right) => left.position - right.position);
@@ -11,6 +12,8 @@ const present = async (seriesDocuments, actorId, includeItems = false) => {
   const authorIds = seriesDocuments.map(series => series.author?._id).filter(Boolean);
   const profiles = await Profile.find({ userId: { $in: authorIds } }).select('userId handle displayName avatarUrl');
   const byAuthor = new Map(profiles.map(profile => [profile.userId.toString(), profile]));
+  const entryPosts = includeItems ? await presentDiscoveryPosts(seriesDocuments.flatMap(series => orderedItems(series).filter(item => item.post).map(item => ({ ...item.post.toObject(), author: series.author }))), actorId) : [];
+  const entryById = new Map(entryPosts.map(post => [post.id.toString(), post]));
   return seriesDocuments.map(series => {
     const profile = series.author?._id ? byAuthor.get(series.author._id.toString()) : null;
     const items = orderedItems(series).filter(item => item.post);
@@ -31,6 +34,7 @@ const present = async (seriesDocuments, actorId, includeItems = false) => {
       },
     };
     if (includeItems) data.entries = items.map((item, index) => ({
+      ...entryById.get(item.post._id.toString()),
       id: item.post._id,
       title: item.post.title,
       image: item.post.coverImage || null,
@@ -92,7 +96,7 @@ const getSeries = async (req, res) => {
   if (!isValidId(req.params.id)) return res.status(400).json({ message: 'Invalid series id' });
   const series = await ShortSeries.findById(req.params.id)
     .populate({ path: 'author', select: 'picture username' })
-    .populate({ path: 'items.post', select: 'title coverImage createdAt' });
+    .populate({ path: 'items.post', select: 'title format coverImage body tags likesCount commentsCount createdAt' });
   if (!series) return res.status(404).json({ message: 'Series not found' });
   const isOwner = req.auth?.userId === series.author._id.toString();
   if (series.visibility === 'private' && !isOwner) return res.status(404).json({ message: 'Series not found' });

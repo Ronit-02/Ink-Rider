@@ -1,3 +1,4 @@
+import Select from '@/shared/components/ui/Select'
 import FilterPopover from './FilterPopover'
 import Pill from './Pill'
 
@@ -14,7 +15,7 @@ export default function FilterBar({ label = 'Filter', options, value, onChange, 
     if (sortOptions.length > 0) onSortChange?.(defaultSort)
   }
   return <div className="flex min-w-max flex-1 justify-end"><FilterPopover activeFilterCount={activeFilterCount} title={`Filter by ${label.toLowerCase()}`} onClear={resetFilters}>
-    <div className="mt-5"><p className="mb-3 text-[12px] font-semibold text-[var(--color-text)]">{label}</p><div className="flex flex-wrap gap-2">{options.map(option => <Pill key={option.id} label={option.label} active={value === option.id} onClick={() => onChange(option.id)} />)}</div></div>
-    {sortOptions.length > 0 && <label className="mt-5 block border-t border-[var(--color-border)] pt-5 text-[12px] font-semibold text-[var(--color-text)]">Sort<select value={sortValue || defaultSort} onChange={event => onSortChange?.(event.target.value)} className="mt-3 block min-h-11 w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] font-normal text-[var(--color-text)] outline-none focus:border-[var(--color-focus)]">{sortOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>}
+    {options.length > 0 && <div className="mt-5"><p className="mb-3 text-[12px] font-semibold text-[var(--color-text)]">{label}</p><div className="flex flex-wrap gap-2">{options.map(option => <Pill key={option.id} label={option.label} active={value === option.id} onClick={() => onChange(option.id)} />)}</div></div>}
+    {sortOptions.length > 0 && <div className={`mt-5 ${options.length ? 'border-t border-[var(--color-border)] pt-5' : ''}`}><Select label="Sort" value={sortValue || defaultSort} options={sortOptions.map(option => ({ value: option.id, label: option.label }))} onChange={value => onSortChange?.(value)} className="max-w-none" /></div>}
   </FilterPopover></div>
 }

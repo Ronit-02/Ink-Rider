@@ -1,0 +1,41 @@
+import { useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import { fetchMyPosts } from '@/features/user/api/profile'
+import ModalLayer from '@/shared/components/ui/ModalLayer'
+import ModalHeader from '@/shared/components/ui/ModalHeader'
+import Select from '@/shared/components/ui/Select'
+import Button from '@/shared/components/ui/Button'
+import useDialogFocus from '@/shared/hooks/useDialogFocus'
+import { useLinkQuestionResponse } from '../hooks/useQuestions'
+
+export default function QuestionResponseModal({ questionId, onClose }) {
+  const closeRef = useRef(null)
+  const dialogRef = useDialogFocus(onClose, closeRef)
+  const viewer = useSelector(state => state.auth.user)
+  const posts = useQuery({ queryKey: ['question-response-posts', viewer], queryFn: async () => {
+    const records = await fetchMyPosts()
+    const now = Date.now()
+    return records.filter(post => post.publicationStatus !== 'unpublished' && (!post.publicAt || new Date(post.publicAt).getTime() <= now))
+  } })
+  const link = useLinkQuestionResponse(questionId)
+  const [postId, setPostId] = useState('')
+  const availablePosts = posts.data || []
+  const attach = event => {
+    event.preventDefault()
+    if (!postId || link.isPending) return
+    link.mutate(postId, { onSuccess: onClose })
+  }
+
+  return <ModalLayer onDismiss={onClose} aria-labelledby="question-response-title" className="grid place-items-center p-4">
+    <section ref={dialogRef} tabIndex={-1} className="w-full max-w-[540px] overflow-y-auto rounded-[20px] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[0_16px_48px_rgba(0,0,0,0.18)]">
+      <ModalHeader title="Add a response" titleId="question-response-title" subtitle="Attach a published post or write a new one for this question." onClose={onClose} closeLabel="Close response choices" closeRef={closeRef} className="-mx-6 -mt-6" />
+      <form className="mt-6" onSubmit={attach}>
+        {posts.isPending ? <p role="status" className="text-[13px] text-[var(--color-text-secondary)]">Loading your published posts…</p> : posts.isError ? <div role="alert"><p className="text-[13px] text-[var(--color-danger)]">Your posts could not be loaded.</p><Button type="button" variant="secondary" className="mt-3" onClick={() => posts.refetch()} disabled={posts.isFetching} aria-busy={posts.isFetching}>Try again</Button></div> : availablePosts.length ? <><Select id="response-post" label="Your published post" value={postId} options={[{ value: '', label: 'Choose a post' }, ...availablePosts.map(post => ({ value: post._id || post.id, label: post.title }))]} onChange={setPostId} className="max-w-none" required /><Button type="submit" className="mt-4" disabled={!postId || link.isPending} aria-busy={link.isPending}>Attach post</Button></> : <p className="text-[13px] text-[var(--color-text-secondary)]">You have no published posts to attach yet.</p>}
+        {link.isError && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">{link.error?.response?.data?.message || 'The post could not be attached.'}</p>}
+      </form>
+      <div className="mt-6 border-t border-[var(--color-border)] pt-5"><p className="text-[13px] text-[var(--color-text-secondary)]">Have a new response in mind?</p><Link to={`/write?question=${questionId}`} onClick={onClose} className="button-target mt-3 inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--color-border)] px-[18px] text-[13px] font-medium text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">Write a new post</Link></div>
+    </section>
+  </ModalLayer>
+}

@@ -26,6 +26,8 @@
   --color-danger:         #A13F3F;
   --color-success:        #356A4A;
   --color-info:           #3F6078;
+  --control-target:       44px;
+  --control-target-large: 48px;
   --font-display: 'Libre Baskerville', Georgia, serif;
   --font-sans:    'DM Sans', 'Helvetica Neue', sans-serif;
 }
@@ -70,6 +72,23 @@ body {
 
 /* Element defaults */
 button { cursor: pointer; font-family: inherit; }
+/* Named target sizes also serve native feature controls. Small changes padding,
+   not the minimum interactive target; large actions can grow for wrapped text. */
+.button-target,
+.button-size-sm,
+.button-size-md { min-height: var(--control-target); --button-target-size: var(--control-target); }
+.button-size-lg { min-height: var(--control-target-large); --button-target-size: var(--control-target-large); }
+.button-circle { min-width: var(--button-target-size, 44px); width: var(--button-target-size, 44px); }
+/* Anchor defaults are unlayered; explicit shared colors keep links identical to
+   buttons in either theme without affecting ordinary navigation links. */
+.app-button[data-button-variant="primary"],
+.app-button[data-button-variant="danger"] { color: var(--color-text-inverted); }
+.app-button[data-button-variant="secondary"],
+.app-button[data-button-variant="disclosure"] { color: var(--color-text); }
+.app-button[data-button-variant="ghost"],
+.app-button[data-button-variant="action"],
+.app-button[data-button-variant="menu"],
+.app-button[data-button-variant="selector"] { color: var(--color-text-secondary); }
 /* Application pages and Back rows share one outer frame. Reading columns and
    controls can remain narrower inside it without moving the page's origin. */
 .app-page-frame {
@@ -131,6 +150,24 @@ button[aria-busy="true"] svg [stroke]:not([stroke="none"]) {
 }
 button[aria-busy="true"] [data-button-icon] {
   color: var(--color-text-muted) !important;
+}
+button[data-compact-comment-submit],
+button[data-compact-comment-submit][aria-busy="true"] {
+  color: var(--color-text) !important;
+  opacity: 1 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+button[data-compact-comment-submit]:disabled {
+  color: var(--color-text-muted) !important;
+}
+button[data-comment-disclosure] {
+  width: fit-content !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+}
+button[data-comment-disclosure] > span {
+  flex: 0 1 auto;
 }
 /* Quiet engagement actions have no resting boundary, including selected state.
    Keep border width for stable geometry and the existing keyboard focus ring. */
@@ -235,8 +272,17 @@ textarea.outline-none.editor-writing-field:focus-visible {
 }
 
 .card-grid--short {
-  --card-grid-min-width: 240px;
-  --card-grid-max-width: 320px;
+  --card-grid-min-width: 250px;
+  --card-grid-max-width: 250px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--card-grid-max-width)), var(--card-grid-max-width)));
+  align-items: start;
+  justify-content: start;
+}
+
+@media (max-width: 639px) {
+  .card-grid--short {
+    justify-content: center;
+  }
 }
 
 .card-grid--collection {
@@ -247,6 +293,10 @@ textarea.outline-none.editor-writing-field:focus-visible {
 .card-grid--post {
   --card-grid-min-width: 280px;
   --card-grid-max-width: 360px;
+}
+
+.competition-entry-grid {
+  grid-template-columns: repeat(auto-fill, min(100%, var(--card-grid-max-width)));
 }
 
 /* ─── Animation utilities ─────────────────────────────────────────────────── */
@@ -323,9 +373,9 @@ textarea.outline-none.editor-writing-field:focus-visible {
 
 .toast__close {
   display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
   place-items: center;
   border: 0;
   border-radius: 7px;
@@ -373,4 +423,10 @@ textarea.outline-none.editor-writing-field:focus-visible {
 /* ─── Sidebar hide on mobile ─────────────────────────────────────────────── */
 @media (max-width: 767px) {
   .sidebar-desktop { display: none !important; }
+}
+/* Pointer-only block chrome stays quiet; keyboard users can reveal it by focus. */
+@media (min-width: 640px) {
+  [data-editor-block-controls] { opacity: 0; pointer-events: none; }
+  [data-editor-block]:hover [data-editor-block-controls],
+  [data-editor-block-controls]:focus-within { opacity: 1; pointer-events: auto; }
 }

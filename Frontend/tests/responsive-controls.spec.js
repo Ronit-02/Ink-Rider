@@ -54,7 +54,7 @@ test('Explore sections expose route navigation and the active destination on pho
   await expect(links).toHaveText(['Trending', 'Questions', 'Competitions'])
   await expect(navigation.getByRole('link', { name: 'Questions' })).toHaveAttribute('aria-current', 'page')
   for (const link of await links.all()) {
-    expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(40)
+    expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(44)
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 
@@ -70,7 +70,7 @@ test('Saved library sections expose active tab state and shareable URL state on 
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ accessToken: 'saved-test-token', user: 'Priya Mehta', email: 'member@inkrider.local', role: 'regular' }) })
     }
     if (url.pathname === '/api/user/bookmarks') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) })
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     }
     if (url.pathname === '/api/collection') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
@@ -180,7 +180,7 @@ test('shared filters expose phone-sized controls without changing desktop sizing
   await expect(dialog).toBeVisible()
   expect((await dialog.getByRole('button', { name: 'All', exact: true }).boundingBox())?.height).toBeGreaterThanOrEqual(44)
   expect((await dialog.getByRole('combobox').boundingBox())?.height).toBeGreaterThanOrEqual(44)
-  expect((await dialog.getByRole('button', { name: 'Close filters' }).boundingBox())?.height).toBeGreaterThanOrEqual(40)
+  expect((await dialog.getByRole('button', { name: 'Close filters' }).boundingBox())?.height).toBeGreaterThanOrEqual(44)
 
   await dialog.getByRole('button', { name: 'Science', exact: true }).click()
   await expect(dialog.getByRole('button', { name: 'Reset filters' })).toBeEnabled()
@@ -256,7 +256,7 @@ test('search recovery action exposes a phone-sized retry target', async ({ page 
   await page.goto('/search?q=city', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: 'Search is unavailable' })).toBeVisible()
   await expect(page.getByRole('alert')).toContainText('Search is unavailable')
-  expect((await page.getByRole('button', { name: 'Try again' }).boundingBox())?.height).toBeGreaterThanOrEqual(40)
+  expect((await page.getByRole('button', { name: 'Try again' }).boundingBox())?.height).toBeGreaterThanOrEqual(44)
 })
 
 test('reading history recovery is announced and retryable on phone', async ({ page }) => {
@@ -277,7 +277,7 @@ test('reading history recovery is announced and retryable on phone', async ({ pa
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/history', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('alert')).toContainText('Reading history could not be loaded.')
-  expect((await page.getByRole('button', { name: 'Try again' }).boundingBox())?.height).toBeGreaterThanOrEqual(40)
+  expect((await page.getByRole('button', { name: 'Try again' }).boundingBox())?.height).toBeGreaterThanOrEqual(44)
 })
 
 test('short-read recovery is announced and retryable on phone', async ({ page }) => {
@@ -298,7 +298,7 @@ test('short-read recovery is announced and retryable on phone', async ({ page })
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/shorts', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('alert')).toContainText('Short reads could not be loaded.')
-  expect((await page.getByRole('button', { name: 'Try again' }).boundingBox())?.height).toBeGreaterThanOrEqual(40)
+  expect((await page.getByRole('button', { name: 'Try again' }).boundingBox())?.height).toBeGreaterThanOrEqual(44)
 })
 
 test('Home recovery action is an explicit button outside form submission semantics', async ({ page }) => {
@@ -318,7 +318,7 @@ test('Home recovery action is an explicit button outside form submission semanti
   await expect(page.getByRole('heading', { name: 'The feed could not be loaded' })).toBeVisible()
   const retry = page.getByRole('button', { name: 'Try again' })
   await expect(retry).toHaveAttribute('type', 'button')
-  expect((await retry.boundingBox())?.height).toBeGreaterThanOrEqual(40)
+  expect((await retry.boundingBox())?.height).toBeGreaterThanOrEqual(44)
 })
 
 test('mobile primary navigation exposes phone-sized links and an Account action', async ({ page }) => {
@@ -339,7 +339,7 @@ test('mobile primary navigation exposes phone-sized links and an Account action'
   await expect(links).toHaveCount(4)
   await expect(links).toHaveText(['Home', 'Explore', 'Shorts', 'Collections'])
   for (const link of await links.all()) {
-    expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(40)
+    expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(44)
   }
   await expect(navigation.getByRole('link', { name: 'Shorts' })).toHaveAttribute('href', '/shorts')
   const account = navigation.getByRole('button', { name: 'Account', exact: true })
@@ -445,6 +445,9 @@ test('short-read comments remain inline without a redundant footer button', asyn
     if (url.pathname === '/api/post/short-1/comments') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
     }
+    if (url.pathname === '/api/v1/events') {
+      return route.fulfill({ status: 200, json: { data: { accepted: 1 } } })
+    }
     return route.abort('blockedbyclient')
   })
 
@@ -454,7 +457,7 @@ test('short-read comments remain inline without a redundant footer button', asyn
   })
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/shorts/series/series-1', { waitUntil: 'domcontentloaded' })
-  await page.getByRole('button', { name: 'Start with the street' }).click()
+  await page.getByRole('link', { name: 'Start with the street', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveAttribute('aria-busy', 'false')
   await expect(page.getByRole('dialog').getByRole('heading', { name: 'Start with the street' })).toHaveAttribute('id', 'short-read-title')
   await expect(page.locator('h1')).toHaveCount(1)
@@ -483,7 +486,7 @@ test('competition detail back navigation exposes a phone-sized target', async ({
 
   const back = page.getByRole('button', { name: 'Back', exact: true })
   await expect(back).toBeVisible()
-  expect((await back.boundingBox())?.height).toBeGreaterThanOrEqual(40)
+  expect((await back.boundingBox())?.height).toBeGreaterThanOrEqual(44)
 })
 
 test('404 recovery navigation exposes a phone-sized target', async ({ page }) => {
@@ -500,7 +503,7 @@ test('404 recovery navigation exposes a phone-sized target', async ({ page }) =>
 
   const recovery = page.getByRole('link', { name: 'Return home' })
   await expect(page.getByRole('heading', { name: 'This page slipped between the lines.' })).toBeVisible()
-  expect((await recovery.boundingBox())?.height).toBeGreaterThanOrEqual(40)
+  expect((await recovery.boundingBox())?.height).toBeGreaterThanOrEqual(44)
   await expect(recovery).toHaveAttribute('href', '/')
 })
 
@@ -548,8 +551,8 @@ test('short-series owner controls expose phone-sized reorder targets', async ({ 
   const earlier = page.getByRole('button', { name: 'Move Start with the street earlier' })
   const later = page.getByRole('button', { name: 'Move Start with the street later' })
   await expect(earlier).toBeVisible()
-  expect((await earlier.boundingBox())?.height).toBeGreaterThanOrEqual(40)
-  expect((await later.boundingBox())?.height).toBeGreaterThanOrEqual(40)
+  expect((await earlier.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+  expect((await later.boundingBox())?.height).toBeGreaterThanOrEqual(44)
 })
 
 test('Home category controls expose phone-sized targets after deferred loading', async ({ page }) => {
@@ -587,7 +590,7 @@ test('Home category controls expose phone-sized targets after deferred loading',
   await page.locator('[data-app-scroll]').evaluate(element => element.scrollTo(0, element.scrollHeight))
   const category = page.getByRole('button', { name: 'Science', exact: true })
   await expect(category).toBeVisible({ timeout: 10_000 })
-  expect((await category.boundingBox())?.height).toBeGreaterThanOrEqual(40)
+  expect((await category.boundingBox())?.height).toBeGreaterThanOrEqual(44)
 })
 
 test('authentication fields expose native names, autocomplete, and required constraints', async ({ page }) => {
@@ -607,7 +610,7 @@ test('authentication fields expose native names, autocomplete, and required cons
   await expect(page.getByRole('textbox', { name: 'Email' })).toHaveAttribute('autocomplete', 'email')
   await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('autocomplete', 'new-password')
   await expect(page.getByLabel('Confirm Password', { exact: true })).toHaveAttribute('name', 'confirmPassword')
-  await expect(page.locator('main')).toHaveCount(1)
+  await expect(page.getByRole('main')).toHaveCount(1)
 })
 
 test('member hub loading exposes a named status region on phone', async ({ page }) => {

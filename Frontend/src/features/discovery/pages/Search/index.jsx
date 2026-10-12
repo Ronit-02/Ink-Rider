@@ -1,3 +1,4 @@
+import Select from '@/shared/components/ui/Select'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import retainRetryView from '@/shared/utils/retainRetryView'
 import { useState } from 'react'
@@ -46,7 +47,7 @@ function SearchState({ title, detail, onRetry, isError = false, busy = false }) 
     <div role={isError ? 'alert' : undefined} className="py-16 text-center border-y border-[var(--color-border)]">
       <h2 className="text-[17px] font-semibold text-[var(--color-text)]">{title}</h2>
       <p className="mt-2 text-[13px] text-[var(--color-text-secondary)]">{detail}</p>
-      {onRetry && <button type="button" onClick={onRetry} disabled={busy} aria-busy={busy} className="mt-5 inline-flex min-h-10 items-center justify-center px-4 py-2 rounded-full bg-[var(--color-accent)] text-[var(--color-text-inverted)] text-[12px] font-semibold sm:min-h-0">Try again</button>}
+      {onRetry && <button type="button" onClick={onRetry} disabled={busy} aria-busy={busy} className="button-target mt-5 inline-flex min-h-11 items-center justify-center px-4 py-2 rounded-full bg-[var(--color-accent)] text-[var(--color-text-inverted)] text-[12px] font-semibold sm:min-h-0">Try again</button>}
     </div>
   )
 }
@@ -65,7 +66,7 @@ function WriterResult({ writer }) {
         </Link>
         {writer.bio && <p className="mt-2 text-[13px] leading-6 text-[var(--color-text-secondary)] line-clamp-2">{writer.bio}</p>}
       </div>
-      <Link to={writerPath} className="flex min-h-10 w-full shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] px-4 py-2 text-[12px] font-semibold text-[var(--color-text)] sm:ml-auto sm:w-auto sm:min-h-0">View profile</Link>
+      <Link to={writerPath} className="button-target flex min-h-10 w-full shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] px-4 py-2 text-[12px] font-semibold text-[var(--color-text)] sm:ml-auto sm:w-auto sm:min-h-0">View profile</Link>
     </article>
   )
 }
@@ -128,8 +129,8 @@ export default function SearchPage() {
             {query.length >= 1 && <p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">Matching “{query}” across Ink Rider</p>}
           </div>
           <FilterPopover activeFilterCount={activeFilterCount} title="Refine results" description="Narrow the search without leaving the page." onClear={clearFilters}>
-            <div className="mt-4"><p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Topic</p><div className="flex flex-wrap gap-2">{TOPICS.map(option => <button key={option.id} type="button" aria-pressed={topic === option.id} onClick={() => updateFilter('topic', option.id, 'all')} className={`min-h-11 rounded-full border px-3 py-2 text-[11px] transition-colors sm:min-h-0 ${topic === option.id ? 'border-[var(--color-text)] bg-[var(--color-text)] text-[var(--color-text-inverted)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-secondary)]'}`}>{option.label}</button>)}</div></div>
-            <div className="mt-4 grid grid-cols-2 gap-3"><label className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Time<select value={time} onChange={event => updateFilter('time', event.target.value, 'any')} className="mt-2 block min-h-11 w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px] font-normal normal-case tracking-normal text-[var(--color-text)] outline-none focus:border-[var(--color-focus)] sm:min-h-0">{TIME_RANGES.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label><label className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Sort<select value={sort} onChange={event => updateFilter('sort', event.target.value, 'relevance')} className="mt-2 block min-h-11 w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px] font-normal normal-case tracking-normal text-[var(--color-text)] outline-none focus:border-[var(--color-focus)] sm:min-h-0">{SORT_OPTIONS.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label></div>
+            <div className="mt-4"><p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Topic</p><div className="flex flex-wrap gap-2">{TOPICS.map(option => <button key={option.id} type="button" aria-pressed={topic === option.id} onClick={() => updateFilter('topic', option.id, 'all')} className={`button-target min-h-11 rounded-full border px-3 py-2 text-[11px] transition-colors sm:min-h-0 ${topic === option.id ? 'border-[var(--color-text)] bg-[var(--color-text)] text-[var(--color-text-inverted)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-secondary)]'}`}>{option.label}</button>)}</div></div>
+            <div className="mt-4 grid grid-cols-2 gap-3"><Select id="search-time" label="Time" value={time} options={TIME_RANGES.map(option => ({ value: option.id, label: option.label }))} onChange={value => updateFilter('time', value, 'any')} className="max-w-none" /><Select id="search-sort" label="Sort" value={sort} options={SORT_OPTIONS.map(option => ({ value: option.id, label: option.label }))} onChange={value => updateFilter('sort', value, 'relevance')} className="max-w-none" /></div>
           </FilterPopover>
         </div>
       </header>

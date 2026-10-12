@@ -91,6 +91,52 @@ const { providerReadiness, hasConfiguredValue } = require('../services/provider-
 const { withTransaction, withOptionalSession } = require('../utils/transaction');
 const CompetitionAppeal = require('../schemas/competition-appeal.schema');
 const app = require('../src/app');
+const { getTagOptions } = require('../controllers/tag-options.controller');
+
+test('tag choices expose bounded public metadata and escape literal searches', async t => {
+  let pipeline;
+  t.mock.method(Topic, 'find', filter => {
+    assert.equal(filter.status, 'active');
+    assert.ok(filter.$or[0].slug.test('c++'));
+    assert.equal(filter.$or[0].slug.test('cccc'), false);
+    return { sort: () => ({ limit: value => { assert.equal(value, 50); return { select: () => ({ lean: async () => [{ slug: 'c++', displayName: 'C++' }] }) }; } }) };
+  });
+  t.mock.method(Post, 'aggregate', async stages => { pipeline = stages; return [{ _id: 'c++' }, { _id: 'custom' }, { _id: 'a,b' }]; });
+  const res = createResponse();
+  await getTagOptions({ query: { q: 'c++' } }, res);
+  assert.deepEqual(res.payload.data, [{ value: 'c++', label: 'C++' }, { value: 'custom', label: 'custom' }]);
+  assert.equal(pipeline[0].$match.publicationStatus.$ne, 'unpublished');
+  assert.ok(pipeline[0].$match.$or[0].publicAt.$lte instanceof Date);
+  assert.deepEqual(pipeline.at(-1), { $limit: 50 });
+  assert.deepEqual(pipeline[1], { $project: { tags: 1 } });
+});
+
+test('tag lookup rejects overlong searches before reads and returns recoverable failures', async t => {
+  const read = t.mock.method(Topic, 'find', () => { throw new Error('Unavailable'); });
+  const invalid = createResponse();
+  await getTagOptions({ query: { q: 'x'.repeat(61) } }, invalid);
+  assert.equal(invalid.statusCode, 400);
+  assert.equal(read.mock.callCount(), 0);
+  const malformed = createResponse();
+  await getTagOptions({ query: { q: ['two', 'queries'] } }, malformed);
+  assert.equal(malformed.statusCode, 400);
+  assert.equal(read.mock.callCount(), 0);
+  const failed = createResponse();
+  await getTagOptions({ query: {} }, failed);
+  assert.equal(failed.statusCode, 500);
+  assert.equal(failed.payload.message, 'Unable to load tag suggestions');
+});
+
+test('tag choices are readable by guests through the versioned route', async t => {
+  t.mock.method(Topic, 'find', () => ({ sort: () => ({ limit: () => ({ select: () => ({ lean: async () => [{ slug: 'science', displayName: 'Science' }] }) }) }) }));
+  t.mock.method(Post, 'aggregate', async () => []);
+  const server = app.listen(0);
+  t.after(() => server.close());
+  await new Promise(resolve => server.once('listening', resolve));
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/tags`);
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).data, [{ value: 'science', label: 'Science' }]);
+});
 
 const createResponse = () => ({
   statusCode: 200,
@@ -103,6 +149,74 @@ const createResponse = () => ({
     this.payload = payload;
     return this;
   },
+});
+
+test('post deletion authenticates the versioned route and validates identifiers', async t => {
+  const { deletePost } = require('../controllers/post-deletion.controller');
+  const lookup = t.mock.method(Post, 'findOne', () => { throw new Error('Unexpected database lookup'); });
+  const invalid = createResponse();
+  await deletePost({ params: { postId: 'invalid' }, auth: { userId: 'owner' } }, invalid);
+  assert.equal(invalid.statusCode, 400);
+  assert.equal(lookup.mock.callCount(), 0);
+  const server = app.listen(0);
+  t.after(() => server.close());
+  await new Promise(resolve => server.once('listening', resolve));
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/posts/507f1f77bcf86cd799439011`, { method: 'DELETE' });
+  assert.equal(response.status, 401);
+});
+
+test('post deletion checks ownership before touching related records', async t => {
+  const { deleteOwnedPost } = require('../services/post-deletion.service');
+  const session = { withTransaction: work => work(), endSession: async () => {} };
+  t.mock.method(mongoose, 'startSession', async () => session);
+  let filter;
+  t.mock.method(Post, 'findOne', input => { filter = input; return { select: () => ({ session: async () => null }) }; });
+  const remove = t.mock.method(Report, 'deleteMany', () => { throw new Error('Unauthorized cleanup'); });
+  assert.equal(await deleteOwnedPost({ postId: 'post', userId: 'other' }), false);
+  assert.deepEqual(filter, { _id: 'post', author: 'other' });
+  assert.equal(remove.mock.callCount(), 0);
+});
+
+test('post deletion removes bounded comment batches and scoped relationships, retaining reviewed reports and revisions', async t => {
+  const { deleteOwnedPost } = require('../services/post-deletion.service');
+  const Comment = require('../schemas/comment.schema');
+  const CommentLike = require('../schemas/comment-like.schema');
+  const Like = require('../schemas/like.schema');
+  const Save = require('../schemas/save.schema');
+  const session = { withTransaction: work => work(), endSession: async () => {} };
+  t.mock.method(mongoose, 'startSession', async () => session);
+  t.mock.method(Post, 'findOne', () => ({ select: () => ({ session: async () => ({ _id: 'post' }) }) }));
+  const batches = [[{ _id: 'root' }, { _id: 'reply' }], [{ _id: 'deleted-placeholder' }], []];
+  t.mock.method(Comment, 'find', filter => {
+    assert.deepEqual(filter, { postId: 'post' });
+    return { select: () => ({ limit: limit => {
+      assert.equal(limit, 500);
+      return { lean: () => ({ session: async () => batches.shift() }) };
+    } }) };
+  });
+  const writes = [];
+  for (const [name, model, method] of [['report', Report, 'deleteMany'], ['comment-like', CommentLike, 'deleteMany'], ['comment', Comment, 'deleteMany'], ['like', Like, 'deleteMany'], ['save', Save, 'deleteMany'], ['post', Post, 'deleteOne']]) {
+    t.mock.method(model, method, async (filter, options) => { assert.equal(options.session, session); writes.push({ name, filter }); return { deletedCount: 1 }; });
+  }
+  t.mock.method(PostRevision, 'deleteMany', () => { throw new Error('Historical revisions must survive'); });
+  assert.equal(await deleteOwnedPost({ postId: 'post', userId: 'owner' }), true);
+  assert.deepEqual(writes.filter(write => write.name === 'report').map(write => write.filter), [
+    { subjectType: 'post', subjectId: 'post', status: 'pending' },
+    { subjectType: 'comment', subjectId: { $in: ['root', 'reply'] }, status: 'pending' },
+    { subjectType: 'comment', subjectId: { $in: ['deleted-placeholder'] }, status: 'pending' },
+  ]);
+  assert.deepEqual(writes.filter(write => ['like', 'save'].includes(write.name)).map(write => write.filter), [{ postId: 'post' }, { postId: 'post' }]);
+  assert.deepEqual(writes.at(-1), { name: 'post', filter: { _id: 'post', author: 'owner' } });
+});
+
+test('standalone cleanup failure preserves the owned post for retry', async t => {
+  const { deleteOwnedPost } = require('../services/post-deletion.service');
+  t.mock.method(mongoose, 'startSession', async () => ({ withTransaction: async () => { throw Object.assign(new Error('Transaction numbers are only allowed'), { code: 20 }); }, endSession: async () => {} }));
+  t.mock.method(Post, 'findOne', () => ({ select: async () => ({ _id: 'post' }) }));
+  t.mock.method(Report, 'deleteMany', async () => { throw new Error('Cleanup unavailable'); });
+  const remove = t.mock.method(Post, 'deleteOne', async () => ({ deletedCount: 1 }));
+  await assert.rejects(deleteOwnedPost({ postId: 'post', userId: 'owner' }), /Cleanup unavailable/);
+  assert.equal(remove.mock.callCount(), 0);
 });
 
 test('validateToken exposes one normalized authenticated identity', async () => {
@@ -256,6 +370,7 @@ test('writer article cards include viewer appreciation state in one batch read',
   const Follow = require('../schemas/follow.schema');
   const Like = require('../schemas/like.schema');
   const { getWriterByHandle } = require('../controllers/writer.controller');
+  const Save = require('../schemas/save.schema');
   const authorId = new mongoose.Types.ObjectId();
   const postIds = [new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()];
   const posts = postIds.map(_id => ({ _id, title: 'A useful idea', tags: ['science'], likesCount: 9, commentsCount: 2, body: '[]' }));
@@ -263,6 +378,7 @@ test('writer article cards include viewer appreciation state in one batch read',
   t.mock.method(Post, 'find', () => ({ sort: () => ({ select: async () => posts }) }));
   t.mock.method(Follow, 'exists', async () => null);
   const reads = [];
+  t.mock.method(Save, 'find', () => ({ select: () => ({ lean: async () => [{ postId: postIds[0] }] }) }));
   t.mock.method(Like, 'find', filter => {
     reads.push(filter);
     return { select: () => ({ lean: async () => [{ postId: postIds[0] }] }) };
@@ -272,13 +388,71 @@ test('writer article cards include viewer appreciation state in one batch read',
   await getWriterByHandle({ params: { handle: 'maya-sen' }, auth: { userId: viewerId } }, member);
   assert.equal(member.statusCode, 200);
   assert.deepEqual(member.payload.data.posts.map(post => post.isLiked), [true, false]);
+  assert.deepEqual(member.payload.data.posts.map(post => post.isBookmarked), [true, false]);
   assert.equal(member.payload.data.posts[0].likesCount, 9);
   assert.equal(reads.length, 1);
   assert.deepEqual(reads[0], { userId: viewerId, postId: { $in: postIds } });
   const guest = createResponse();
   await getWriterByHandle({ params: { handle: 'maya-sen' } }, guest);
   assert.deepEqual(guest.payload.data.posts.map(post => post.isLiked), [false, false]);
+  assert.deepEqual(guest.payload.data.posts.map(post => post.isBookmarked), [false, false]);
   assert.equal(reads.length, 1);
+});
+
+test('discovery summaries preserve short formats and default legacy posts to articles', async t => {
+  const { presentDiscoveryPosts } = require('../services/post-presenter.service');
+  t.mock.method(Profile, 'find', () => ({ select: () => ({ lean: async () => [] }) }));
+  const posts = ['short', 'article', undefined].map(format => ({ _id: new mongoose.Types.ObjectId(), title: 'A morning idea', format, body: '[]' }));
+  const summaries = await presentDiscoveryPosts(posts);
+  assert.deepEqual(summaries.map(post => post.format), ['short', 'article', 'article']);
+  assert.deepEqual(summaries.map(post => post.id), posts.map(post => post._id));
+});
+
+test('owner short summaries include public author identity and viewer engagement without leaking bodies', async t => {
+  const { getMyPosts } = require('../controllers/user.controller');
+  const Save = require('../schemas/save.schema');
+  const Like = require('../schemas/like.schema');
+  const authorId = new mongoose.Types.ObjectId();
+  const post = new Post({ author: authorId, title: 'Owner short', format: 'short', body: '[{"type":"text","content":"A focused idea"}]' });
+  post.author = new User({ _id: authorId, username: 'Maya' });
+  t.mock.method(Post, 'find', () => ({ select: () => ({ populate: () => ({ sort: async () => [post] }) }) }));
+  t.mock.method(Profile, 'find', () => ({ select: () => ({ lean: async () => [{ userId: authorId, displayName: 'Maya Sen', handle: 'maya-custom', avatarUrl: null }] }) }));
+  for (const model of [Like, Save]) t.mock.method(model, 'find', filter => {
+    assert.equal(filter.userId, authorId.toString());
+    assert.deepEqual(filter.postId.$in, [post._id]);
+    return { select: () => ({ lean: async () => [{ postId: post._id }] }) };
+  });
+  const response = createResponse();
+  await getMyPosts({ auth: { userId: authorId.toString() } }, response);
+  assert.equal(response.statusCode, 200);
+  const summary = response.payload.data[0];
+  assert.equal(summary.author.username, 'Maya Sen');
+  assert.equal(summary.author.handle, 'maya-custom');
+  assert.equal(summary.isLiked, true);
+  assert.equal(summary.isBookmarked, true);
+  assert.equal(summary.body, undefined);
+  assert.equal(summary._id.toString(), post._id.toString());
+});
+
+test('published question responses use viewer-aware story summaries and retain legacy post identifiers', async t => {
+  const { presentQuestions } = require('../controllers/question.controller');
+  const authorId = new mongoose.Types.ObjectId();
+  const postId = new mongoose.Types.ObjectId();
+  const profile = { userId: authorId, displayName: 'Maya Sen', handle: 'maya-custom' };
+  t.mock.method(Profile, 'find', () => ({ select: fields => fields === 'userId handle' ? Promise.resolve([profile]) : { lean: async () => [profile] } }));
+  for (const model of [require('../schemas/like.schema'), require('../schemas/save.schema')]) {
+    t.mock.method(model, 'find', () => ({ select: () => ({ lean: async () => [{ postId }] }) }));
+  }
+  const question = { _id: new mongoose.Types.ObjectId(), author: { _id: authorId }, answers: [], upvotes: [], relatedArticles: [{ _id: postId, title: 'Response short', format: 'short', author: { _id: authorId, username: 'Maya' }, body: '[]', likesCount: 3 }] };
+  const [result] = await presentQuestions([question], authorId.toString());
+  const response = result.responsePosts[0];
+  assert.equal(response._id.toString(), postId.toString());
+  assert.equal(response.format, 'short');
+  assert.equal(response.author.handle, 'maya-custom');
+  assert.equal(response.isLiked, true);
+  assert.equal(response.isBookmarked, true);
+  assert.equal(response.likesCount, 3);
+  assert.equal(response.body, undefined);
 });
 
 test('writer handles normalize into durable URL identifiers', () => {
@@ -869,6 +1043,42 @@ test('comment presenter batches relationships, separates viewers, and hides dele
   assert.equal(deleted.repliesCount, 3);
 });
 
+test('comment listing scopes visible threads before cursor pagination and presents public author data', async t => {
+  const Comment = require('../schemas/comment.schema');
+  const CommentLike = require('../schemas/comment-like.schema');
+  const { getComments } = require('../controllers/engagement.controller');
+  const postId = new mongoose.Types.ObjectId();
+  const cursor = new mongoose.Types.ObjectId();
+  const authorId = new mongoose.Types.ObjectId();
+  const ids = [new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()];
+  t.mock.method(Post, 'findById', () => ({ select: async () => ({ _id: postId, author: authorId }) }));
+  const read = t.mock.method(Comment, 'aggregate', async stages => {
+    if (stages.at(-1).$group) return [];
+    assert.equal(String(stages[0].$match.postId), String(postId));
+    assert.equal(stages[0].$match.parentCommentId, null);
+    assert.ok(stages[0].$match._id.$lt instanceof mongoose.Types.ObjectId);
+    assert.equal(String(stages[0].$match._id.$lt), String(cursor));
+    const traversal = stages.findIndex(stage => stage.$graphLookup);
+    assert.equal(String(stages[traversal].$graphLookup.restrictSearchWithMatch.postId), String(postId));
+    assert.ok(stages.findIndex(stage => stage.$limit) > stages.findIndex(stage => stage.$match?.$or));
+    assert.equal(stages.at(-1).$limit, 2);
+    return ids.map(_id => ({ _id, postId, userId: authorId, content: 'Visible', createdAt: new Date(), deletedAt: null }));
+  });
+  t.mock.method(Comment, 'populate', async comments => {
+    for (const comment of comments) comment.userId = { _id: authorId, username: 'Public reader' };
+  });
+  t.mock.method(Comment, 'countDocuments', async () => 7);
+  t.mock.method(CommentLike, 'aggregate', async () => []);
+  const res = createResponse();
+  await getComments({ params: { postId: String(postId) }, query: { limit: '1', cursor: String(cursor) } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.data.length, 1);
+  assert.equal(res.payload.data[0].author.name, 'Public reader');
+  assert.equal(String(res.payload.meta.nextCursor), String(ids[0]));
+  assert.equal(res.payload.meta.totalCount, 7);
+  assert.equal(read.mock.callCount(), 2);
+});
+
 test('comment editing and deletion enforce ownership and post scoping before writes', async t => {
   const Comment = require('../schemas/comment.schema');
   const { editComment, deleteComment, likeComment } = require('../controllers/engagement.controller');
@@ -1236,6 +1446,49 @@ test('collection routes validate public identifiers and authenticate mutations b
     method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
   });
   assert.equal(create.status, 401);
+  const add = await fetch(`http://127.0.0.1:${address.port}/api/v1/collections/507f1f77bcf86cd799439030/posts/507f1f77bcf86cd799439031`, { method: 'PUT' });
+  assert.equal(add.status, 401);
+});
+
+test('collection appends enforce availability, ownership, duplicate retries, and capacity', async t => {
+  const { appendCollectionPost } = require('../services/collection-items.service');
+  const input = { collectionId: '507f1f77bcf86cd799439030', postId: '507f1f77bcf86cd799439031', actorId: '507f1f77bcf86cd799439032' };
+  let available = false;
+  let updated = null;
+  let owned = null;
+  let writes = 0;
+  t.mock.method(Post, 'exists', async filter => {
+    assert.equal(filter.publicationStatus.$ne, 'unpublished');
+    assert.equal(filter._id, input.postId);
+    assert.ok(filter.$or[0].publicAt.$lte instanceof Date);
+    return available;
+  });
+  t.mock.method(Collection, 'findOneAndUpdate', (filter, pipeline, options) => {
+    writes += 1;
+    assert.equal(filter.author, input.actorId);
+    assert.equal(filter._id, input.collectionId);
+    assert.equal(options.updatePipeline, true);
+    assert.ok(filter.$expr.$and);
+    assert.equal(pipeline.length, 2);
+    return { select: async () => updated };
+  });
+  t.mock.method(Collection, 'findOne', filter => {
+    assert.equal(filter.author, input.actorId);
+    return { select: async () => owned };
+  });
+  assert.equal((await appendCollectionPost(input)).status, 404);
+  assert.equal(writes, 0);
+  available = true;
+  assert.equal((await appendCollectionPost(input)).status, 404);
+  updated = { _id: input.collectionId };
+  assert.deepEqual((await appendCollectionPost(input)).data, { added: true });
+  updated = null;
+  owned = { items: [{ post: input.postId }], posts: [] };
+  assert.deepEqual((await appendCollectionPost(input)).data, { added: false });
+  owned = { items: [], posts: [input.postId] };
+  assert.deepEqual((await appendCollectionPost(input)).data, { added: false });
+  owned = { items: [], posts: [] };
+  assert.equal((await appendCollectionPost(input)).status, 400);
 });
 
 test('writer follow routes validate target identifiers after authentication', async t => {
@@ -1382,9 +1635,14 @@ test('question search matches text, context, and tags with bounded public result
   });
   let profileReads = 0;
   t.mock.method(Profile, 'find', filter => {
-    profileReads += 1;
-    assert.deepEqual(filter, { userId: { $in: [authorId] } });
-    return { select: async () => [{ userId: authorId, handle: 'reader-handle' }] };
+    return { select: fields => {
+      if (fields === 'userId handle') {
+        profileReads += 1;
+        assert.deepEqual(filter, { userId: { $in: [authorId] } });
+        return Promise.resolve([{ userId: authorId, handle: 'reader-handle' }]);
+      }
+      return { lean: async () => [] };
+    } };
   });
   t.mock.method(Post, 'find', () => { throw new Error('Question-only search must not query posts'); });
   const run = async query => {
@@ -1421,6 +1679,8 @@ test('question search matches text, context, and tags with bounded public result
   assert.deepEqual(reads[1].order, { upvotesCount: -1, createdAt: -1, _id: -1 });
   assert.equal(reads[1].limit, 2);
   assert.equal(profileReads, 2);
+  t.mock.method(require('../schemas/like.schema'), 'find', () => ({ select: () => ({ lean: async () => [] }) }));
+  t.mock.method(require('../schemas/save.schema'), 'find', () => ({ select: () => ({ lean: async () => [] }) }));
   const { presentQuestions } = require('../controllers/question.controller');
   assert.equal((await presentQuestions(records, authorId))[0].isUpvoted, true);
 });
@@ -1581,6 +1841,123 @@ test('durable authoring models preserve draft conflicts and immutable revisions'
   assert.deepEqual(input.tags, ['writing']);
   assert.equal(parseDraftInput({ format: 'video', blocks: [] }), null);
   assert.equal(parseDraftInput({ format: 'article', blocks: [{ id: 'x', type: 'embed', content: '' }] }), null);
+});
+
+test('engagement notifications follow committed writes and suppress repeats, removals and self actions', async t => {
+  const { setLike, addComment } = require('../services/engagement.service');
+  const { toggleFollow } = require('../services/user-relationship.service');
+  const Like = require('../schemas/like.schema');
+  const Follow = require('../schemas/follow.schema');
+  const Comment = require('../schemas/comment.schema');
+  const userId = new mongoose.Types.ObjectId();
+  const author = new mongoose.Types.ObjectId();
+  const postId = new mongoose.Types.ObjectId();
+  const commentId = new mongoose.Types.ObjectId();
+  let inTransaction = false;
+  let retry = false;
+  t.mock.method(mongoose, 'startSession', async () => ({
+    withTransaction: async work => {
+      assert.equal(inTransaction, false, 'notification must not open a nested transaction');
+      inTransaction = true;
+      try {
+        if (retry) { retry = false; await work(); }
+        return await work();
+      } finally { inTransaction = false; }
+    },
+    endSession: async () => {},
+  }));
+  const writes = t.mock.method(Notification, 'create', async ([input]) => {
+    assert.equal(new Notification(input).validateSync(), undefined);
+    return [{ ...input, _id: new mongoose.Types.ObjectId() }];
+  });
+  const post = { author, title: 'Example post', likesCount: 1 };
+  const sessionQuery = value => ({ session: async () => value });
+  t.mock.method(Post, 'findById', () => ({ select: () => sessionQuery(post) }));
+  t.mock.method(Post, 'updateOne', async () => ({ modifiedCount: 1 }));
+  const upsert = t.mock.method(Like, 'updateOne', async () => ({ upsertedCount: 1 }));
+  t.mock.method(Like, 'deleteOne', async () => ({ deletedCount: 1 }));
+  retry = true;
+  assert.deepEqual(await setLike({ postId, userId, liked: true }), { isLiked: true, likesCount: 1 });
+  assert.equal(writes.mock.callCount(), 1, 'transaction callback retry must not notify twice');
+  assert.equal(writes.mock.calls[0].arguments[0][0].type, 'post_liked');
+  upsert.mock.mockImplementation(async () => ({ upsertedCount: 0 }));
+  await setLike({ postId, userId, liked: true });
+  await setLike({ postId, userId, liked: false });
+  upsert.mock.mockImplementation(async () => ({ upsertedCount: 1 }));
+  await setLike({ postId, userId: author, liked: true });
+  assert.equal(writes.mock.callCount(), 1);
+  upsert.mock.mockImplementation(async () => { throw new Error('Write failed'); });
+  await assert.rejects(setLike({ postId, userId, liked: true }), /Write failed/);
+  assert.equal(writes.mock.callCount(), 1);
+
+  t.mock.method(Comment, 'create', async () => [{ _id: commentId }]);
+  const comment = { _id: commentId, content: 'a'.repeat(1000), createdAt: new Date(), parentCommentId: null, userId: { _id: userId, username: 'Reader' } };
+  t.mock.method(Comment, 'findById', () => ({ populate: () => sessionQuery(comment) }));
+  retry = true;
+  assert.equal((await addComment({ postId, userId, content: comment.content })).id, commentId);
+  const commentNotice = writes.mock.calls[1].arguments[0][0];
+  assert.equal(commentNotice.type, 'post_commented');
+  assert.equal(commentNotice.body.length, 180);
+  assert.equal(String(commentNotice.recipientId), String(author));
+  assert.equal(commentNotice.href, `/post/${postId}`);
+  await addComment({ postId, userId: author, content: 'My own comment' });
+  assert.equal(writes.mock.callCount(), 2);
+  await addComment({ postId, userId, content: 'Reply', parentCommentId: commentId });
+  assert.equal(writes.mock.callCount(), 3);
+
+  let following = false;
+  t.mock.method(Follow, 'findOne', () => sessionQuery(following ? { _id: new mongoose.Types.ObjectId() } : null));
+  t.mock.method(Follow, 'create', async () => { following = true; return []; });
+  t.mock.method(Follow, 'deleteOne', async () => { following = false; return { deletedCount: 1 }; });
+  t.mock.method(User, 'updateOne', async () => ({ modifiedCount: 1 }));
+  t.mock.method(User, 'findById', () => ({ select: () => sessionQuery({ followersCount: 1 }) }));
+  await toggleFollow({ followerId: userId, followingId: author });
+  const followNotice = writes.mock.calls[3].arguments[0][0];
+  assert.equal(followNotice.type, 'user_followed');
+  assert.equal(followNotice.href, '/profile');
+  assert.equal(String(followNotice.recipientId), String(author));
+  assert.equal(String(followNotice.actorId), String(userId));
+  await toggleFollow({ followerId: userId, followingId: author });
+  assert.equal(writes.mock.callCount(), 4);
+
+  writes.mock.mockImplementation(async () => { throw new Error('Notification storage unavailable'); });
+  t.mock.method(console, 'error', () => {});
+  upsert.mock.mockImplementation(async () => ({ upsertedCount: 1 }));
+  assert.deepEqual(await setLike({ postId, userId, liked: true }), { isLiked: true, likesCount: 1 });
+});
+
+test('explicit writer follows and onboarding notify only newly inserted relationships', async t => {
+  const { followWriter } = require('../controllers/writer.controller');
+  const { saveOnboardingSelection } = require('../services/onboarding.service');
+  const Follow = require('../schemas/follow.schema');
+  const followerId = String(new mongoose.Types.ObjectId());
+  const followingId = String(new mongoose.Types.ObjectId());
+  t.mock.method(mongoose, 'startSession', async () => ({ withTransaction: work => work(), endSession: async () => {} }));
+  const writes = t.mock.method(Notification, 'create', async ([input]) => [{ ...input, _id: new mongoose.Types.ObjectId() }]);
+  const query = value => ({ then: resolve => Promise.resolve(value).then(resolve), session: async () => value });
+  t.mock.method(User, 'findById', () => ({ select: async () => ({ _id: followingId, followersCount: 1 }) }));
+  t.mock.method(User, 'updateOne', async () => ({ modifiedCount: 1 }));
+  const upsert = t.mock.method(Follow, 'updateOne', async () => ({ upsertedCount: 1 }));
+  const req = { auth: { userId: followerId }, params: { writerId: followingId } };
+  const response = createResponse();
+  await followWriter(req, response);
+  assert.equal(response.statusCode, 200);
+  assert.equal(writes.mock.callCount(), 1);
+  upsert.mock.mockImplementation(async () => ({ upsertedCount: 0 }));
+  await followWriter(req, createResponse());
+  assert.equal(writes.mock.callCount(), 1);
+  t.mock.method(UserInterest, 'updateMany', async () => ({}));
+  t.mock.method(UserInterest, 'deleteMany', async () => ({}));
+  t.mock.method(User, 'findByIdAndUpdate', () => ({ select: () => query({ onboardingCompletedAt: new Date() }) }));
+  const bulk = t.mock.method(Follow, 'bulkWrite', async () => ({ upsertedCount: 1, upsertedIds: { 0: new mongoose.Types.ObjectId() } }));
+  t.mock.method(Follow, 'find', () => ({ select: () => query([{ followingId }]) }));
+  const selection = { userId: followerId, topics: [], writers: [{ _id: followingId }], completed: true };
+  assert.equal((await saveOnboardingSelection(selection)).addedFollows, 1);
+  assert.equal(writes.mock.callCount(), 2);
+  assert.equal(writes.mock.calls[1].arguments[0][0].recipientId, followingId);
+  bulk.mock.mockImplementation(async () => ({ upsertedCount: 0, upsertedIds: {} }));
+  assert.equal((await saveOnboardingSelection(selection)).addedFollows, 0);
+  assert.equal(writes.mock.callCount(), 2);
 });
 
 test('notifications and staff decisions are durable append-only domain records', () => {

@@ -133,6 +133,12 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
               setActiveIndex(current => current < 0 ? (event.key === 'ArrowDown' ? 0 : items.length - 1) : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length)
             }}
             className="mobile-search-input min-w-0 flex-1 border-none bg-transparent py-2 text-[16px] text-[var(--color-text)] outline-none" />
+          {input && <button type="button" disabled={closing} aria-label="Clear search" onClick={() => {
+            setInput('')
+            setQuery('')
+            setActiveIndex(-1)
+            inputRef.current?.focus({ preventScroll: true })
+          }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-transparent text-[24px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">×</button>}
           <button type="button" disabled={!input.trim() || closing} onClick={() => search()} aria-label="Search" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--color-accent)] hover:bg-[var(--color-bg-alt)] disabled:opacity-40">
             <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16m-6-6 6 6-6 6" /></svg>
           </button>
@@ -161,7 +167,7 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
             {[{ label: 'Search suggestions', items: searchItems, offset: 0 }, { label: 'Authors', items: writerItems, offset: searchItems.length }].filter(group => group.items.length).map(group => <div key={group.label} role="group" aria-label={group.label}>
               <h3 className="py-3 text-[12px] font-semibold text-[var(--color-text-secondary)]">{group.label}</h3>
               {group.items.map((suggestion, itemIndex) => { const index = group.offset + itemIndex; return <button key={suggestion.kind === 'search' ? suggestion.item.text : suggestion.item.id} id={`${listId}-${index}`} type="button" role="option" aria-selected={activeIndex === index} tabIndex={-1} onMouseDown={event => event.preventDefault()} onClick={() => openSuggestion(suggestion)}
-              className={`flex min-h-16 w-full items-center gap-3 border-b border-[var(--color-border-light)] py-3 text-left ${activeIndex === index ? 'bg-[var(--color-bg-alt)]' : 'hover:bg-[var(--color-surface-hover)]'}`}>
+              className={`button-target flex min-h-16 w-full items-center gap-3 border-b border-[var(--color-border-light)] py-3 text-left ${activeIndex === index ? 'bg-[var(--color-bg-alt)]' : 'hover:bg-[var(--color-surface-hover)]'}`}>
               {suggestion.kind === 'writer' ? <Avatar src={suggestion.item.avatarUrl} name={suggestion.item.displayName} size={40} /> : <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--color-bg-alt)]"><SearchIcon /></span>}
               <span className="min-w-0 flex-1"><span className="block break-words text-[14px] font-semibold">{suggestion.kind === 'search' ? suggestion.item.text : suggestion.item.displayName}</span>{suggestion.kind === 'writer' && <span className="mt-1 block break-words text-[12px] text-[var(--color-text-muted)]">@{suggestion.item.handle}</span>}</span>
             </button> })}</div>)}

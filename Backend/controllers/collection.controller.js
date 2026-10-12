@@ -27,7 +27,7 @@ const presentCollections = async (collections, actorId, includePosts = false) =>
   const postDocuments = includePosts
     ? collections.flatMap(collection => getOrderedItems(collection).map(item => item.post).filter(Boolean))
     : [];
-  const postData = includePosts ? await presentDiscoveryPosts(postDocuments) : [];
+  const postData = includePosts ? await presentDiscoveryPosts(postDocuments, actorId) : [];
   const postById = new Map(postData.map(post => [post.id.toString(), post]));
 
   return collections.map(collection => {

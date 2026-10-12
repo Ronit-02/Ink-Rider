@@ -7,6 +7,7 @@ import useToast from '@/shared/hooks/useToast'
 import useComments from '../hooks/useComments'
 import { createComment, editComment, deleteComment, setCommentLike } from '../api/comments'
 import { updatePostCaches } from '../hooks/postCache'
+import CommentActionDialog from './CommentActionDialog'
 
 type CommentData = {
   id: string
@@ -20,10 +21,10 @@ type CommentData = {
   repliesCount?: number
   isDeleted?: boolean
 }
-type Props = { comment: CommentData; postId: string; compact?: boolean; depth?: number }
+type Props = { comment: CommentData; postId: string; compact?: boolean; depth?: number; hideBottomBorder?: boolean }
 type Action = { kind: 'edit' | 'reply'; text: string } | { kind: 'like'; liked: boolean } | { kind: 'delete' }
 
-export default function CommentItem({ comment, postId, compact = false, depth = 0 }: Props) {
+export default function CommentItem({ comment, postId, compact = false, depth = 0, hideBottomBorder = false }: Props) {
   const [mode, setMode] = useState<'edit' | 'reply' | null>(null)
   const [text, setText] = useState('')
   const [showReplies, setShowReplies] = useState(false)
@@ -64,8 +65,10 @@ export default function CommentItem({ comment, postId, compact = false, depth = 
     setText(nextMode === 'edit' ? comment.content : '')
   }
 
+  if (comment.isDeleted && !comment.repliesCount) return null
+
   return (
-    <article className="pt-3 pb-1 border-b border-[var(--color-border)]">
+    <article className={`pt-3 pb-1 ${hideBottomBorder ? '' : 'border-b border-[var(--color-border)]'}`}>
       <div className="flex items-start gap-3">
         <Avatar src={comment.author?.avatar} name={comment.isDeleted ? 'Deleted comment' : comment.author?.name || 'Former member'} size={compact ? 30 : 36} />
         <div className="flex-1 min-w-0">
@@ -90,35 +93,31 @@ export default function CommentItem({ comment, postId, compact = false, depth = 
             {comment.canEdit && loggedIn && <Button variant="ghost" className="!min-h-11 !px-2 !items-start !pt-1 !pb-0 !leading-5" disabled={mutation.isPending} onClick={() => start('edit')}>Edit</Button>}
             {comment.canDelete && loggedIn && <Button variant="ghost" className="!min-h-11 !px-2 !items-start !pt-1 !pb-0 !leading-5" disabled={mutation.isPending} onClick={() => { setConfirmDelete(true); setMode(null); mutation.reset() }}>Delete</Button>}
           </div>
-          {confirmDelete && <div className="mt-2">
-            <p className="text-[12px] text-[var(--color-text-secondary)]">Delete this comment? Replies will remain visible.</p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              <Button variant="primary" className="!min-h-11" disabled={mutation.isPending} aria-busy={mutation.isPending} onClick={() => mutation.mutate({ kind: 'delete' })}>Delete comment</Button>
-              <Button variant="secondary" className="!min-h-11" disabled={mutation.isPending} onClick={() => { setConfirmDelete(false); mutation.reset() }}>Cancel delete</Button>
-            </div>
-          </div>}
-          {mode && (
-            <form className="mt-3" onSubmit={event => {
+          {(confirmDelete || mode === 'edit') && <CommentActionDialog mode={confirmDelete ? 'delete' : 'edit'} text={text} onTextChange={setText} pending={mutation.isPending} hasError={mutation.isError}
+            onSubmit={() => mutation.mutate(confirmDelete ? { kind: 'delete' } : { kind: 'edit', text: text.trim() })}
+            onClose={() => { setConfirmDelete(false); setMode(null); mutation.reset() }} />}
+          {mode === 'reply' && (
+            <form className="mt-3 mb-4" data-comment-reply-form onSubmit={event => {
               event.preventDefault()
               if (text.trim() && !mutation.isPending) mutation.mutate({ kind: mode, text: text.trim() })
             }}>
-              <label htmlFor={inputId} className="block text-[12px] font-semibold mb-2">{mode === 'edit' ? 'Edit comment' : `Reply to ${comment.author?.name || 'comment'}`}</label>
+              <label htmlFor={inputId} className="block text-[12px] font-semibold mb-2">{`Reply to ${comment.author?.name || 'comment'}`}</label>
               <textarea id={inputId} autoFocus required maxLength={1000} value={text} disabled={mutation.isPending} onChange={event => setText(event.target.value)}
                 className="w-full min-h-20 p-3 rounded-[12px] bg-[var(--color-bg-alt)] border border-[var(--color-border)] text-[13px] text-[var(--color-text)]" />
               <div className="flex flex-wrap gap-2 mt-2">
-                <Button variant="primary" className="!min-h-11" type="submit" disabled={!text.trim() || mutation.isPending} aria-busy={mutation.isPending}>{mode === 'edit' ? 'Save comment' : 'Post reply'}</Button>
+                <Button variant="primary" className="!min-h-11" type="submit" disabled={!text.trim() || mutation.isPending} aria-busy={mutation.isPending}>Post reply</Button>
                 <Button variant="secondary" className="!min-h-11" disabled={mutation.isPending} onClick={() => { setMode(null); mutation.reset() }}>Cancel</Button>
               </div>
             </form>
           )}
-          {mutation.isError && <p role="alert" className="text-[12px] text-[var(--color-danger)] mt-2">We couldn't update the comment. Please try again.</p>}
-          {(Boolean(comment.repliesCount) || showReplies) && <Button variant="ghost" className="!min-h-11" aria-expanded={showReplies} onClick={() => setShowReplies(!showReplies)}>{showReplies ? 'Hide replies' : `View replies (${comment.repliesCount})`}</Button>}
+          {mutation.isError && !confirmDelete && mode !== 'edit' && <p role="alert" className="text-[12px] text-[var(--color-danger)] mt-2">We couldn't update the comment. Please try again.</p>}
+          {(Boolean(comment.repliesCount) || showReplies) && <Button variant="ghost" className="!min-h-11" aria-expanded={showReplies} aria-controls={`${inputId}-replies`} onClick={() => setShowReplies(!showReplies)}>{showReplies ? 'Hide replies' : `View replies (${comment.repliesCount || 0})`}</Button>}
         </div>
       </div>
-      {showReplies && <div className={depth === 0 ? 'ml-3 pl-3 border-l border-[var(--color-border)]' : ''}>
+      {showReplies && <div id={`${inputId}-replies`} className={depth === 0 ? 'ml-3 pl-3 border-l border-[var(--color-border)]' : ''}>
         {repliesQuery.isLoading && <p role="status" className="text-[12px] py-3">Loading replies…</p>}
         {repliesQuery.isError && <div><p role="alert" className="text-[12px] text-[var(--color-danger)]">We couldn't load replies.</p><Button variant="secondary" onClick={() => repliesQuery.refetch()} aria-busy={repliesQuery.isFetching}>Try again</Button></div>}
-        {replies.map(reply => <CommentItem key={reply.id} comment={reply} postId={postId} compact={compact} depth={depth + 1} />)}
+        {replies.map((reply, index) => <CommentItem key={reply.id} comment={reply} postId={postId} compact={compact} depth={depth + 1} hideBottomBorder={hideBottomBorder && index === replies.length - 1} />)}
         {repliesQuery.hasNextPage && <Button variant="secondary" className="!min-h-11" onClick={() => repliesQuery.fetchNextPage()} aria-busy={repliesQuery.isFetchingNextPage} disabled={repliesQuery.isFetchingNextPage}>Load more replies</Button>}
       </div>}
     </article>

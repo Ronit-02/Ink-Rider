@@ -2,6 +2,38 @@
 
 Audited: 2026-10-09.
 
+## Inbox deletion — 2026-10-13
+
+The existing inbox row now includes a Delete button for each notification. A recipient-scoped `DELETE /api/v1/notifications/:notificationId` endpoint removes only the signed-in recipient's record and returns 204; invalid IDs return 400 and missing or other-recipient records return 404. The frontend waits for success before refreshing the inbox and unread badge, and retains the row with error feedback on failure. No schema or delivery trigger changes were needed. Existing desktop popover/mobile modal placement, typography, colors, row links, read actions, and pagination remain in place.
+
+Follow-up on 2026-10-13: the Delete button sits to the right of each notification's link and includes the existing outlined trash icon used by collection deletion. The row keeps its prior border and padding; no backend change accompanies this placement update.
+
+The same-day icon-only follow-up removes the visible Delete text while retaining each button's notification-specific accessible name and 44 px target.
+
+The final notification row omits its bottom divider; separators between rows remain.
+
+The 2026-10-13 per-item read follow-up adds an icon button immediately left of each row's delete icon. It reuses the existing recipient-scoped mark-read endpoint and cache invalidation. Already-read items keep a disabled, labelled check button. No backend, schema, route, or row-link change is needed.
+
+Focused frontend lint and production build passed on 2026-10-13. The new browser assertion for placement and selected-item read behavior was added but not run in this environment.
+
+Changed: `Backend/services/notification.service.js`, `Backend/controllers/notification.controller.js`, `Backend/routes/v1.routes.js`, `Frontend/src/features/notification/api/notifications.js`, `Frontend/src/features/notification/pages/NotificationsPage.jsx`, related notification browser and backend integration checks, this audit, UI rules, UI registry, Frontend README, and progress tracker. Backend and frontend audits found the existing Notification model, read endpoints, and React Query invalidation conventions sufficient for this additive action. No optional redesign or approval decision remains.
+
+Verification on 2026-10-13: frontend and backend lint, frontend production build, and scoped whitespace check passed. The backend foundation suite could not complete its HTTP cases because local loopback connections returned `EACCES`; non-HTTP cases ran. The opt-in MongoDB integration suite skipped because its database service is not enabled. The new mocked-browser check was added but not run in this environment. Live persistence and browser behavior remain unverified.
+
+## Engagement triggers — 2026-10-12
+
+The existing Notification record now accepts `post_commented`, `post_liked`, and `user_followed`; its entity allowlist additionally accepts `user`. Existing fields, indexes, records, and recipient-scoped inbox/read contracts are preserved. No migration or second notification model is required.
+
+Successful new comments (including replies) notify the post author with a bounded comment preview and `/post/:id` destination. Newly inserted post likes notify the post author with the post title and the same destination. Writer follows notify the followed account and open `/profile`. The explicit writer-follow route, legacy follow toggles, and onboarding bulk follows all use the same notification helper. Explicit repeated like/follow requests and repeated onboarding submissions produce no extra notifications when no relationship was inserted. Unlikes, unfollows, comment edits/deletions, and self-actions produce none. Removing and then adding a relationship is a new event and can notify again. Comment likes and separate reply-recipient notifications are outside this scope.
+
+Transactional workflows notify after their transaction returns, avoiding nested transactions and duplicate notification writes on transaction-callback retries. Notification storage retains the existing best-effort behavior: a notification failure is logged without turning a successful engagement into an error; engagement and inbox persistence are not atomic, and automatic repair/replay is not introduced. These triggers create in-app inbox entries without requesting email/push delivery. Existing polling controls when an already-open inbox or badge refreshes.
+
+Frontend audit: NotificationsPage renders generic server titles/bodies/hrefs, so the new event types require no row renderer or visual change. Only its empty-state wording expands to include comments, follows, and likes. Anchored desktop/mobile modal placement, typography, theme colors, navigation, read actions, and pagination remain unchanged. Backend controllers retain validation/authentication and delegate post engagement to the shared service; writer and onboarding follow insertion guards identify new relationships. Existing post/comment/follow/User models and API responses are unchanged.
+
+Changed files: `Backend/schemas/notification.schema.js`, `Backend/services/engagement.service.js`, `Backend/services/user-relationship.service.js`, `Backend/services/onboarding.service.js`, `Backend/controllers/writer.controller.js`, `Backend/tests/foundation-contracts.test.js`, `Backend/tests/integration.test.js`, `Frontend/src/features/notification/pages/NotificationsPage.jsx`, `Frontend/tests/notifications-modal.spec.js`, `Frontend/tests/notifications-recovery.spec.js`, this audit, and `context/progress-tracker.md`. Concurrent Navbar/search-spec edits belong to another task and were not changed here. No optional refactor or approval-dependent decision remains.
+
+Verification on 2026-10-12: all 94 backend contracts passed, including service-trigger/schema validation, transaction callback retries, repeated requests, recipient/destination checks, replies, self-actions, removals, failed engagement writes, notification-storage failure recovery, explicit writer follows, and onboarding. Backend/frontend lint, frontend build, artifact validation (78 files, no source maps), and whitespace checks passed. Real-HTTP integration coverage was added for current/legacy comment/like routes, explicit/legacy/onboarding follows, inbox visibility, and recipient isolation; the integration command skipped because the MongoDB opt-in is disabled. Browser specs were updated for empty-state copy but not run. Live database/provider delivery is unverified.
+
 ## Anchored desktop inbox — 2026-10-10
 
 The desktop inbox now opens immediately below the navbar notification button using the existing Account menu's ViewportPopover. It uses a 360 px width, right alignment, existing 8 px anchor gap, viewport-bounded height, and internal row scrolling. The compact panel uses the shared Comments-style ModalHeader with the visible/accessibly named Inbox title and its responsive gutters; the body retains 16 px gutters, 32 px empty-state vertical padding, a 480 px desktop height cap, and a 420 px mobile width cap. Close has a borderless transparent 44 px target with the existing cross and keyboard focus ring. Close, Escape, outside click, and the trigger toggle dismiss it and restore focus. Desktop background surfaces remain interactive; mobile Account and mobile direct entries retain the existing native modal. Resizing between desktop and mobile updates placement and focus.

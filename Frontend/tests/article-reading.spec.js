@@ -215,6 +215,7 @@ test('signed-in comment composer exposes field guidance and form semantics', asy
   await page.goto(`/post/${postId}`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: postData.title, level: 1 })).toBeVisible()
 
+  await page.getByRole('button', { name: /^Comments \(/  }).click()
   const comment = 'A keyboard-ready comment.'
   const commentInput = page.getByLabel('Add a comment')
   await expect(commentInput).toBeVisible()
@@ -224,7 +225,10 @@ test('signed-in comment composer exposes field guidance and form semantics', asy
   await expect(page.getByText(`${comment.length}/1000`, { exact: true })).toBeVisible()
   await expect.poll(() => commentInput.evaluate(element => getComputedStyle(element).outlineColor)).toBe('rgb(25, 25, 25)')
   await expect.poll(() => commentInput.evaluate(element => getComputedStyle(element).outlineStyle)).toBe('none')
-  await expect.poll(() => commentInput.evaluate(element => getComputedStyle(element).boxShadow)).toBe('none')
+  await expect.poll(() => commentInput.evaluate(element => {
+    const shadow = getComputedStyle(element).boxShadow
+    return shadow === 'none' || shadow.split(/,(?![^(]*\))/).every(part => part.trim() === 'rgba(0, 0, 0, 0) 0px 0px 0px 0px')
+  })).toBe(true)
 
   const submitButton = page.getByRole('button', { name: 'Comment', exact: true })
   await expect(submitButton).toHaveAttribute('type', 'submit')

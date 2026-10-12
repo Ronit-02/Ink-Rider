@@ -7,42 +7,32 @@ const postCacheRoots = new Set([
   'me',
   'collection',
   'writer',
+  'reading-history',
+  'early-access',
+  'short-series',
+  'competition',
+  'competitions',
+  'question',
+  'questions',
 ])
 
 export const isPostCacheQuery = query => postCacheRoots.has(query.queryKey[0])
 
 const matchesPost = (item, postId) => String(item?.id ?? item?._id) === String(postId)
 
-const updateList = (items, postId, updater) => Array.isArray(items)
-  ? items.map(item => matchesPost(item, postId) ? updater(item) : item)
-  : items
-
 export function updatePostCacheValue(value, postId, updater) {
-  if (!value) return value
-  if (Array.isArray(value)) return updateList(value, postId, updater)
-  if (Array.isArray(value.pages)) {
-    return {
-      ...value,
-      pages: value.pages.map(page => ({
-        ...page,
-        data: updateList(page.data, postId, updater),
-      })),
-    }
-  }
+  if (!value || typeof value !== 'object') return value
+  if (Array.isArray(value)) return value.map(item => updatePostCacheValue(item, postId, updater))
+  // Competition entries have their own vote count; only their nested post is a story.
+  if (value.post) return { ...value, post: updatePostCacheValue(value.post, postId, updater) }
   if (matchesPost(value, postId)) return updater(value)
-  if (Array.isArray(value.posts)) return { ...value, posts: updateList(value.posts, postId, updater) }
-  if (Array.isArray(value.data)) return { ...value, data: updateList(value.data, postId, updater) }
-  if (value.data && typeof value.data === 'object') {
-    return {
-      ...value,
-      data: {
-        ...value.data,
-        posts: updateList(value.data.posts, postId, updater),
-        shorts: updateList(value.data.shorts, postId, updater),
-      },
+  let result = value
+  for (const key of ['pages', 'data', 'posts', 'shorts', 'history', 'continueReading', 'responsePosts', 'entries']) {
+    if (value[key] && typeof value[key] === 'object') {
+      result = { ...result, [key]: updatePostCacheValue(value[key], postId, updater) }
     }
   }
-  return value
+  return result
 }
 
 export function updatePostCaches(queryClient, postId, updater) {

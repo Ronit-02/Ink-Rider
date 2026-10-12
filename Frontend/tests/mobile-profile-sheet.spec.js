@@ -73,7 +73,7 @@ test('login retains Write in Account while Home retains Collections; sign out ke
   await expect(nav.getByRole('link', { name: 'Collections' })).toBeVisible()
   await expect(nav.getByRole('link', { name: 'Write' })).toHaveCount(0)
   await nav.getByRole('button', { name: 'Account' }).click()
-  await expect(dialog.getByRole('link', { name: /My profile/ })).toBeVisible()
+  await expect(dialog.getByRole('link', { name: /Profile/ })).toBeVisible()
   await expect(dialog.getByRole('link', { name: 'Write', exact: true })).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Sign In' })).toHaveCount(0)
   await expect(dialog.getByRole('link', { name: 'Sign Up' })).toHaveCount(0)

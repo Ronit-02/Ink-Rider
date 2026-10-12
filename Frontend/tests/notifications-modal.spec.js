@@ -8,7 +8,8 @@ async function mockNotifications(page, options = {}) {
   let listFailure = options.listFailure || 0
   let markFailure = options.markFailure || 0
   let olderFailure = options.olderFailure || 0
-  const calls = { one: 0, all: 0, older: 0, recover: () => { listFailure = 0 } }
+  let deleteFailure = options.deleteFailure || 0
+  const calls = { one: 0, all: 0, deleted: [], older: 0, recover: () => { listFailure = 0 } }
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const url = new URL(route.request().url())
     const path = url.pathname
@@ -24,6 +25,13 @@ async function mockNotifications(page, options = {}) {
       return route.fulfill({ json: { data: items, meta: { unreadCount: items.filter(item => !item.readAt).length, nextCursor: options.paginated ? 'older-cursor' : null } } })
     }
     if (path.startsWith('/api/v1/notifications/')) {
+      if (route.request().method() === 'DELETE') {
+        if (deleteFailure) { deleteFailure--; return route.fulfill({ status: 500, json: { message: 'Unavailable' } }) }
+        const id = path.split('/').at(-1)
+        calls.deleted.push(id)
+        items = items.filter(item => item._id !== id)
+        return route.fulfill({ status: 204 })
+      }
       if (path.endsWith('read-all')) calls.all++
       else calls.one++
       if (markFailure) { markFailure--; return route.fulfill({ status: 500, json: { message: 'Unavailable' } }) }
@@ -34,6 +42,36 @@ async function mockNotifications(page, options = {}) {
   })
   return calls
 }
+
+test('delete removes one notification after success and retries after failure', async ({ page }) => {
+  const calls = await mockNotifications(page, { deleteFailure: 1 })
+  await page.goto('/notifications')
+  const dialog = page.getByRole('dialog', { name: 'Inbox', exact: true })
+  const remove = dialog.getByRole('button', { name: 'Delete notification: Update new' })
+  await remove.click()
+  await expect(page.getByText('The notification could not be deleted.')).toBeVisible()
+  await expect(dialog.getByRole('link', { name: /Update new/ })).toBeVisible()
+  await remove.click()
+  await expect(dialog.getByRole('link', { name: /Update new/ })).toHaveCount(0)
+  await expect(dialog.getByRole('link', { name: /Update read/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: '0 unread notifications' })).toBeVisible()
+  expect(calls.deleted).toEqual(['new'])
+})
+
+test('per-item read button updates only the selected notification', async ({ page }) => {
+  const calls = await mockNotifications(page)
+  await page.goto('/notifications')
+  const dialog = page.getByRole('dialog', { name: 'Inbox', exact: true })
+  const mark = dialog.getByRole('button', { name: 'Mark notification as read: Update new' })
+  const remove = dialog.getByRole('button', { name: 'Delete notification: Update new' })
+  const markBounds = await mark.boundingBox()
+  const removeBounds = await remove.boundingBox()
+  expect(markBounds.x + markBounds.width).toBeLessThanOrEqual(removeBounds.x)
+  await mark.click()
+  await expect(dialog.getByRole('button', { name: 'Notification already read: Update new' })).toBeDisabled()
+  await expect(dialog.getByRole('link', { name: /Update new/ })).toBeVisible()
+  expect(calls.one).toBe(1)
+})
 
 for (const width of [320, 1280]) {
   for (const theme of ['light', 'dark']) {
@@ -204,7 +242,7 @@ test('ordinary inbox load failure retries to empty state', async ({ page }) => {
   await expect(dialog.getByRole('alert')).toHaveText('Notifications could not be loaded.')
   calls.recover()
   await dialog.getByRole('button', { name: 'Try again' }).click()
-  await expect(dialog.getByText('Answers, request updates, and competition results will appear here.')).toBeVisible()
+  await expect(dialog.getByText('Comments, follows, likes, answers, request updates, and competition results will appear here.')).toBeVisible()
 })
 
 test('guest inbox retains sign-in gating without notification reads', async ({ page }) => {

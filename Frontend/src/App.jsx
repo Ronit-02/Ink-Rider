@@ -26,6 +26,7 @@ const SavedPage = lazy(() => import('@/features/collection/pages/SavedPage'))
 const CollectionDetail = lazy(() => import('@/features/collection/pages/CollectionDetail'))
 const EditProfilePage = lazy(() => import('@/features/user/pages/Profile/EditProfilePage'))
 const ProfilePage = lazy(() => import('@/features/user/pages/Profile'))
+const WritingPage = lazy(() => import('@/features/user/pages/WritingPage'))
 const SettingsPage = lazy(() => import('@/features/user/pages/Settings'))
 const ShortsPage = lazy(() => import('@/features/discovery/pages/Search/ShortsTab'))
 const ShortSeriesDetail = lazy(() => import('@/features/discovery/pages/ShortSeriesDetail'))
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="/write"           element={<WritePage />} />
         <Route path="/profile/edit" element={<PrivateRoute message="Sign in to edit your profile."><EditProfilePage /></PrivateRoute>} />
         <Route path="/profile"         element={<ProfilePage />} />
+        <Route path="/writing" element={<PrivateRoute message="Sign in to manage your writing."><WritingPage /></PrivateRoute>} />
         <Route path="/settings"        element={<SettingsPage />} />
         <Route path="/help"            element={<HelpPage />} />
 

@@ -1,27 +1,73 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createCollection, deleteCollection, fetchCollection, fetchCollectionEligiblePosts, fetchCollections, updateCollection, updateCollectionFollow, updateCollectionSave } from '../api/collections'
+import { addCollectionPost, createCollection, deleteCollection, fetchCollection, fetchCollectionEligiblePosts, fetchCollections, updateCollection, updateCollectionFollow, updateCollectionSave } from '../api/collections'
 import useToast from '@/shared/hooks/useToast'
+import { useSelector } from 'react-redux'
 
-export const useCollections = (mine, sort) => useInfiniteQuery({
-  queryKey: ['collections', mine ? 'mine' : 'public', sort || 'latest'],
-  queryFn: ({ pageParam }) => fetchCollections({ mine, sort, cursor: pageParam }),
-  initialPageParam: null,
-  getNextPageParam: page => page.meta.nextCursor || undefined,
-})
+export const useCollectionChoices = (selected = true) => {
+  const user = useSelector(state => state.auth.user)
+  const ready = useSelector(state => state.auth.isReady)
+  return useInfiniteQuery({
+    queryKey: ['collections', 'choices', user],
+    queryFn: ({ pageParam }) => fetchCollections({ mine: true, cursor: pageParam }),
+    initialPageParam: null,
+    getNextPageParam: page => page.meta.nextCursor || undefined,
+    enabled: ready && Boolean(user) && selected,
+  })
+}
 
-export const useSavedCollections = sort => useInfiniteQuery({
-  queryKey: ['collections', 'saved', sort || 'latest'],
-  queryFn: ({ pageParam }) => fetchCollections({ saved: true, sort, cursor: pageParam }),
-  initialPageParam: null,
-  getNextPageParam: page => page.meta.nextCursor || undefined,
-})
+export const useCollections = (mine, sort) => {
+  const { user, isReady } = useSelector(state => state.auth)
+  return useInfiniteQuery({
+    queryKey: ['collections', mine ? 'mine' : 'public', sort || 'latest', mine ? user : 'public'],
+    queryFn: ({ pageParam }) => fetchCollections({ mine, sort, cursor: pageParam }),
+    initialPageParam: null,
+    getNextPageParam: page => page.meta.nextCursor || undefined,
+    enabled: !mine || (isReady && Boolean(user)),
+  })
+}
 
-export const useCollection = id => useQuery({ queryKey: ['collection', id], queryFn: () => fetchCollection(id), enabled: Boolean(id) })
-export const useCollectionEligiblePosts = enabled => useQuery({ queryKey: ['collection-eligible-posts'], queryFn: fetchCollectionEligiblePosts, enabled })
-export const useCreateCollection = () => {
+export const useAuthorCollections = (authorId, sort, enabled) => {
+  const { user, isReady } = useSelector(state => state.auth)
+  return useInfiniteQuery({
+    queryKey: ['collections', 'author', authorId, sort || 'latest', user || 'anonymous'],
+    queryFn: ({ pageParam }) => fetchCollections({ authorId, sort, cursor: pageParam }),
+    initialPageParam: null,
+    getNextPageParam: page => page.meta.nextCursor || undefined,
+    enabled: isReady && Boolean(authorId) && enabled,
+  })
+}
+
+export const useSavedCollections = sort => {
+  const { user, isReady } = useSelector(state => state.auth)
+  return useInfiniteQuery({
+    queryKey: ['collections', 'saved', sort || 'latest', user],
+    queryFn: ({ pageParam }) => fetchCollections({ saved: true, sort, cursor: pageParam }),
+    initialPageParam: null,
+    getNextPageParam: page => page.meta.nextCursor || undefined,
+    enabled: isReady && Boolean(user),
+  })
+}
+
+export const useCollection = id => {
+  const { user, isReady } = useSelector(state => state.auth)
+  return useQuery({ queryKey: ['collection', id, user || 'anonymous'], queryFn: () => fetchCollection(id), enabled: Boolean(id) && isReady })
+}
+export const useAddCollectionPost = () => {
   const client = useQueryClient()
   const { notify } = useToast()
-  return useMutation({ mutationFn: createCollection, onSuccess: () => { client.invalidateQueries({ queryKey: ['collections'] }); notify('Collection created.') }, onError: () => notify('The collection could not be created.', { tone: 'error' }) })
+  return useMutation({ mutationFn: addCollectionPost, onSuccess: async (data, { collectionId }) => {
+    await Promise.all([client.invalidateQueries({ queryKey: ['collections'] }), client.invalidateQueries({ queryKey: ['collection', collectionId] })])
+    notify(data.added ? 'Story added to collection.' : 'This story is already in the collection.', { tone: data.added ? 'success' : 'info' })
+  } })
+}
+export const useCollectionEligiblePosts = enabled => {
+  const { user, isReady } = useSelector(state => state.auth)
+  return useQuery({ queryKey: ['collection-eligible-posts', user], queryFn: fetchCollectionEligiblePosts, enabled: enabled && isReady && Boolean(user) })
+}
+export const useCreateCollection = ({ successMessage = 'Collection created.' } = {}) => {
+  const client = useQueryClient()
+  const { notify } = useToast()
+  return useMutation({ mutationFn: createCollection, onSuccess: () => { client.invalidateQueries({ queryKey: ['collections'] }); notify(successMessage) }, onError: () => notify('The collection could not be created.', { tone: 'error' }) })
 }
 export const useCollectionSave = collectionId => {
   const client = useQueryClient()

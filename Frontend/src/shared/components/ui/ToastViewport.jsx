@@ -15,7 +15,7 @@ export default function ToastViewport() {
         <div key={toast.id} className={`toast toast--${toast.tone}`} role={toast.tone === 'error' ? 'alert' : 'status'}>
           <span className="toast__icon" aria-hidden="true">{toneIcons[toast.tone]}</span>
           <p className="toast__message">{toast.message}</p>
-          <button type="button" className="toast__close" onClick={() => dismiss(toast.id)} aria-label="Dismiss notification">×</button>
+          <button type="button" className="button-target toast__close" onClick={() => dismiss(toast.id)} aria-label="Dismiss notification">×</button>
         </div>
       ))}
     </div>

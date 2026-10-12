@@ -85,7 +85,7 @@ const ViewportPopover = forwardRef<HTMLDivElement, Props>(function ViewportPopov
     panelRef.current = element
     if (typeof forwardedRef === 'function') forwardedRef(element)
     else if (forwardedRef) forwardedRef.current = element
-  }} style={{ ...style, position: 'fixed', inset: 'auto', margin: 0, zIndex: 200, overflowY: 'auto', overscrollBehavior: 'contain' }}>{children}</div>, anchorRef.current?.closest('dialog[open]') || document.body)
+  }} style={{ ...style, position: 'fixed', inset: 'auto', margin: 0, zIndex: 200, overflowY: 'auto', overscrollBehavior: 'contain' }}>{children}</div>, anchorRef.current?.closest('dialog[open], [role="dialog"]') || document.body)
 })
 
 export default ViewportPopover

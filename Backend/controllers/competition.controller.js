@@ -9,6 +9,8 @@ const { notify } = require('../services/notification.service');
 const { publicPostClause } = require('../services/post-access.service');
 const { rankCompetitionEntries } = require('../services/competition-scoring.service');
 
+const { presentDiscoveryPosts } = require('../services/post-presenter.service');
+
 const isValidId = id => mongoose.isValidObjectId(id);
 const effectiveStatus = (competition, now = new Date()) => {
   if (competition.status === 'closed') return 'closed';
@@ -105,6 +107,7 @@ const presentCompetition = (competition, actorId, includeEntries = false) => {
       post: entry.post ? {
         _id: entry.post._id,
         title: entry.post.title,
+        format: entry.post.format || 'article',
         coverImage: entry.post.coverImage || extractFirstImage(entry.post.body),
         createdAt: entry.post.createdAt,
         readTime: estimateReadTime(entry.post.body),
@@ -137,14 +140,18 @@ const getCompetitionById = async (req, res) => {
     if (!isValidId(req.params.id)) return res.status(400).json({ message: 'Invalid competition id' });
     const competition = await Competition.findById(req.params.id)
       .populate({ path: 'entries.author', select: 'picture username' })
-      .populate({ path: 'entries.post', match: publicPostClause(), select: 'title coverImage createdAt body likesCount commentsCount' });
+      .populate({ path: 'entries.post', match: publicPostClause(), select: 'title format coverImage createdAt body likesCount commentsCount' });
     if (!competition) return res.status(404).json({ message: 'Competition not found' });
     const data = presentCompetition(competition, req.auth?.userId, true);
+    const postEntries = competition.entries.filter(entry => entry.post);
+    const summaries = postEntries.length ? await presentDiscoveryPosts(postEntries.map(entry => ({ ...entry.post.toObject(), author: entry.author })), req.auth?.userId) : [];
+    const summariesById = new Map(summaries.map(post => [post.id.toString(), post]));
     const authorIds = [...new Set(data.entries.map(entry => entry.author?._id?.toString()).filter(Boolean))];
     const profiles = authorIds.length ? await Profile.find({ userId: { $in: authorIds } }).select('userId handle').lean() : [];
     const handlesByAuthor = new Map(profiles.map(profile => [profile.userId.toString(), profile.handle]));
     data.entries = data.entries.map(entry => ({
       ...entry,
+      post: entry.post ? { ...entry.post, ...summariesById.get(entry.post._id.toString()), coverImage: entry.post.coverImage } : null,
       author: entry.author ? { ...entry.author.toObject(), handle: handlesByAuthor.get(entry.author._id.toString()) || null } : null,
     }));
     return res.status(200).json({ data });

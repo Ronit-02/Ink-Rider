@@ -6,8 +6,8 @@ import { createInteractionEvent, recordInteractionEvents } from '@/features/disc
 import useToast from '@/shared/hooks/useToast'
 
 export default function useWriterFollow({ writerId, handle }) {
-  const token = useSelector(state => state.auth.token)
-  const queryKey = writerKey(handle, Boolean(token))
+  const user = useSelector(state => state.auth.user)
+  const queryKey = writerKey(handle, user)
   const queryClient = useQueryClient()
   const { notify } = useToast()
 

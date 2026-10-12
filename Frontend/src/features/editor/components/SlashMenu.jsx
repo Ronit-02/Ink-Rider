@@ -117,6 +117,7 @@ export default function SlashMenu({
             border: 0,
             textAlign: 'left',
             padding: '8px 12px',
+            minHeight: 44,
             borderRadius: 6,
             background: i === selected ? 'var(--color-bg-alt)' : 'transparent',
             cursor: 'pointer',

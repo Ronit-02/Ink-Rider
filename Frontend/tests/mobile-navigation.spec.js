@@ -44,7 +44,7 @@ for (const loggedIn of [false, true]) {
   await expect(page).toHaveURL(/\/shorts$/)
     } else {
       await expect(sheet.getByRole('button', { name: 'Sign In' })).toHaveCount(0)
-      await sheet.getByRole('link', { name: /My profile/ }).click()
+      await sheet.getByRole('link', { name: /Profile/ }).click()
       await expect(page).toHaveURL(/\/profile$/)
       await expect(page.getByRole('heading', { name: 'Priya Mehta', exact: true })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Edit profile' })).toBeVisible()

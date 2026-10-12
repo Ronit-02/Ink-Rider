@@ -109,7 +109,7 @@ const renderBlock = (item, compact) => {
       return (
         <pre
           key={item.id}
-          className="bg-[#f4f4f4] p-4 rounded-lg mb-5 overflow-x-auto text-[13px]"
+          className="bg-(--color-bg-alt) text-(--color-text) p-4 rounded-lg mb-5 overflow-x-auto text-[13px]"
         >
           <code>{item.content}</code>
         </pre>
@@ -122,7 +122,7 @@ const renderBlock = (item, compact) => {
       return (
         <hr
           key={item.id}
-          className="my-8 border-t border-gray-300"
+          className="my-8 border-t border-(--color-border)"
         />
       );
 

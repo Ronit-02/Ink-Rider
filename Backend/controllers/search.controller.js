@@ -143,7 +143,7 @@ const search = async (req, res) => {
               ...(timeFilter ? [timeFilter] : []),
             ],
           })
-            .select('title coverImage body tags likesCount commentsCount createdAt author')
+            .select('title format coverImage body tags likesCount commentsCount createdAt author')
             .populate({ path: 'author', select: 'picture username' })
             .sort(sort === 'latest' ? { createdAt: -1, _id: -1 } : { likesCount: -1, createdAt: -1, _id: -1 })
             .limit(limit)
@@ -175,7 +175,7 @@ const search = async (req, res) => {
           })
             .select('text context tags upvotesCount upvotes answers._id relatedArticles status createdAt author')
             .populate({ path: 'author', select: 'picture username' })
-            .populate({ path: 'relatedArticles', match: accessiblePostClause(accessContext), select: 'title coverImage author createdAt' })
+            .populate({ path: 'relatedArticles', match: accessiblePostClause(accessContext), select: 'title format coverImage author createdAt body tags likesCount commentsCount', populate: { path: 'author', select: 'username picture' } })
             .sort(sort === 'latest' ? { createdAt: -1, _id: -1 } : { upvotesCount: -1, createdAt: -1, _id: -1 })
             .limit(limit)
         : Promise.resolve([]),

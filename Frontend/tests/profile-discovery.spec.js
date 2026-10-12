@@ -257,22 +257,22 @@ test.describe('public writer profile discovery', () => {
       if (url.pathname === '/api/v1/reading-history') {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { continueReading: [], history: [] } }) })
       }
+      if (url.pathname === '/api/user/bookmarks') return route.fulfill({ json: [] })
+      if (url.pathname === '/api/collection') return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
       return route.abort('blockedbyclient')
     })
 
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/profile?profileTab=history', { waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('heading', { name: 'Recent history', level: 2 })).toBeVisible()
-    await expect(page).toHaveURL(/\/profile\?profileTab=history$/)
-    await expect(page.getByRole('tab', { name: 'Reading history' })).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('tabpanel', { name: 'Reading history content' })).toBeVisible()
+    await expect(page).toHaveURL(/\/saved\?libraryTab=history$/)
+    await expect(page.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tabpanel', { name: 'History content' })).toBeVisible()
 
-    await page.getByRole('tab', { name: 'Overview' }).click()
-    await expect(page).toHaveURL(/\/profile$/)
-    await expect(page.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
-    await page.getByRole('tab', { name: 'Overview' }).press('End')
-    await expect(page.getByRole('tab', { name: 'Analytics' })).toBeFocused()
-    await expect(page).toHaveURL(/\/profile\?profileTab=analytics$/)
+    await page.getByRole('tab', { name: 'History' }).press('Home')
+    await expect(page).toHaveURL(/\/saved$/)
+    await expect(page.getByRole('tab', { name: 'Saved', exact: true })).toHaveAttribute('aria-selected', 'true')
+
   })
 
   test('profile published-post failures expose a retry state on phone', async ({ page }) => {

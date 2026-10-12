@@ -22,6 +22,12 @@ for (const width of [320, 390, 600, 1280]) {
     await page.goto('/explore/competitions/contest-1')
     const card = page.getByRole('article').first()
     const button = card.getByRole('button', { name: `Vote for ${entry.post.title}` })
+    await expect(card).toBeVisible()
+    if (width === 1280) {
+      const first = await card.boundingBox()
+      const second = await page.getByRole('article').nth(1).boundingBox()
+      expect(second.x - (first.x + first.width)).toBeLessThanOrEqual(20)
+    }
     await expect(card.getByText('12 min read', { exact: false })).toBeVisible()
     await expect(card.getByText(entry.author.username)).toBeVisible()
     await expect(card.getByText('Winner', { exact: true })).toBeVisible()

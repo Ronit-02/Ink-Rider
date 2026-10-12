@@ -1,6 +1,322 @@
 # Ink-Rider progress tracker
 
-Last reviewed: 2026-10-10
+## Save dialog checkbox styling — 2026-10-13
+
+The Save dialog's Library and collection checkboxes now use theme border, surface, accent, and focus colors in place of browser-default blue controls. Native checkbox inputs, label activation, keyboard toggling, checked defaults, and pending-write disabling remain. Only the dialog component, its focused browser spec, and the owning UI rule changed. Frontend lint and production build passed. Two mocked-API Chrome checks passed for Light/Dark color and keyboard behavior; both screenshots were reviewed. Live persistence and other browser engines were not exercised.
+
+## Unified story Save and Library Collections — 2026-10-13
+
+Story Save now opens one dialog from discovery post/short menus, article pages, and short readers. Save in your Library is selected by default; readers can choose a collection instead or both. Direct Add to collection controls were removed from story surfaces. Collection owners can use Add to collection beside Save order on collection detail to choose an eligible published story. Library now has top-level Saved, History, and Collections tabs; Collections lists owned and saved sets separately with existing filters and pagination. Existing bookmark/collection routes, schema, stored records, typography, and card components were preserved. See [UI rules](ui-rules.md) and [collection items audit](collection-items-audit.md) for current behavior.
+
+Verification on 2026-10-13: frontend lint and production build passed; nine focused mocked-API Save/collection Chrome checks and a tenth pending-bookmark guard check passed. Ten account/Library checks passed, plus four focused reruns after viewer-scoped collection queries. All nine collection-detail checks passed, including the direct owner add. A wider 49-case reader/menu run initially passed 44; its five failures came from outdated category/owner-menu fixtures and an ambiguous dialog button selector. All five passed in focused reruns after test corrections. Live database/provider persistence, physical devices, assistive technology, and other browser engines were not checked.
+
+## Question card author spacing — 2026-10-13
+
+The question feed card now positions its top-right upvote control independently from the author/date block, so the 20 px title gap follows the date instead of the taller vote control. Removed a selector that hid the date. Existing question actions, links, type, API, and schema remain unchanged. The focused layout assertion now bounds the date-to-title gap; browser execution is unavailable locally because Playwright Chromium is missing. See [UI rules](ui-rules.md#question-card).
+
+## Competition entry grid spacing — 2026-10-13
+
+Competition Entries now uses card-width grid tracks, removing the oversized gap between two cards in a wide page frame. A focused spacing assertion was added. Frontend lint, build, and whitespace checks passed; Playwright could not launch because its Chromium executable is missing locally. See [post components audit](post-components-audit.md) for the cause and scope.
+
+## Notification deletion — 2026-10-13
+
+Added a per-notification Delete action in the desktop/mobile inbox, backed by a recipient-scoped DELETE endpoint. Confirmed success refreshes the inbox and unread badge; failure keeps the row available for retry. Existing read actions, routes, layout, and notification schema remain intact. Frontend/backend lint, frontend production build, and scoped whitespace checks passed. Backend foundation tests encountered local loopback `EACCES` on HTTP cases, so the full suite did not pass in this environment; database integration skipped because its service is disabled. The new browser check was not run. See [notifications audit](notifications-audit.md) for scope and verification details.
+
+The 2026-10-13 follow-up places Delete with an outlined trash icon on the right side of each notification row. The existing notification link and delete behavior are preserved. Focused frontend lint, production build, and scoped whitespace check passed; browser layout was not rerun. See the same audit for scope.
+
+The same-day follow-up removes visible Delete text from that button, leaving the icon and notification-specific accessible name.
+
+The last notification row now omits its bottom divider, retaining separators between items.
+
+The same-day read control adds a per-item check button left of Delete, using the existing mark-read mutation. Already-read buttons are disabled. Focused frontend lint and production build passed; a browser check was added for placement and selected-item behavior but not run.
+
+## Choose a post when answering a question — 2026-10-13
+
+Question detail's inline short-answer form was replaced by Add an answer, and feed Add response uses the same QuestionResponseModal. Signed-in users can attach an eligible published owner post through the existing question response link endpoint or open the editor to write a new post for that question. Guests receive sign-in; existing short answers remain readable and votable. Focused ESLint and frontend build passed. The focused browser run could not start because the configured MongoDB service was unavailable; browser behavior remains unverified. No backend, schema, or route changes.
+
+## Question response and competition article cards — 2026-10-13
+
+Question detail article responses now use QuestionResponseCard with writer/date metadata, serif title, optional excerpt, and a reading link. Competition detail entries use CompetitionEntryCard while preserving unavailable entries, winner/rank display, and reader voting. Recent article winners use FeaturedPostCard with a Recent winner label and a separate reader-vote line; recent winning shorts remain ShortCard. Frontend production build and focused ESLint passed on 2026-10-13. Browser behavior was not exercised in this run; routes and backend contracts are unchanged.
+
+## Consistent modal outside-click dismissal — 2026-10-13
+
+Standardized outside-click dismissal across every modal with an exposed backdrop. Removed local opt-outs and dirty-form backdrop conditions from Add to collection, sign-in, collection/draft/post deletion, direct writer request, report/comment actions, and the Write chooser. Existing native Comments and mobile Account backdrop handling was retained; full-screen mobile Search has no outside backdrop area. Active-write dismissal guards, focus restoration, Escape, and in-dialog controls remain unchanged. Updated the collection/modal audits and UI rules. Added focused coverage for Add to collection dismissal and aligned the modal audit assertion for delete confirmation.
+
+Verification on 2026-10-13: frontend lint, production build, and scoped whitespace checks passed. The focused mocked-API Playwright command could not start because the configured MongoDB service was unavailable; a frontend-only rerun was also blocked because the Playwright Chromium executable is not installed. Browser dismissal behavior therefore remains unverified in this environment.
+
+## Collection visibility picker — 2026-10-13
+
+Changed the Add to collection chooser to the shared Select dropdown. Each option presents the collection title and its capitalized Public, Unlisted, or Private visibility. Selecting an option retains the existing Add to collection confirmation action; loading another result page preserves the selected value. Updated the dialog, focused collection browser spec, collection audit, UI rules/registry, and Frontend README. Existing create, pagination, retry, auth, and write behavior remain intact.
+
+Verification on 2026-10-13: all seven focused mocked-API Chrome checks passed at phone/desktop widths, including all three visibility labels, selection retention through pagination, add/create flows, reader restoration, guest gating, empty and failed-list recovery. Frontend lint/build and scoped whitespace checks passed. No database integration or live persistence was needed for this presentation-only change.
+
+## Home short-read shelf — 2026-10-13
+
+Home now inserts a horizontally scrollable shelf of up to four latest short reads after story eight when shorts are available. It reuses the existing shorts query, ShortCard and compact reader, with a See all link to `/shorts`; the shelf and its spacing are omitted when the successful response has no shorts. Updated Home and HomeSections plus the frontend README and project overview. No backend/API/schema changes.
+
+Verification on 2026-10-13: frontend lint and Vite production build passed. Browser behavior was not exercised.
+
+## Separate short-card component — 2026-10-13
+
+ShortCard now owns the short-card layout and interactions; DiscoveryPostCard dispatches short posts to it and renders article list/grid cards. PostCardMenu moved to a dedicated shared module reused by both cards and FeaturedPostCard. Existing short imports, menu overrides, tag display, compact reader, and engagement behavior are preserved. Updated the three discovery component files, post-components audit, short-format audit, UI registry/rules, and this tracker.
+
+Verification on 2026-10-13: frontend lint, production build, and scoped whitespace checks passed. Browser tests were not run after extraction; the prior focused run could not start because MongoDB and the local Playwright Chromium executable were unavailable.
+
+## Short metadata separator — 2026-10-13
+
+Short cards now show a dot between the date and reading time when both are present. The combined metadata stays on one line, preventing the dot from wrapping by itself. Updated ShortCard and the owning UI/context records. Focused ESLint, frontend production build, and scoped whitespace checks passed.
+
+## Short-card tag wrapping — 2026-10-13
+
+Short-card tags remain on one row when they fit and wrap onto additional rows when needed; labels no longer get clipped by the card footer. Updated ShortCard and the owning UI/context records. Focused ESLint, frontend production build, and scoped whitespace checks passed.
+
+## Short-card footer density — 2026-10-13
+
+The short-card footer now shows at most two tags, and keeps heart/comment controls on their own row beneath the tags. Updated ShortCard and the owning UI/context records. Focused ESLint, frontend production build, and scoped whitespace checks passed.
+
+## Remove collection action from Writing studio menus — 2026-10-13
+
+Removed Add to collection from WritingPostMenu, shared by story rows and WritingStudioShortCard. Edit, Unpublish/Republish, and Delete remain available; collection actions on discovery and reading surfaces are unchanged. Updated Frontend README, UI rules/registry, short-format audit and this tracker. Focused lint and scoped whitespace checks passed.
+
+## Writing studio Shorts grid and owner actions — 2026-10-13
+
+Writing studio Shorts now render in the shared responsive short-card grid. The new reusable WritingStudioShortCard keeps shared short presentation and replaces discovery actions with the studio's Edit, Unpublish/Republish, Delete, and eligible Add to collection menu. WritingPostMenu is shared by short cards and existing story rows. Existing owner post queries, mutation APIs, dialogs, status filters, URL state, and public/discovery cards are preserved. Changed Profile/index.jsx, DiscoveryPostCard.jsx, new WritingStudioShortCard.jsx and WritingPostMenu.jsx, Frontend README, UI registry/rules, short-format audit and this tracker.
+
+Verification on 2026-10-13: Vite production build, focused ESLint, source-map artifact validation (73 files, no source maps), and scoped whitespace checks passed. Browser tests were not run.
+
+## Profile short-card parent sizing — 2026-10-12
+
+Traced the Profile Shorts width through its parent grid. Profile had applied card-grid--post (360 px max) in both categories, and the current shared ShortCard class had drifted to a 100 px cap. Profile now selects card-grid--short for Shorts, the shared short-grid cap is 250 px, and ShortCard itself also caps at 250 px. This enforces the requested maximum at both levels. Updated Profile, DiscoveryPostCard, global.css, UI rules, post-components audit and this tracker. No backend or API changes.
+
+No build or browser verification was run for this follow-up. Earlier browser checks were blocked by unavailable MongoDB and Playwright Chromium; see the preceding short-card width entry for those results.
+
+## Short card width — 2026-10-12
+
+Changed the shared ShortCard maximum width from 320 px to the requested 250 px across all callers, including Profile. Width remains 100% within narrower containers; height, typography, colors, padding, grids, reader/actions, routes, APIs and schemas are preserved. Changed DiscoveryPostCard.jsx, existing discovery-post-card.spec.js width expectations, UI rules, UI registry, post-components audit and this tracker. No approval decisions remain.
+
+Verification on 2026-10-12: production build, artifact validation (73 files without source maps), focused component/spec lint and scoped whitespace checks passed. The three existing browser width checks could not execute: managed API startup could not connect to MongoDB; a frontend-only mocked-API retry reached Playwright but its Chromium executable was unavailable. Browser layout remains unverified for this change.
+
+
+## Featured card spacing correction — 2026-10-12
+
+Corrected the requested spacing in FeaturedPostCard: desktop cover fills the text-defined row instead of being vertically centered at a fixed height; author metadata aligns with its top edge, and engagement follows with a 20 px gap. The image container is positioned within the cover link so intrinsic image dimensions cannot inflate the row. Phone cover height remains 280 px. Existing columns, typography, colors, shared controls, links, routes and APIs are preserved.
+
+Changed FeaturedPostCard.tsx, article-of-day.spec.js, UI rules, UI registry, post-components audit and this tracker. All nine mocked-API Chrome featured checks passed on 2026-10-12 at 320/390/768/1280 px, including cover/metadata alignment, equal row heights, bounded bottom padding, independent navigation, appreciation rollback, comments/focus, guests and long Dark metadata. Desktop screenshot review caught and resolved an intrinsic-image sizing issue before the final passing run. Production build, artifact validation (73 files without source maps), focused spec lint and scoped whitespace checks passed. Live persistence, physical devices, assistive technology and other engines were not tested. No approval decisions remain.
+
+
+
+## Featured, short and history card extraction — 2026-10-12
+
+Completed the requested FeaturedPostCard and ReadingHistoryCard extraction over the existing layouts. Featured reuses shared metadata, engagement and overflow with 20/28 px responsive content spacing; history stacks author/date with the agreed 8 px gap and retains progress plus separate writer/story links. The shared short implementation internally enforces 100% width/max-width 320 px while retaining content-driven height. Existing fonts, themes, page/feed/filter structure, routes, APIs, schemas, reader/mutation behavior and unrelated work are preserved. Full changed-file inventory and audit: [post components audit](post-components-audit.md#featured-short-and-history-cards--2026-10-12). Current presentation belongs to UI rules/registry; no approval decisions remain.
+
+Verification on 2026-10-12: 24 focused mocked-API Chrome checks passed (22 featured/menu/short/history checks plus two embedded/standalone History regressions). Coverage includes 300–1280 px, Light/Dark, 8 px metadata gaps, featured 20/28 px content gaps, short width cap and growth with long titles, independent links, progress, guest comments/sign-in, appreciation rollback, menu keyboard/focus, format selection, reload/reset and Library history. Featured phone, desktop History and phone short-history screenshots were visually reviewed. Frontend lint, focused spec lint, production build, artifact validation (73 files without source maps) and scoped whitespace checks passed. Initial sandbox localhost restrictions preceded the permitted run; the test's default min-height assertion was corrected to allow CSS auto without a fixed minimum. TSX is compiled/browser-tested under the existing lint exclusion. No live persistence/providers, physical devices, assistive technology or other engines were verified.
+
+
+
+## Draft deletion buttons — 2026-10-12
+
+Write and Writing studio Drafts now expose Delete draft beside existing continuation links. Shared confirmation names the draft, explains permanent deletion, permits cancellation, retains failure/retry, and prevents pending dismissal/repeated writes. Confirmed deletion updates/refetches the existing shared list and clears the exact editor cache; focus moves to a remaining draft or the empty Drafts heading/tab. The existing owner-scoped API, schema, editor/autosave, row typography/themes, routes and navigation remain preserved. Full changed-file inventory and audit belong to [write page audit](write-page-audit.md#draft-deletion--2026-10-12). No approval decisions remain.
+
+Verification on 2026-10-12: all 10 mocked-API Chrome write-draft checks passed, including four new 320 px Light/1280 px Dark deletion cases across both lists. Coverage includes Cancel/Escape/focus, failure/retry, held-request dismissal/repeat protection, remaining-row and empty-list focus, reload, titled short and untitled article drafts, unchanged continuation/creation/autosave, and guest private-read gating. Phone Write and desktop Writing pending-dialog screenshots reviewed. Frontend lint, focused spec lint, production build, artifact validation (73 files without source maps), and scoped whitespace checks passed. Initial sandbox localhost denial/connection timeouts preceded the accessible server run; a desktop focus timing failure was corrected before the final passing suite. TSX follows the existing lint exclusion and is compiled/browser-tested. No live database/provider persistence, physical devices, assistive technology, other browser engines, or concurrent editor-session behavior was verified.
+
+## Writing format tabs — 2026-10-12
+
+Writing studio main tabs now read Stories, Shorts, Drafts, and Analytics. Stories retains the default/legacy posts identifier and contains article records, including missing-format legacy summaries. Shorts uses writingTab=shorts and contains short records. Both reuse the existing All/Published/Scheduled/Unpublished status pills; status persists across format changes and reload. No extra category row is added. Drafts/Analytics, menus, row styling, readers, routes/APIs and schemas remain preserved. Current behavior belongs to UI rules/registry.
+
+Changed files: `Frontend/src/features/user/pages/Profile/index.jsx`, `Frontend/tests/account-groups.spec.js`, `Frontend/README.md`, `context/ui-rules.md`, `context/ui-registry.md`, and this tracker. No approval decisions remain.
+
+Verification on 2026-10-12: two focused mocked-API Chrome account checks passed at 320 px Light/1280 px Dark, including article/short separation, retained status, reload URL selection, arrow/Home/End navigation and existing account/library/draft/analytics flows. Phone tab screenshot reviewed. Frontend lint, focused spec lint, production build, artifact validation (73 files without source maps) and scoped whitespace checks passed. Existing concurrent profile/Search changes were preserved. Live persistence/providers, physical devices, assistive technology and other engines were not exercised.
+
+## Published work, author collections, and Profile filters — 2026-10-12
+
+Author now has Published work with Posts/Shorts/Collections pills. Public author collections reuse existing cards/API/pagination with separate newest/most-saved sorting. Profile uses Your published writing, writing-sort Filters, and Edit in Writing studio to `/writing`. Existing identity, styling, cards, readers, APIs, and schemas are preserved. UI rules owns behavior; [account grouping audit](account-groups-audit.md#published-work-and-profile-editing-link--2026-10-12) owns the full changed-file list. No approval decisions remain.
+
+Verification on 2026-10-12: all 13 focused mocked-API Chromium checks passed, covering phone Light/desktop Dark collections scoping/pagination/recovery, keyboard categories, separate sorting/reload/reset/hash state, Profile filters/edit navigation, and existing short-reader engagement/save/rollback. Phone Profile/desktop Collections screenshots reviewed. Frontend lint, focused spec lint, production build, artifact validation (73 files without source maps), and scoped whitespace checks passed. Backend visibility filtering was inspected; live database/providers, physical devices, assistive technology, and other engines were not exercised.
+
+## Published-writing pill categories — 2026-10-12
+
+Personal Profile and public Author now separate Posts/Shorts with shared Pill tabs. Posts defaults, Shorts persists in the URL, keyboard arrow/Home/End selection links to category panels, and empty messages describe each category. Author Filters retains sorting and Reset preserves the category. Existing headers, cards, readers, APIs, and schemas remain preserved. UI rules owns current behavior; [account grouping audit](account-groups-audit.md#published-writing-pill-categories--2026-10-12) owns the full changed-file list. No approval decisions remain.
+
+Verification on 2026-10-12: eight focused mocked-API Chromium checks passed, covering phone Light/desktop Dark category separation/reload, keyboard/focus, legacy formats, sorting/reset/hash retention, empty/loading/retry states, and personal/public short reader appreciation/save/rollback. Phone author/desktop profile screenshots reviewed. Frontend lint, focused spec lint, build, artifact validation (73 files without source maps), and scoped whitespace checks passed. Live persistence/providers, physical devices, assistive technology, and other engines were not exercised.
+
+## Saved Shorts category — 2026-10-12
+
+Saved now has Stories, Shorts, and Collections Pill categories. Stories shows article bookmarks (including missing-format legacy items); Shorts shows short bookmarks. Existing cards/readers and bookmark sorting are reused. Legacy savedFormat=short links select Shorts when no valid explicit section exists; category changes clear the obsolete parameter. Sorting reset retains the category, and collection visibility/pagination and History state remain preserved. FilterBar supports sorting-only views by omitting empty option groups. UI rules/registry own current behavior.
+
+Changed files: `Frontend/src/features/collection/pages/SavedPage.jsx`, `Frontend/src/shared/components/ui/FilterBar.jsx`, `Frontend/tests/account-groups.spec.js`, `Frontend/README.md`, `context/ui-rules.md`, `context/ui-registry.md`, and this tracker. No backend/schema change or approval decision is required.
+
+Verification on 2026-10-12: eight distinct mocked-API Chrome account checks passed across the regression run and final two Saved/History reruns. Phone Light/desktop Dark coverage includes format separation, keyboard/focus, reload, sort/reset preserving Shorts, legacy format links, independent History state, collection visibility/pagination, and overflow. Phone Shorts screenshot reviewed. Frontend lint, focused source/spec lint, production build, artifact validation (73 files without source maps), and scoped whitespace checks passed. A test initially attempted Reset with default sorting; it was corrected to select a non-default sort first. Existing concurrent profile changes were preserved. Live persistence/providers, physical devices, assistive technology and other engines were not exercised.
+
+## Author-page filters — 2026-10-12
+
+Public author pages now provide the shared Filters popover for All/Posts/Shorts and Newest/Oldest/Most appreciated. Selection persists through reload; reset preserves unrelated query parameters/hash, and empty matches have explicit feedback. Existing headers, cards, readers, interactions, routes, APIs, and schemas remain preserved. UI rules owns current behavior; [dropdown audit](dropdown-audit.md#author-page-filters--2026-10-12) owns the full changed-file list. No approval decisions remain.
+
+Verification on 2026-10-12: four distinct mocked-API Chromium checks passed, including phone Light/desktop Dark filters, sort order, legacy format, reload/reset/hash/focus/viewport behavior, empty recovery, and existing writer short engagement/save/rollback. Phone/desktop screenshots reviewed. Frontend lint, focused spec lint, build, artifact validation (73 files without source maps), and scoped whitespace checks passed. The initial hash-loss failure was corrected before passing. Live persistence/providers, physical devices, assistive technology, and other engines were not exercised.
+
+## Personal profile published writing — 2026-10-12
+
+Added Posts and shorts below the existing `/profile` identity/statistics/preferences. It uses the released-writing public API and the same article/short cards as public writer profiles, with section-local loading/retry/empty states. Existing account navigation, Writing studio management, typography, themes, routes, APIs, and schemas remain preserved. [Account grouping audit](account-groups-audit.md#personal-profile-published-writing--2026-10-12) owns the full changed-file list and scope; UI rules owns current behavior. No approval decisions remain.
+
+Verification on 2026-10-12: six focused mocked-API Chromium checks passed, covering phone Light/desktop Dark profile/account flows, compact short reading/focus return, loading/failure/retry/empty states, guest gating, and own/public-writer appreciation/save/rollback. Phone/desktop screenshots reviewed. Frontend lint/build, artifact validation (73 files without source maps), focused spec lint, and scoped whitespace checks passed. Initial browser-cache/localhost environment failures preceded successful verification. Live persistence/providers, physical devices, assistive technology, and other engines were not exercised.
+
+## Writing post and draft row refinement — 2026-10-12
+
+Completed the requested bounded layout changes: removed list-top dividers from Posts/Drafts; added row spacing and larger wrapping titles; separated article date/status metadata from like/comment counts; linked article cover/placeholder to detail; moved owner collection/edit/publication/delete actions into shared ActionMenu. Draft continuation sits below metadata on phones and beside it on wider screens. Existing page header, main tabs/status pills, short cards/readers, APIs/schemas, publication and deletion workflows are preserved. UI rules/registry own current row behavior.
+
+Changed files: `Frontend/src/features/user/pages/Profile/index.jsx`, `Frontend/tests/account-groups.spec.js`, `Frontend/tests/post-deletion.spec.js`, `Frontend/tests/add-to-collection.spec.js`, `context/ui-rules.md`, `context/ui-registry.md`, and this tracker. No approval decisions remain.
+
+Verification on 2026-10-12: five focused mocked-API Chrome checks passed at phone Light/desktop Dark, covering status filtering/reload, comment counts, cover destinations, drafts, menu commands, collection picker focus, deletion confirmation/cancel/failure/retry/pending protection and refreshed lists. Desktop posts and phone drafts screenshots reviewed. Frontend lint, focused spec lint, final production build, artifact validation (72 files without source maps) and scoped whitespace checks passed. Existing deletion tests needed to reopen the menu after cancelling. Live persistence/providers, physical devices, assistive technology and other engines were not exercised.
+
+## Write header label — 2026-10-12
+
+Added Publishing above the Write draft-list and composition headings (including Edit story), matching the existing PageHeader eyebrow styles and title gap. Existing layout, controls, routes, draft/publishing data flow, APIs, and schemas are preserved. Current presentation is owned by UI rules.
+
+Changed files: `Frontend/src/features/editor/components/WriteDrafts.tsx`, `Frontend/src/features/editor/pages/index.jsx`, `context/ui-rules.md`, and this tracker. No approval decisions remain.
+
+Verification on 2026-10-12: frontend lint, production build, artifact validation (72 files without source maps), and scoped whitespace checks passed. Browser rendering was not rerun for this small presentation-only addition.
+
+## Writing status pills — 2026-10-12
+
+Writing studio Posts now uses the shared Pill buttons for All posts, Published, Scheduled, and Unpublished instead of the Status dropdown. The wrapping Post status group exposes the selected choice with aria-pressed and preserves native keyboard activation, existing postStatus URL filtering, and reload persistence. Main tabs, post rows/actions, fonts/colors, routes, APIs, schemas and unrelated work are preserved. Current control behavior belongs to UI rules and the UI registry.
+
+Changed files: `Frontend/src/features/user/pages/Profile/index.jsx`, `Frontend/tests/account-groups.spec.js`, `context/ui-rules.md`, `context/ui-registry.md`, and this tracker. No approval decisions remain.
+
+Verification on 2026-10-12: both focused mocked-API Chrome account checks passed at 320 px Light and 1280 px Dark, including capsule shape, selected state, pointer/Space activation, published/unpublished/scheduled filtering, reload, and existing account navigation/tab behavior. Phone screenshot reviewed. Frontend lint, focused spec lint, production build, artifact validation (72 files without source maps), and scoped whitespace checks passed. The initial test incorrectly expected a specific pixel radius rather than the existing rounded-full capsule behavior; the assertion was corrected. Live persistence/providers, physical devices, assistive technology and other engines were not exercised.
+
+## History Stories and Shorts tabs — 2026-10-12
+
+History now separates Stories and Shorts using Saved's existing Pill controls, both in Library and at `/history`. URL-backed format selection filters Continue reading and recent history, supports arrow/Home/End keys, and survives reload, Library switching, and status/sort reset. Legacy records without format remain Stories. Existing rows/readers, layout tokens, authentication, status/sorting, bounded API, routes and schemas are preserved. Current behavior is owned by UI rules.
+
+Changed files: `Frontend/src/features/discovery/pages/ReadingHistory.jsx`, `Frontend/tests/account-groups.spec.js`, `Frontend/README.md`, `context/ui-rules.md`, `context/ui-registry.md`, and this tracker. No approval decisions remain.
+
+Verification on 2026-10-12: seven distinct mocked-API Chrome account checks passed across the existing regression run and final two-case History rerun at 320 px Light/1280 px Dark. Coverage includes format separation in both lists, legacy article default, keyboard/focus, reload/Library persistence, status/reset, standalone History, and single-main/overflow checks. Phone screenshot reviewed. Frontend lint, focused spec lint, production build, artifact validation (72 files without source maps), and scoped whitespace checks passed. Initial sandbox networking prevented navigation; an early post-reload test click was corrected to wait for restored content. Live persistence/providers, physical devices, assistive technology and other engines were not exercised.
+
+## Article and short component fixes - 2026-10-12
+
+Completed the six requested corrections: safe public author summaries for owner/question shorts; agreed serif headlines; separate History story/writer links; shared featured/story menu commands; viewer-aware appreciation/save presentation and cache propagation; theme-token reading-body code/dividers. Existing page layouts, routes, schemas and unrelated work are preserved. [Post components audit](post-components-audit.md#completed-correction--2026-10-12) owns the complete changed-file list, current behavior, initial findings and remaining optional work. No approval-dependent decision remains.
+
+Verification on 2026-10-12: 48 distinct focused Chrome checks passed, including new author/state/rollback/history/headline/theme cases and existing short-format, featured-menu and writer regressions. Final sparse-author and screenshot follow-ups passed after correcting screenshot capture timing. All 106 backend contract tests passed. Frontend/backend lint, focused spec lint, production build, artifact validation (72 files without source maps) passed. Phone Light/desktop Dark screenshots were reviewed. Database integration skipped because its opt-in service is disabled; live persistence/providers, physical devices, assistive technology and other browser engines remain unverified.
+
+## Shared button styles, sizes and contrast — 2026-10-12
+
+Completed the authorized correction: shared named Button appearance/sizes, semantic ButtonLink, labelled IconButton, Pill/ActionMenu style reuse, consistent native/link targets, article-tool/audio/membership theme colors and navbar badge contrast. Existing feature shapes/typography, approved navbar exceptions, routes, callbacks, APIs/schemas and unrelated work are preserved. [Button style duplicates](button-style-duplicates.md) maps remaining local controls to their reusable matches; [button design audit](button-design-audit.md#completed-correction) owns all changed files and limitations. No approval decisions remain.
+
+Verification on 2026-10-12: 84 distinct mocked-API Chrome checks passed across the broad run and focused reruns; the final eight shared size/link/icon/ref/pending/contrast checks passed again. Responsive assertions verify 44 px; outdated bookmark/short-card/landmark expectations and an omitted existing telemetry fixture were corrected. Phone/desktop Dark screenshots were reviewed; final source parsing covered 128 JSX/TSX files. Frontend lint, production build, artifact validation (72 files, no source maps) and scoped whitespace checks passed. Initial transient test/concurrent lint failures preceded completion. TSX remains under the existing lint exclusion; live persistence/providers, physical devices, assistive technology and other engines remain unverified.
+
+
+## Picked posts and shorts in collections — 2026-10-12
+
+Completed Add to collection from shared card menus, article reading, short reading, and published Writing studio rows. Signed-in users choose an owned collection or create one in place with the picked post/short included, including other writers' stories. Existing own-post creation is preserved. The viewer-partitioned picker supports pagination, loading/empty/retry, retained failed fields, pending duplicate/dismissal guards, focus restoration, and an underlying short reader. The additive owner-only append operation preserves order/legacy references, rejects unavailable releases, prevents duplicate/concurrent append overwrites, and enforces the existing 100-story bound. Existing layouts, fonts, palette, navigation, schemas, routes/contracts, and unrelated concurrent work are preserved. [Collection items audit](collection-items-audit.md) owns the full changed-file inventory and behavior. No approval decisions remain.
+
+Verification on 2026-10-12: all 103 backend contracts passed. All eight new mocked-API Chrome checks passed after final cache/pending-state updates; 33 existing discovery-card/collection-detail checks also passed (41 distinct successful checks). Coverage includes phone Light/desktop Dark, existing/new collection selection, pagination, failures/retry/retained form values, empty collections, guest gating without private reads, pending duplicate/dismissal protection, article/short/writing entry points, short-reader preservation, and opener focus. Phone/desktop creation screenshots were visually reviewed. Frontend/backend lint, production build, artifact validation (72 files without source maps), and scoped whitespace checks passed.
+
+One existing collection-detail sizing assertion still expects 40 px while concurrent button work renders 44 px; it is unrelated to this feature and was left unchanged. The MongoDB integration suite skipped its disabled opt-in gate; new persisted tests for other-writer creation, ownership, public availability, concurrent duplicate appends, legacy order, and capacity remain unrun. Initial sandbox localhost failures, a corrected sign-in test name, and a missing prop in the concurrently changed short reader preceded successful focused verification. No live database/provider writes, physical-device, assistive-technology, or other-browser verification is claimed. The append operation does not serialize a concurrent full-order replacement or post availability change; existing reads filter unavailable references.
+
+## Comments heading disclosure and visible composer — 2026-10-12
+
+The existing serif Comments (count) heading now acts as the article's borderless disclosure control with a state chevron. Removed the separate Show/Hide row and top/bottom borders. Add a comment and guest sign-in remain visible; only discussion content and pagination collapse. Posting while collapsed expands the confirmed discussion. Compact discussions, thread/draft retention, routes, APIs and schemas remain unchanged. This supersedes the earlier separate disclosure row. Changed files: CommentsSection.jsx, shared buttonStyles.ts, comment-actions.spec.js, article-reading.spec.js, ui-rules.md, ui-registry.md, comment-actions-audit.md, and this tracker. No approval decisions remain.
+
+Verification on 2026-10-12: 30 distinct mocked-API Chrome article/comment checks passed across the full run and focused reruns, including phone Light/desktop Dark heading borders, keyboard toggling, visible composer, collapsed posting, draft retention, comments/replies/actions and compact dialogs. Final heading-spacing checks passed at both widths. Screenshots were visually reviewed. Focused source/spec lint, production build and security artifact validation passed. Full lint reports four unrelated undefined onNavigateAway references in ShortReadModal.jsx. A pending-action assertion now measures within its comment to avoid page/screenshot movement. Live persistence/providers, physical devices, assistive technology and other engines were not exercised.
+
+## Shared collection/post card menus — 2026-10-12
+
+CollectionCard and DiscoveryPostCard now reuse typed ActionMenu/ActionMenuTrigger/ActionMenuItem. Collections match the existing post-reference transparent SVG three-dot trigger and 256 px icon-led menu; shared keyboard navigation skips disabled commands and preserves dismissal/focus return. Save/share/delete/hide/report commands, pending/retry, card layouts, routes, APIs, and schemas remain feature-owned and unchanged. Exact changed files and audit boundary are in [dropdown audit](dropdown-audit.md#shared-collectionpost-card-action-menus--2026-10-12); UI rules/registry own the reusable contract. No approval decisions remain.
+
+Verification on 2026-10-12: 53 distinct mocked-API Chrome checks passed across the 49-case card/layout/share/pending/menu run and focused report rerun, plus four existing Light/Dark phone/desktop owner-delete modal checks. The collection keyboard/geometry/icon/Tab/outside-dismiss check passed again for a visually reviewed phone screenshot. The report test's stale Reason label selector was updated to the current combobox and two-stage Escape behavior; no report implementation change was needed. Frontend lint, affected spec lint, production build, artifact validation (80 files without source maps), and scoped whitespace checks passed. Initial local-network restrictions/server reachability failures preceded successful task-owned server runs. Live persistence/providers, physical devices, assistive technology, and other engines were not exercised. Existing unrelated working-tree changes were preserved.
+
+## Button design and component reuse audit — 2026-10-12
+
+Completed an app-wide source audit of 123 JSX/TSX files: 252 native/shared button declarations and 61 styled-link candidates, including shared definitions and unused legacy controls. [Button design audit](button-design-audit.md) owns the inventory, agreed families, findings and proposed file scope. Confirmed article-tool Dark-mode white-on-light labels/icons, local CTA/retry/category/tab duplication, and missing reusable size/link/icon contracts. No application implementation changed; proposed corrections and extractions remain unimplemented.
+
+Verification on 2026-10-12: AST inventory/source checks completed; real Button/Pill/onboarding/article-tool components were measured in Chrome at 320/1280 px in both themes, with phone/desktop Dark screenshot review. Shared Pill measured 44 px, onboarding chip 37.5 px, article membership CTA 34 px; hard-coded white foreground against the Dark action surface was confirmed. Initial sandbox/harness failures preceded the successful four-combination run. Evidence is ignored under Frontend/node_modules/.cache/button-design-audit/. Exhaustive source coverage does not establish visual/behavioral certification of every rendered button, route/state, live provider, engine or device. Documentation-only scope; no application build or regression run.
+
+
+## Short-series Next label visibility — 2026-10-12
+
+Fixed the blank-looking Next → link on article short-series cards by applying the existing inverted-text color directly to the link. The unlayered global anchor inheritance had overridden its Tailwind color utility. Changed `Frontend/src/features/post/pages/index.jsx`, UI rules, and this tracker. Existing series layout, fonts, palette, destinations, backend responses, and schemas remain unchanged; no approval decisions remain.
+
+Verification on 2026-10-12: focused page ESLint, frontend production build, and artifact validation (79 files without source maps) passed. A read-only installed Chrome check using the production CSS and current link classes confirmed white text on the dark accent in Light and dark text on the light accent in Dark. This isolated rendering check did not exercise the full article route or live persistence.
+
+
+## Write draft list and typed editor — 2026-10-12
+
+Completed the explicitly requested Write flow: `/write` lists saved drafts and offers Write new; the Post/Short modal creates a typed authenticated draft immediately. Post stacks cover placeholder, tags, title, and content in one full-width editor column; Short omits the cover. Removed Add content and inline format switching. Desktop plus/cross controls reveal on hover or keyboard access; phones use an active-block toolbar and scrolling insertion/type bottom sheet. Reopening a draft now waits for fresh server data before hydration. Existing APIs, schemas, validation, release settings, theme, typography, and unrelated work are preserved. [Write page audit](write-page-audit.md#draft-list-and-typed-composition--2026-10-12) lists every changed file and the remaining cover/guest storage limitations. No approval decisions remain.
+
+Verification on 2026-10-12: 27 distinct mocked-API Chrome checks passed (25 editor/draft/tag/overlay cases plus two keyboard/short-viewport cases). Coverage includes 320–2560 px layouts, Post/Short creation and reopening, pending/error recovery without duplicates, private draft gating, guest authentication retention, autosave/conflicts, tag operations, publication failure retention, slash menus, keyboard control reveal, and a 320 × 360 scrolling phone sheet with focus return. Phone draft-list, desktop Dark chooser, and short-screen bottom-sheet screenshots were reviewed. Frontend lint, production build, artifact check (79 files, no source maps), and scoped whitespace checks passed. Initial sandbox startup failures, a corrected stale-cache defect, a corrected keyboard test assumption, and a discarded trace-directory reload run preceded successful verification. Live database/provider integration and other engines/devices were not exercised; the updated live critical-flow spec was not run.
+
+## All single-choice dropdowns aligned — 2026-10-12
+
+Completed the approved migration to Settings Select. Source inventory now contains 17 shared Select declarations and no native selects. The earlier audit's 15 native declarations became 14 before migration because concurrent Library work removed the standalone Sort in favor of shared Filters. Replaced all remaining native fields in 10 consumer files and extended Select/ViewportPopover for reusable IDs, caller layout bounds, required validation, dynamic options, and nested dialog/filter interaction. Values, URL/reset behavior, access, payloads, page layouts, backend contracts, and stored data are preserved. Action menus/autocomplete remain outside the approved scope. The [dropdown audit](dropdown-audit.md) owns the complete file inventory and verification details; UI rules/registry describe current behavior. No approval decisions remain.
+
+Verification on 2026-10-12: all 53 distinct mocked-API Chrome checks passed (43 existing regressions and 10 focused checks); four settled screenshot checks passed again. Coverage includes phone Light/desktop Dark, keyboard/pointer/checkmarks/focus, required competition validation, creation/report/publication payloads and retry, URL filters/reset, Staff winner reset and numeric windows. Phone collection and desktop Staff dropdown screenshots were reviewed. Frontend lint, focused spec lint, build, artifact validation (79 files, no source maps), source inventory, and scoped whitespace checks passed. Initial localhost sandbox failures and corrected test fixtures preceded the completed run. Live persistence/providers, physical devices, assistive technology, and other engines are unverified. Short depth retains its existing publication-only payload behavior; autosave is unchanged.
+
+## Writing list layout and icon actions — 2026-10-12
+
+Completed the requested post-list presentation in `Frontend/src/features/user/pages/Profile/index.jsx`: wrapping titles, grouped metadata/likes, responsive action placement, and borderless icon-and-text Edit, Republish/Unpublish, and Delete post controls. Reuses PenIcon/shared Button with 44 px targets and existing theme/danger tokens. Existing fonts, thumbnail shape, dividers, navigation, tabs/filters, edit destinations, publication writes, delete confirmation, backend APIs, schemas, and stored data are preserved. No optional refactor or approval decision remains. Current behavior is owned by UI rules.
+
+Verification: frontend lint/build and artifact validation passed (79 files without source maps). Five distinct focused mocked-API Chrome checks passed at 320 px Light/1280 px Dark, covering account tabs/status filters, guest gating, and delete cancellation/failure/retry/refresh; both delete checks passed again after final action-padding/danger-color adjustments. The existing `Frontend/tests/post-deletion.spec.js` additionally checks action icons, 44 px heights, and viewport bounds. Phone Light and desktop Dark screenshots were visually reviewed. Scoped whitespace validation passed. Initial sandbox network denial and server timeout preceded the reachable task-owned server run. Live database/provider behavior, physical devices, assistive technology, and other engines were not exercised. Unrelated concurrent working-tree changes were preserved.
+
+Last reviewed: 2026-10-12
+
+## Library and studio top labels — 2026-10-12
+
+Added Reading above Library and Publishing above Writing studio through the existing PageHeader eyebrow, including the studio loading header. Retained conventional destination names and explanatory descriptions. Changed SavedPage.jsx, Profile/index.jsx, Frontend README, UI rules, and this tracker. Existing header styles, filters, routes, and APIs remain unchanged. Production build, artifact validation (79 files without source maps), and scoped whitespace checks passed on 2026-10-12; this small text/presentation change was not separately browser-tested. No approval decisions remain.
+
+## Conventional account names — 2026-10-12
+
+Replaced the paired ampersand names with Profile, Library, and Writing studio across desktop/mobile account links, profile shortcuts, Library/Writing headers, test expectations, and current context documentation. Descriptions retain the explanation of each destination. Copy-only change preserves routes, filters, layout, fonts, colors, and data contracts. Frontend production build, artifact validation (79 files without source maps), source search, and scoped whitespace validation passed on 2026-10-12; browser checks were not rerun for this wording-only follow-up. Changed files and scope are recorded in the [account naming audit](account-groups-audit.md#account-naming-follow-up--2026-10-12). No approval decisions remain.
+
+## Account labels and Saved/History filters — 2026-10-12
+
+Completed the requested account copy and filter improvements. Account links consistently name Profile & followers, Saved & history, and Posts & drafts. Library/Writing headers omit duplicate Your library/Your writing labels and describe their contents. Saved Stories now filters format and sorts save order/appreciation; Saved Collections filters visibility and keeps existing server-backed sorting inside Filters, replacing its standalone Sort control. History filters reading status and sorts recency in both embedded and standalone views. URL state survives reload/tab changes, reset preserves the other tab's filters, and collection Load more remains reachable when a filtered loaded page has no matches. Existing routes, tabs, typography, theme, cards, API contracts, schemas, and unrelated working-tree work remain preserved. [Account grouping audit](account-groups-audit.md#account-labels-and-library-filters--2026-10-12) lists the changed files; [UI rules](ui-rules.md#account-groups) owns behavior and parameters. No approval-dependent decisions remain.
+
+Verification on 2026-10-12: 21 distinct mocked-API Chrome checks passed across the final seven-case account/filter/sign-in run and 14 existing account navigation/focus checks. Coverage includes 320 px Light/1280 px Dark filters and labels, story sort/format, all history statuses, recency order, reload, independent reset, query preservation, standalone History, filtered collection pagination, keyboard dismissal/focus return, guest gating, sign-in return, and mobile account bounds at 320–767 px. Phone Library and desktop Writing screenshots were reviewed. Frontend lint, focused spec lint, production build, artifact validation (79 files without source maps), and scoped whitespace checks passed. Initial sandbox networking failures preceded completed runs. Test fixes scoped article links, followed the concurrently updated shared Sort control, used the actual collection endpoint/DTO, and supplied the bookmark API's array response. Live persistence/providers, physical devices, assistive technology, and other browser engines were not exercised. History remains limited to the API's recent records; collection visibility filters loaded cursor pages and retains Load more.
+
+## Dropdown reuse/design audit — 2026-10-12
+
+Completed the source-wide audit against Settings: three shared Select consumers (Theme, Language, Writing Status), 15 native single-choice declarations in 11 files, and separate action-menu/autocomplete implementations. The [dropdown audit](dropdown-audit.md) owns the full inventory, source design differences, relevant backend boundaries, and smallest follow-up scope, including required-form validation preservation. No application controls or backend contracts were changed; alignment remains pending. Changed documentation: the audit, UI registry pointer, and this tracker.
+
+All 11 existing focused mocked-API Chrome checks passed on 2026-10-12 for Settings/Writing reference behavior, short-screen/reduced motion, action menus, and editor tags at phone/desktop sizes. Initial localhost access failures preceded completed runs. Scoped documentation whitespace validation passed. This is representative interaction coverage plus app-wide source inspection, not full rendered-design, physical-device, assistive-technology, live-persistence, or other-engine verification. No approval decision is required for the completed audit.
+
+## Write page and tag picker — 2026-10-12
+
+Implemented the approved layout: header format/Publish grouping and readiness feedback, visible cover/tags, optional publishing disclosure, compact phone writing gutter, always-visible block controls, and Add content using the existing insert menu. Tags now support searchable public choices, custom creation, removable chips, normalized duplicates, keyboard navigation/reopening, 20-tag draft compatibility, and lookup failure/retry without blocking custom entry. The additive public metadata endpoint excludes drafts, unpublished posts, and future releases; stored schemas and existing publishing/autosave/guest behavior remain intact. Exact changed files and behavior are in the [write page audit](write-page-audit.md). No approval decisions remain.
+
+Verification on 2026-10-12: all 102 backend contracts passed; 19 distinct mocked-API Chrome editor checks passed across the full 18-case layout/overlay/tag run and final three-case tag run. Layout coverage includes 320/390/768/1280/1920/2560 px; phone Light/desktop Dark screenshots were visually reviewed. Frontend/backend lint, frontend production build, artifact validation (79 files, no source maps), and scoped whitespace checks passed. New persisted tag-visibility/deduplication coverage was added; Mongo integration skipped its disabled opt-in gate. Updated live critical-flow selectors were not run. Live persistence/providers, production-scale tag query performance, physical devices, assistive technology, and other engines remain unverified.
+
+## Library and Writing reference controls — 2026-10-12
+
+Library Saved/History and Writing Posts/Drafts/Analytics now match Explore's divider/selected underline. Write a post uses Ask a question's filled primary appearance; Status uses shared Select. Existing content, saved filters, URLs, APIs, and schemas are preserved. Exact changed files and scope are in the [account grouping audit](account-groups-audit.md). Frontend lint/build/artifact validation (79 files, no source maps), all three focused mocked-API Chrome checks at phone Light/desktop Dark, screenshot review, and scoped whitespace checks passed. Live persistence, physical devices, assistive technology, and other engines remain unverified. No approval decisions remain.
+
+## Comment modals and collapsed discussions — 2026-10-12
+
+Owner Edit/Delete now open shared-style native modals with pending protection and failure/retry. Inline reply forms have 16 px bottom margin. Article comments start collapsed behind Show/Hide comments; replies start collapsed behind View replies (count). Hiding article comments retains drafts. Lists and reply counts omit deleted leaves/empty deleted branches, retaining only placeholders needed to reach live replies; stored deletion markers and existing routes/contracts/schemas remain intact. Explicitly opened compact discussions remain expanded. The [comment actions audit](comment-actions-audit.md) owns the exact changed-file inventory, behavior, and verification scope. No approval decision remains.
+
+Verification on 2026-10-12: all 99 backend contracts and 29 distinct mocked-API Chrome checks passed across the main run and focused additions/rerun. Frontend/backend lint, production build, artifact validation (78 files without source maps), and scoped whitespace checks passed. A 320×360 Dark edit-modal failure screenshot was visually reviewed. Database integration coverage was added for leaf removal, pagination, and nested-branch visibility, but its MongoDB opt-in was disabled. Live persistence/query performance, physical-device, assistive-technology, and other-engine checks remain unverified.
+
+## Account groups — 2026-10-12
+
+Completed My Profile, My Library, and My Writing in that order in desktop and signed-in mobile Account. Profile retains identity/editing/relationship information; `/saved` now groups Saved and History with retained saved filters; new guarded `/writing` reuses Posts, Drafts, and Analytics, including published/scheduled/unpublished status filtering and existing owner controls. Old profile-tab links forward to the appropriate group. APIs, schemas, typography, theme, and separate Settings/Notifications/Membership destinations remain intact. Exact changed files and verification boundaries are in the [account grouping audit](account-groups-audit.md); no approval decisions remain.
+
+Verification on 2026-10-12: 43 distinct mocked-API Chrome checks passed across main/focused runs, including phone/desktop grouping, keyboard/URL state, shared layout, saved filters/history, analytics, old links, edit/delete, Account focus/motion, and library sign-in. Screenshots were visually reviewed. Frontend lint, focused spec lint, build, artifact validation (78 files without source maps), and whitespace checks passed. An unrelated mobile-search assertion expects Close search instead of concurrent Clear search and remains outside this task. Full page-width matrix, live persistence/providers, physical devices, assistive technology, and other engines remain unverified.
+
+## Search clear button — 2026-10-12
+
+Navbar and mobile-dialog search fields now show a × while text is present. Clear search empties the field, resets autocomplete selection, and restores input focus without navigating; mobile keeps its dialog open. Existing field styling, routes, APIs, and stored models are preserved. Changed `Frontend/src/shared/components/layout/Navbar.jsx`, `Frontend/src/features/discovery/components/MobileSearchDialog.tsx`, `Frontend/tests/navbar-search.spec.js`, `context/ui-rules.md`, and this tracker. No approval decision remains.
+
+Verification on 2026-10-12: frontend lint and production build passed. Two focused mocked-API Chrome checks passed for desktop keyboard selection/clear/retyping and guest mobile clear/dialog focus/navigation. The member mobile check passed the search-clear assertions but failed later on the existing My profile link assertion amid concurrent Account/profile changes; that unrelated interaction remains outside this task. Initial localhost sandbox restrictions were resolved for the completed runs. Physical-device and assistive-technology verification remain unclaimed.
+
+## Owner post deletion — 2026-10-12
+
+My Posts now offers Delete post beside existing publication controls with confirmation, pending protection, failure/retry, and confirmed list/count refresh. The authenticated owner-scoped endpoint removes all post comments/replies/placeholders, comment likes, post likes/saves, and pending post/comment reports. Indexed save cleanup avoids user-document rewrites; existing missing-reference handling keeps saved/collection/series/history lists safe. Reviewed moderation records and immutable revisions remain preserved. Schemas and existing UI/routes remain intact; no approval decisions remain. The [post deletion audit](post-deletion-audit.md) owns the exact changed-file inventory and verification boundaries.
+
+Verification on 2026-10-12: all 98 backend contracts and both new mocked-API Chrome checks (320 px Light / 1280 px Dark) passed. Backend/frontend lint, production build, artifact validation (78 files without source maps), and whitespace checks passed. Added real-HTTP persistence coverage; the database integration suite skipped its disabled MongoDB opt-in. Live persistence/concurrency/rollback, physical devices, assistive technology, and other engines remain unverified.
+
+## Engagement notifications — 2026-10-12
+
+Implemented in-app notifications to post authors for new comments/replies and post likes, and to followed accounts for new follows through explicit/legacy routes and onboarding. Reused the existing notification service/model/inbox with additive type/entity enum values and updated empty-state copy. Self-actions, repeated idempotent requests, unlikes, unfollows, and comment edits/deletions stay silent. Existing UI, API responses, and engagement models are preserved. The [notifications audit](notifications-audit.md) owns the behavior, exact changed-file inventory, and best-effort persistence limitation; no approval decision remains.
+
+Verification on 2026-10-12: all 94 backend contracts, backend/frontend lint, frontend build, security artifact validation (78 files without source maps), and whitespace checks passed. Integration coverage was added, but `npm run test:integration` skipped its disabled MongoDB opt-in. Updated browser copy assertions were not run; live persistence and external delivery remain unverified.
 
 ## Shared modal headers — 2026-10-10
 
@@ -49,6 +365,10 @@ Primary articles remain publicly readable. Discovery and reader demand precede m
 - Run the relevant automated checks after feature changes and record only dated, reproducible outcomes.
 
 ## Recent verification
+
+- 2026-10-12: Corrected the Edit profile display-name input's explicit 20 px bold typography to 13 px normal-weight body text. Changed `Frontend/src/features/user/pages/Profile/EditProfilePage.tsx`, `context/ui-rules.md`, and this tracker. Production build and scoped whitespace validation passed; this small typography correction was not separately browser-tested. Existing form layout, labels, theme colors, validation, Save/Cancel behavior, APIs, and schemas are preserved. No approval decisions remain.
+
+- 2026-10-12: Fixed View Profile appearing permanently hovered in the desktop Account menu: programmatic focus after pointer opening no longer fills the row; hover and keyboard focus-visible retain the existing highlight. Changed `Frontend/src/shared/components/layout/Navbar.jsx`, `Frontend/tests/navbar-search.spec.js`, `context/ui-rules.md`, and this tracker. The focused mocked-API Chrome account-menu regression passed for transparent pointer entry, real hover/exit, keyboard highlighting, arrow navigation, and Escape/focus restoration. Production build, focused ESLint, and artifact validation (78 files, no source maps) passed. Menu structure, typography, palette, routes, authentication, APIs, and schemas are preserved. Other engines and physical devices were not exercised; no approval decisions remain.
 
 - 2026-10-10: Fixed article reading progress to listen to AppLayout's `[data-app-scroll="true"]` container instead of the nested article `<main>`, so the bar now updates while the application shell scrolls. Added a long-article regression that checks zero, mid-scroll, and near-complete widths. Changed `Frontend/src/features/post/hooks/useProgressBar.js`, `Frontend/tests/article-reading.spec.js`, `context/ui-rules.md`, and this tracker. Frontend production build, focused ESLint, and whitespace validation passed. Browser regression is prepared for the existing Chrome suite; live persistence and other engines remain unverified. No approval decisions remain.
 
@@ -346,3 +666,171 @@ Primary articles remain publicly readable. Discovery and reader demand precede m
 ## Update protocol
 
 Update this file only after a verified change to implementation progress. Put detailed security, provider, deployment, test-run, and operational evidence in the corresponding ignored local companion rather than session narration here.
+
+
+### 2026-10-13 — Short tag presentation
+
+- Short cards now show tag chips in one non-wrapping row as space permits, without the topic icon; the detailed short reader shows every tag below writer metadata. Updated `Frontend/src/features/discovery/components/DiscoveryPostCard.jsx`, `Frontend/src/features/discovery/components/ShortReadModal.jsx`, `context/short-format-audit.md`, `context/ui-rules.md`, `context/ui-registry.md`, and this tracker. Existing APIs, data, routes, and card geometry are unchanged. Source behavior was reviewed; automated and browser verification was not run.
+
+### 2026-10-13 — Short header spacing
+
+- Short card author/menu and date/reading-time now occupy separate header rows across the shared short variant, removing the orphan separator shown when the metadata wrapped beside the menu. Changed `Frontend/src/features/discovery/components/DiscoveryPostCard.jsx`, `context/short-format-audit.md`, `context/ui-rules.md`, `context/ui-registry.md`, and this tracker. Article card metadata, API responses, and stored post data are unchanged. Verification on 2026-10-13: frontend lint, production build, and scoped whitespace checks passed. Focused browser checks could not start: the managed backend could not connect to MongoDB, and the direct local run lacked a Playwright Chromium executable. Visual browser behavior remains unverified.
+
+### 2026-10-12 — Format-aware short cards and readers
+
+- Completed the requested format correction: short cards and the compact reader are used across shared discovery and independent collection/saved, history, writer/profile, membership, question, competition, and series views. Canonical post URLs dispatch by stored format; full articles keep their existing page. Short-series progression and deeper article links remain available, and returning focus after progression is verified.
+- Mixed collection detail has separate nonempty Full articles and Short reads sections. Curator movement stays within each format; the existing combined postIds save API is preserved. Backend projections/presenters retain format, defaulting legacy missing values to article. Scope and changed files: [short format audit](short-format-audit.md).
+- Verification on 2026-10-12: frontend/backend lint passed; frontend production build passed; security artifact scan passed (72 files, no source maps); backend foundation contracts passed (104/104). Chrome mocked-API card/collection/short regressions passed (38/38); final short-format suite with home/search additions passed (6/6). Existing article-reading and writer-engagement checks passed (11/11) in the earlier scoped run. Phone and desktop collection grouping, compact opening, canonical URLs, series/deeper navigation, focus restoration, and format-local saved order were covered.
+- Limitation: browser verification uses mocked API data; no live database/deployment verification was performed. No schema migration, optional redesign, or approval decision is required.
+
+### 2026-10-13 — Hide short tags in list views
+
+- Short-format list items now omit tag chips while short grid cards retain up to two. Article list tags are unchanged. The engagement controls remain on their existing dedicated row. Updated the short-card dispatcher and list callers for Reading History, short series, and question responses, with the presentation rule recorded in the short-format audit and UI guidance.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed.
+
+### 2026-10-13 — Correct short-card tag visibility scope
+
+- Corrected the tag visibility rule: short-card grids omit tags, stacked short-card list items retain them, and the detailed short reader continues to show its tags. Article cards are unaffected. Updated the ShortCard variant condition and short-format UI guidance; no API or data changes.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and whitespace check passed.
+
+### 2026-10-13 — Hide tags from all short-card previews
+
+- ShortCard previews now omit tags in every layout; tags remain available in the detailed short reader. Removed the prior list/grid variant distinction. Article cards and short-reader tag behavior are unchanged.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and whitespace checks passed.
+
+### 2026-10-13 — Expand short-card text caps
+
+- Raised the shared ShortCard title clamp from two to three lines and excerpt clamp from three to four, covering every short-card preview variant. Updated UI rules and the component registry; card height, typography, and reader behavior are unchanged.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and whitespace check passed.
+### 2026-10-13 — Start post and short comment forms at one row
+
+- The shared comment composer now opens as a one-row field in article comments and short-reader comments. Vertical resizing and the rest of the composer presentation remain intact. Updated the comment audit and UI rule. No API or data changes.
+- Scoped source review confirmed both surfaces reuse `CommentsSection`; verification was not run.
+
+### 2026-10-13 — Tighten one-row comment composer spacing
+
+- Reduced shared composer padding to 12 px and tightened the label/footer gaps after the screenshot showed excess height around the one-row field. The 44 px actions, type, and resize behavior remain intact. Updated UI rules and comment audit. Verification was not run.
+
+### 2026-10-13 — Auto-grow post and short comment fields
+
+- The shared comment textarea now grows to fit wrapped or new-line content and resets to one row when cleared. Updated the comment audit and UI rule; routes and APIs are unchanged. Verification was not run.
+
+### 2026-10-13 — Compact post-detail author bio
+
+- Moved View Profile onto the biography row and reduced the author bio card padding to 16 px. The row can wrap on narrow screens; identity and profile navigation are unchanged. Updated post-components audit and UI rules. Verification was not run.
+
+### 2026-10-13 — Center the post-detail profile link
+
+- Kept the author name and biography in a compact text stack and vertically centered View Profile against that full stack. Updated the author-bio UI rule and audit. Verification was not run.
+
+### 2026-10-13 — Confirm item added when creating a collection
+
+- Creating a collection from a selected post or short now shows a success toast that confirms the story was added to the new collection. General collection creation keeps its existing confirmation. No API or data changes.
+- Updated `Frontend/src/features/collection/hooks/useCollections.js`, `Frontend/src/features/collection/components/AddToCollectionDialog.tsx`, `Frontend/README.md`, and `context/collection-items-audit.md`. Verification on 2026-10-13: scoped ESLint passed for the JavaScript hook; the TSX dialog is excluded by the current ESLint configuration. Frontend production build passed. Browser tests were not run.
+
+### 2026-10-13 — Tag collection visibility in picker
+
+- The add-to-collection dropdown now shows Public, Unlisted, and Private as compact pill badges beside collection names, including the selected value. Shared Select supports optional per-option badges; other dropdown options retain their prior rendering. Updated collection documentation and coverage for badge rendering.
+- Verification on 2026-10-13: frontend lint and production build passed; the focused mocked-API Chrome collection suite passed (8/8).
+
+### 2026-10-13 — Align short-card overflow with author row
+
+- Initial icon alignment was superseded by the follow-up: the overflow action stays in its normal position and the author identity moves down to align with it. Updated short-format audit and UI rules. Verification was not run.
+
+### 2026-10-13 — Align short-card author with overflow action
+
+- Shifted only the short-card author avatar/name down 11 px to align with the center of the existing overflow target. Restored the menu icon to its normal position and left the date row unchanged. Verification was not run.
+
+### 2026-10-13 — Collapse short-reader comments by default
+
+- Short-reader modals now start with the discussion list collapsed behind the compact Comments heading, matching post detail. The composer stays visible and posting expands the thread. The standalone Comments dialog remains expanded. Updated UI rules and comment actions audit. Verification was not run.
+
+### 2026-10-13 — Clarify short-reader comments and align footer actions
+
+- The short-reader Comments disclosure now follows the composer and labels the discussion list. The footer groups appreciation, Save, and Share with even spacing and aligns them separately from Add to collection. Updated UI rules and comment actions audit. Verification was not run.
+
+### 2026-10-13 — Compact short-reader comment composer
+
+- Compact comment forms now omit the avatar, use 8 px padding, and reduce label/footer gaps while retaining the 44 px submit target and automatic textarea growth. Full post composers are unchanged. Updated UI rules and comment actions audit. Verification was not run.
+
+### 2026-10-13 — Reposition short-reader comments heading
+
+- Moved the compact Comments disclosure back above the short-reader composer and reduced the gap to keep the heading, form, and thread together. The thread still starts collapsed. Updated UI rules and comment actions audit. Verification was not run.
+
+### 2026-10-13 — Fold compact composer into short-reader comments
+
+- The short-reader Comments disclosure now hides both the composer and discussion until expanded. Its opened form uses one underlined input row with the existing 1,000-character counter and a quiet 44 px Comment action; input growth, draft retention, posting, and guest sign-in remain intact. Article detail and the standalone Comments dialog retain their existing layout. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Refine short-reader comment alignment
+
+- Removed the disclosure heading's default inset through an explicit flush button option. Aligned the compact input, counter, and Comment action, made the disabled action easier to read, and tightened the space before existing comments. The full post and standalone Comments dialog composers remain as they were. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: frontend lint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Put short-reader comment actions below the input
+
+- Removed the redundant visible Add a comment label in the short-reader composer while retaining an accessible name. The underlined auto-growing input now sits above the count and a primary Comment button, using the same variant as Ask a question. Cancel shares the action row when a draft exists. Full post and standalone Comments dialog composers remain unchanged. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Frame the short-reader comment composer
+
+- Added a subtle bordered panel and 12 px top spacing beneath the Comments disclosure. Reduced the compact Comment and Cancel actions to the shared small button size with a 40 px target; article detail and standalone Comments dialog composers are unchanged. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Add viewer avatar to short-reader comments
+
+- Added the existing 32 px Avatar beside the short-reader comment form, using the signed-in viewer's profile image with an initials fallback. Increased the bordered panel padding from 10 to 12 px. The counter, buttons, post detail composer, standalone Comments dialog, and comment APIs remain unchanged. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Remove short-reader composer frame
+
+- Removed the compact composer's outer border, surface, and padding while retaining the viewer avatar, underlined input, 12 px space below the Comments disclosure, and count/action row. The article and standalone Comments dialog composers remain unchanged. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Reduce short-reader comment actions
+
+- Reduced the short-reader Comment and draft-only Cancel buttons from 40 to 36 px high with narrower horizontal padding. The primary/ghost variants, counter, avatar, input, and other comment surfaces are unchanged. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Right-align compact comment actions
+
+- Moved the short-reader 1,000-character counter next to the right-side actions and changed Comment from a filled pill to a text-only ghost button. The avatar, input, disclosure, and other comment surfaces are unchanged. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Raise short-reader Comment contrast
+
+- Applied the primary theme text color to the short-reader Comment label so it reads light in Dark mode and dark in Light mode, including disabled and pending states. A scoped style keeps its surface transparent during writes and underlines enabled hover. Other comment buttons remain unchanged. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Dim disabled short-reader Comment
+
+- The short-reader Comment action now uses muted text when disabled or pending and primary theme text when enabled. Removed its hover underline while keeping the transparent text-only surface. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: frontend production build and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Remove trailing short-reader comment divider
+
+- The line below the final comment came from the shared CommentItem bottom border. The short-reader discussion now omits that border on its last comment and last expanded reply while retaining separators between rows. Other comment surfaces remain unchanged. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Remove trailing post-detail comment divider
+
+- Applied the existing final-row border omission to post detail comments and expanded replies. The standalone Comments dialog retains its row borders. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Align short-reader footer actions
+
+- Replaced the split short-reader footer with four evenly spaced actions: heart/count/Like, borderless Save or Saved, borderless Share, and compact Add with its full accessible name. The existing appreciation, bookmark, collection, and share behavior remains. Updated ShortReadModal, optional presentation props on shared AppreciationButton and AddToCollectionButton, UI rules/registry, and this tracker.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Place post comments disclosure below composer
+
+- Moved the post detail Comments disclosure beneath the visible comment box or guest prompt. The short-reader disclosure and standalone Comments dialog keep their heading above the composer; collapse, posting, and deferred discussion reads remain unchanged. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+
+### 2026-10-13 — Keep Comments chevron beside label
+
+- The post and short-reader Comments disclosures now size to their text and place the state chevron 8 px after the label instead of at the opposite edge. The shared full-width disclosure variant and all collapse behavior remain unchanged. Updated UI rules and comment actions audit.
+- Verification on 2026-10-13: scoped frontend ESLint, production build, and scoped whitespace check passed. Browser layout and interaction were not exercised.
+# 2026-10-13 — card reuse and Writing studio row
+
+Verified by frontend lint and production build: public writer and personal profile articles use DiscoveryPostCard grid, Writing studio article rows use extracted WritingPostRow with existing owner actions, and member early access articles use the shared grid card with a Member early access badge. Existing routes and backend contracts are unchanged. Browser checks were not completed in this run.

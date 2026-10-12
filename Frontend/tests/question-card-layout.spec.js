@@ -13,7 +13,7 @@ for (const { width, signedIn } of [320, 390, 1280].flatMap(width => [false, true
     })
     await page.goto('/explore/questions')
     const card = page.getByRole('article').first()
-    const action = card.getByRole(signedIn ? 'link' : 'button', { name: 'Add response' })
+    const action = card.getByRole('button', { name: 'Add response' })
     const checkContrast = async () => {
       const contrast = await action.evaluate(element => {
         const luminance = color => {
@@ -47,7 +47,7 @@ for (const { width, signedIn } of [320, 390, 1280].flatMap(width => [false, true
     const actionBox = await action.boundingBox()
     expect(actionBox.height).toBeGreaterThanOrEqual(44)
     await checkContrast()
-    if (signedIn) await expect(action).toHaveAttribute('href', '/write?question=question-1')
+    if (signedIn) await expect(action).toHaveAttribute('aria-haspopup', 'dialog')
     const viewBox = await viewResponses.boundingBox()
     expect(viewBox.height).toBeGreaterThanOrEqual(44)
     expect(viewBox.y).toBeCloseTo(actionBox.y, 0)
@@ -59,10 +59,10 @@ for (const { width, signedIn } of [320, 390, 1280].flatMap(width => [false, true
     const questionTitle = await card.getByRole('heading', { name: question.text }).boundingBox()
     expect(date.y).toBeGreaterThanOrEqual(author.y + author.height + 7)
     expect(questionTitle.y).toBeGreaterThanOrEqual(date.y + date.height + 19)
+    expect(questionTitle.y).toBeLessThanOrEqual(date.y + date.height + 25)
     const upvoteBox = await card.getByRole('button', { name: 'Upvote question', exact: true }).boundingBox()
     expect(upvoteBox.y).toBeCloseTo(author.y, 0)
     expect(upvoteBox.x).toBeGreaterThanOrEqual(author.x + author.width)
-    expect(questionTitle.y).toBeGreaterThanOrEqual(upvoteBox.y + upvoteBox.height + 19)
     expect(questionTitle.width).toBeCloseTo((await card.boundingBox()).width, 0)
     await expect(authorLink).toHaveAttribute('href', '/author/noah-williams')
     if (width === 390) {
@@ -103,7 +103,11 @@ for (const { width, signedIn } of [320, 390, 1280].flatMap(width => [false, true
     await expect(page.getByRole('article')).toHaveCount(1)
     await expect(page.getByRole('heading', { name: 'How can writers build a sustainable career?' })).toHaveCount(0)
     await action.click()
-    if (signedIn) await expect(page).toHaveURL('/write?question=question-1')
+    if (signedIn) {
+      const responseDialog = page.getByRole('dialog', { name: 'Add a response' })
+      await expect(responseDialog).toBeVisible()
+      await expect(responseDialog.getByRole('link', { name: 'Write a new post' })).toHaveAttribute('href', '/write?question=question-1')
+    }
     else await expect(page.getByRole('dialog', { name: 'Sign in to Ink Rider' })).toBeVisible()
     await page.goto('/explore/questions')
     await expect(card.getByRole('heading', { name: question.text })).toBeVisible()
@@ -115,7 +119,7 @@ for (const { width, signedIn } of [320, 390, 1280].flatMap(width => [false, true
     const box = await heading.boundingBox()
     expect(box.y).toBeGreaterThanOrEqual(56)
     expect(box.y).toBeLessThan(700)
-    await page.getByRole('region', { name: 'Published responses' }).getByRole('link', { name: question.responsePosts[0].title }).click()
+    await page.getByRole('region', { name: 'Published responses' }).getByRole('link', { name: 'Read response' }).click()
     await expect(page).toHaveURL('/post/response-1')
   })
 }

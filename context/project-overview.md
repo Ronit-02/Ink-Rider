@@ -86,7 +86,7 @@ Status meanings:
 
 | Surface | Route | Current status | Target responsibility |
 |---|---|---:|---|
-| Home | `/` | Connected | Server-backed discovery feed plus article of the day, categories, writer picks, competition winner, collections, hot questions, and top authors |
+| Home | `/` | Connected | Server-backed discovery feed with a latest Short reads shelf after story eight when shorts are available, plus article of the day, categories, writer picks, competition winner, collections, hot questions, and top authors |
 | Explore trending | `/explore/trending` | Connected | Ranked, filterable discovery with explainable feed modes |
 | Explore questions | `/explore/questions` | Connected | Independent question discovery, deduplication, voting, answering, and article requests |
 | Question detail | `/explore/questions/:id` | Connected | Question context, short answers, follows, reports, and related published writing |
@@ -95,12 +95,13 @@ Status meanings:
 | Competition detail | `/explore/competitions/:id` | Partial | Rules, deadlines, entries, voting, judging, results, disqualification, and appeals |
 | Search | `/search` | Connected | Unified server search across posts, writers, shorts, and reader questions with URL-persisted tabs/filters; question categories open the Questions tab. Global autocomplete suggests up to five content-based search phrases and five authors without type-selection buttons. |
 | Article | `/post/:id` | Partial | Public reading, engagement, context, recommendations, summary, audio, and reports |
-| Public writer profile | `/author/:handle` | Connected | Durable writer identity, published posts, follow state, creator support, and labelled direct-request controls; `/author` provides a writer-search recovery path |
-| Collections | `/collections` | Connected | Browse, save, create, and manage curated reading sets |
+| Public writer profile | `/author/:handle` | Connected | Durable writer identity, Published work with Posts/Shorts/Collections pills, writing sorting, and paginated public collections, follow state, creator support, and labelled direct-request controls; `/author` provides a writer-search recovery path |
+| Collections | `/collections` | Connected | Browse, save, create, and manage curated reading sets; add any public post/short from its card or reader to an owned collection or create one in place |
 | Collection detail | `/collections/:id` | Connected | Read, save, share, and manage a collection |
-| Saved library | `/saved` | Connected | Private saved stories and saved public/unlisted collections |
-| Writer/editor | `/write` and later `/write/:draftId` | Partial | Public in-page guest composition with Publish sign-in; signed-in autosaved block editor, preview, validation, drafts, scheduling, and publication |
-| Personal profile | `/profile` | Connected | Centered guest sign-in prompt; mobile account sheet links to the profile; signed-in account, posts, bookmarks, history, following, interests, and analytics |
+| Library | `/saved` | Connected | Saved Stories/Shorts, History, and Collections top tabs; Collections lists owned and saved sets with URL-backed visibility/sort filters |
+| Writer/editor | `/write` and later `/write/:draftId` | Partial | Draft list and Post/Short chooser; immediate signed-in typed draft creation, stacked editor fields, phone active-block toolbar/bottom sheet, guest local composition with Publish sign-in, autosave, validation, scheduling, and publication |
+| Personal profile | `/profile` | Connected | Centered guest sign-in prompt; mobile account sheet links to the profile; signed-in public identity, biography, editing, follower/following counts, direct-request preference, and Your published writing with Posts/Shorts pills, sorting Filters, and Edit in Writing studio |
+| Writing studio | `/writing` | Connected | Private Posts, Drafts, and Analytics tabs; status filtering for published, scheduled, and unpublished posts |
 | Edit profile | `/profile/edit` | Connected | Guarded standalone editing page reusing display-name/biography fields and the existing profile API; Save/Cancel return to Profile |
 | Onboarding | `/onboarding` | Connected | Persist interests, initial follows, goals, and consent preferences |
 | Authentication | `/login`, `/signup` | Connected | Account creation, verification, recovery, and session management |
@@ -129,7 +130,7 @@ Status meanings:
 - Notifications
 - Profile menu
 
-Desktop may use a compact side rail plus a global top bar. Mobile uses a consistent bottom bar for Home, Explore, Shorts, Collections, and an Account sheet button for guests and members across application pages. Write is available in the Account sheet for guests and members, and in desktop navigation. Global search remains in the top bar; Account opens an animated bottom sheet with guest authentication or signed-in My profile and Write links, Settings, Help, and temporary social homepage links. At 768 px and above, Help opens `/help` directly above Settings in the bottom sidebar group; Settings includes appearance controls.
+Desktop may use a compact side rail plus a global top bar. Mobile uses a consistent bottom bar for Home, Explore, Shorts, Collections, and an Account sheet button for guests and members across application pages. Write is available in the Account sheet for guests and members, and in desktop navigation. Global search remains in the top bar; Account opens an animated bottom sheet with guest authentication or signed-in Profile, Library, Writing studio, and public Write links, Settings, Help, and temporary social homepage links. At 768 px and above, Help opens `/help` directly above Settings in the bottom sidebar group; Settings includes appearance controls.
 
 Every detail page must provide a stable parent path or back destination. Navigation must never depend solely on browser history.
 

@@ -6,7 +6,7 @@ const Report = require('../schemas/report.schema');
 const { reportReasons } = Report;
 const { withTransaction } = require('../utils/transaction');
 const { getPostAccessContext, canAccessPost } = require('../services/post-access.service');
-const { setLike, addComment: createCommentWorkflow, presentComments, setCommentLike } = require('../services/engagement.service');
+const { setLike, addComment: createCommentWorkflow, presentComments, setCommentLike, visibleCommentStages } = require('../services/engagement.service');
 
 const isValidId = id => mongoose.isValidObjectId(id);
 
@@ -98,19 +98,22 @@ const getComments = async (req, res) => {
     const parentCommentId = req.query.parentCommentId || null;
     if (parentCommentId !== null && !isValidId(parentCommentId)) return res.status(400).json({ message: 'Invalid parent comment id' });
     if (parentCommentId && !await Comment.exists({ _id: parentCommentId, postId })) return res.status(404).json({ message: 'Comment not found' });
-    const filter = { postId, parentCommentId };
+    const filter = { postId: new mongoose.Types.ObjectId(postId), parentCommentId: parentCommentId ? new mongoose.Types.ObjectId(parentCommentId) : null };
 
     if (req.query.cursor) {
       if (!isValidId(req.query.cursor)) {
         return res.status(400).json({ message: 'Invalid comment cursor' });
       }
-      filter._id = { $lt: req.query.cursor };
+      filter._id = { $lt: new mongoose.Types.ObjectId(req.query.cursor) };
     }
 
-    const comments = await Comment.find(filter)
-      .sort({ _id: -1 })
-      .limit(limit + 1)
-      .populate({ path: 'userId', select: 'picture username bio' });
+    const comments = await Comment.aggregate([
+      { $match: filter },
+      { $sort: { _id: -1 } },
+      ...visibleCommentStages(filter.postId),
+      { $limit: limit + 1 },
+    ]);
+    await Comment.populate(comments, { path: 'userId', select: 'picture username bio' });
 
     const hasMore = comments.length > limit;
     const page = hasMore ? comments.slice(0, limit) : comments;

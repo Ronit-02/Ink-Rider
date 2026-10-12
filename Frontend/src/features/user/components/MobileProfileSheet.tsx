@@ -7,7 +7,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import useAuth from '@/features/auth/hooks/useAuth'
 import Avatar from '@/shared/components/ui/Avatar'
-import { PenIcon, SettingsIcon, UserIcon } from '@/shared/icons'
+import { BookmarkIcon, PenIcon, SettingsIcon, UserIcon } from '@/shared/icons'
 import useDialogFocus from '@/shared/hooks/useDialogFocus'
 
 export default function MobileProfileSheet({ onClose }: { onClose: () => void }) {
@@ -63,17 +63,18 @@ export default function MobileProfileSheet({ onClose }: { onClose: () => void })
       <div className="min-h-0 overflow-y-auto overscroll-contain px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         {auth.loggedIn ? <Link to="/profile" onClick={event => followLink(event, '/profile')} className={`${rowClass} mb-3`}>
           <Avatar src={auth.avatarUrl} name={auth.user} size={44} />
-          <span className="min-w-0 flex-1"><span className="block text-[12px] text-[var(--color-text-secondary)]">{auth.user}</span><span className="block">My profile</span></span><span aria-hidden="true">→</span>
+          <span className="min-w-0 flex-1"><span className="block text-[12px] text-[var(--color-text-secondary)]">{auth.user}</span><span className="block">Profile</span></span><span aria-hidden="true">→</span>
         </Link> : <div className="mb-5 grid grid-cols-2 gap-3">
           <Link to="/signup" state={{ returnTo }} onClick={event => followLink(event, '/signup')} style={{ color: 'var(--color-text-inverted)' }} className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--color-accent)] px-4 text-[13px] font-semibold">Sign Up</Link>
           <button type="button" onClick={() => { signInRequested.current = true; requestClose() }} aria-haspopup="dialog" className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--color-border)] px-4 text-[13px] font-semibold">Sign In</button>
         </div>}
         <nav aria-label="Account menu">
+          {auth.loggedIn && [{ path: '/saved', label: 'Library' }, { path: '/writing', label: 'Writing studio' }].map(item => <Link key={item.path} to={item.path} onClick={event => followLink(event, item.path)} className={rowClass}>{item.path === '/saved' ? <BookmarkIcon /> : <PenIcon />}<span className="flex-1">{item.label}</span><span aria-hidden="true">→</span></Link>)}
           <Link to="/write" onClick={event => followLink(event, '/write')} className={rowClass}><PenIcon /><span className="flex-1">Write</span><span aria-hidden="true">→</span></Link>
           {auth.loggedIn && <Link to="/notifications" state={{ notificationBackground: location }} aria-haspopup="dialog" onClick={event => followLink(event, '/notifications')} className={rowClass}><span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">♢</span><span className="flex-1">Notifications</span><span aria-hidden="true">→</span></Link>}
           <Link to="/membership" onClick={event => followLink(event, '/membership')} className={rowClass}><span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">✦</span><span className="flex-1">Join</span><span aria-hidden="true">→</span></Link>
           <Link to="/settings" onClick={event => followLink(event, '/settings')} className={rowClass}><SettingsIcon /><span className="flex-1">Settings</span><span aria-hidden="true">→</span></Link>
-          <button type="button" aria-expanded={helpOpen} aria-controls="profile-sheet-help" onClick={() => setHelpOpen(value => !value)} className={rowClass}><span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-current text-[11px]">?</span><span className="flex-1">Help</span><span aria-hidden="true">{helpOpen ? '−' : '+'}</span></button>
+          <button type="button" aria-expanded={helpOpen} aria-controls="profile-sheet-help" onClick={() => setHelpOpen(value => !value)} className={`button-target ${rowClass}`}><span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-current text-[11px]">?</span><span className="flex-1">Help</span><span aria-hidden="true">{helpOpen ? '−' : '+'}</span></button>
         </nav>
         {helpOpen && <section id="profile-sheet-help" aria-label="Help" className="border-b border-[var(--color-border-light)] py-4 text-[13px] leading-6 text-[var(--color-text-secondary)]">
           <p>Discover stories in Explore. Sign in to save stories, follow writers, and publish your own writing. Theme and language options are in Settings.</p>

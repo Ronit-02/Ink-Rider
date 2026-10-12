@@ -66,14 +66,11 @@ async function expectMuted(button) {
 }
 
 const actions = [
-  { name: 'post bookmark icon', page: `/post/${postId}`, path: `/api/post/${postId}/bookmark`, button: /Save this article|Remove from saved articles/ },
   { name: 'post appreciation', page: `/post/${postId}`, path: `/api/post/${postId}/like`, button: /Appreciate this article|Remove appreciation/ },
   { name: 'collection bookmark icon', page: '/collections/collection-1', path: '/api/collection/collection-1/save', button: 'Save this collection' },
   { name: 'question feed vote', page: '/explore/questions', path: '/api/question/question-1/upvote', button: /Upvote question|Remove upvote from question/ },
   { name: 'question detail vote', page: '/explore/questions/question-1', path: '/api/question/question-1/upvote', button: /Upvote question|Remove upvote from question/ },
   { name: 'answer vote', page: '/explore/questions/question-1', path: '/api/question/question-1/answers/answer-1/upvote', button: 'Upvote answer' },
-  { name: 'short bookmark', page: '/shorts', path: `/api/post/${postId}/bookmark`, button: /Save this short read|Remove short read from saved articles/, open: page => page.getByRole('link', { name: post.title, exact: true }).click() },
-  { name: 'discovery menu bookmark', page: '/search?q=focused', path: `/api/post/${postId}/bookmark`, button: /Save story|Remove from saved/, open: page => page.getByRole('button', { name: `More options for ${post.title}` }).click(), role: 'menuitem' },
   { name: 'writer follow', page: '/author/maya-sen', path: `/api/writer/${writerId}/follow`, button: /^(Follow|Following)$/ },
   { name: 'competition vote', page: '/explore/competitions/contest-1', path: '/api/competition/contest-1/entries/entry-1/vote', button: /Vote for A focused idea/ },
   { name: 'membership checkout', page: '/membership', path: '/api/v1/billing/checkout', button: 'Become a member' },

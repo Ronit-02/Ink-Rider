@@ -205,6 +205,9 @@ for (const width of [320, 390, 1280]) {
           excerptGap: box(excerpt).top - box(heading).bottom,
           footerGap: box(footer).top - box(excerpt).bottom,
           bottomGap: box(element).bottom - box(footer).bottom,
+          width: box(element).width,
+          maxWidth: getComputedStyle(element).maxWidth,
+          minHeight: getComputedStyle(element).minHeight,
           overflow: element.scrollWidth > element.clientWidth,
         }
       })
@@ -212,6 +215,9 @@ for (const width of [320, 390, 1280]) {
       expect(layout.excerptGap).toBeCloseTo(12, 0)
       expect(layout.footerGap).toBeCloseTo(20, 0)
       expect(layout.bottomGap).toBeCloseTo(21, 0)
+      expect(layout.width).toBeLessThanOrEqual(250)
+      expect(layout.maxWidth).toBe('250px')
+      expect(['0px', 'auto']).toContain(layout.minHeight)
       expect(layout.overflow).toBe(false)
     }
     await assertSpacing()
@@ -222,6 +228,15 @@ for (const width of [320, 390, 1280]) {
     await expect(card.getByRole('heading', { name: post.title })).toBeVisible()
     await assertSpacing()
     await card.screenshot({ path: testInfo.outputPath(`short-${width}-dark.png`) })
+    const originalHeight = (await card.boundingBox()).height
+    const longTitle = 'A longer short title that remains readable as it wraps. '.repeat(5).trim()
+    await mockApi(page, { article: { ...post, title: longTitle, image: null } })
+    await page.reload()
+    const heading = card.getByRole('heading', { name: longTitle, exact: true })
+    await expect(heading).toBeVisible()
+    expect((await card.boundingBox()).height).toBeGreaterThan(originalHeight)
+    expect(await heading.evaluate(element => element.scrollHeight <= element.clientHeight)).toBe(true)
+    expect((await card.boundingBox()).width).toBeLessThanOrEqual(320)
   })
 }
 

@@ -56,6 +56,39 @@ if (!integrationEnabled) {
     'content-type': 'application/json',
   });
 
+  test('collections append any public post or short atomically, including legacy lists', async () => {
+    const target = await Collection.create({ title: `${prefix} mixed reading`, author: otherUser._id, visibility: 'private', posts: [post._id] });
+    const endpoint = postId => `${baseUrl}/api/v1/collections/${target._id}/posts/${postId}`;
+    try {
+      assert.equal((await fetch(endpoint(shortPost._id), { method: 'PUT' })).status, 401);
+      assert.equal((await fetch(endpoint(shortPost._id), { method: 'PUT', headers: authHeaders(owner) })).status, 404);
+      assert.equal((await fetch(endpoint('invalid'), { method: 'PUT', headers: authHeaders(otherUser) })).status, 400);
+      const responses = await Promise.all(Array.from({ length: 3 }, () => fetch(endpoint(shortPost._id), { method: 'PUT', headers: authHeaders(otherUser) })));
+      assert.ok(responses.every(response => response.status === 200));
+      const stored = await Collection.findById(target._id);
+      assert.deepEqual(stored.items.map(item => String(item.post)), [String(post._id), String(shortPost._id)]);
+      assert.deepEqual(stored.items.map(item => item.position), [0, 1]);
+      assert.equal(stored.posts.length, 0);
+      const repeated = await fetch(endpoint(shortPost._id), { method: 'PUT', headers: authHeaders(otherUser) });
+      assert.deepEqual((await repeated.json()).data, { added: false });
+      await Collection.updateOne({ _id: target._id }, { $set: { items: Array.from({ length: 100 }, (_, position) => ({ post: position === 0 ? shortPost._id : new mongoose.Types.ObjectId(), position })) } });
+      assert.equal((await fetch(endpoint(shortPost3._id), { method: 'PUT', headers: authHeaders(otherUser) })).status, 400);
+      assert.equal((await fetch(endpoint(shortPost._id), { method: 'PUT', headers: authHeaders(otherUser) })).status, 200);
+      const hidden = await Post.create({ title: `${prefix} unavailable`, body: validBody('Unavailable'), author: owner._id, publicationStatus: 'unpublished' });
+      try { assert.equal((await fetch(endpoint(hidden._id), { method: 'PUT', headers: authHeaders(otherUser) })).status, 404); }
+      finally { await Post.deleteOne({ _id: hidden._id }); }
+      const future = await Post.create({ title: `${prefix} future`, body: validBody('Future'), author: owner._id, publicAt: new Date(Date.now() + 86_400_000) });
+      try { assert.equal((await fetch(endpoint(future._id), { method: 'PUT', headers: authHeaders(otherUser) })).status, 404); }
+      finally { await Post.deleteOne({ _id: future._id }); }
+      const created = await fetch(`${baseUrl}/api/collection`, { method: 'POST', headers: authHeaders(otherUser), body: JSON.stringify({ title: `${prefix} picked short`, visibility: 'private', postIds: [String(shortPost._id)] }) });
+      assert.equal(created.status, 201);
+      const { data } = await created.json();
+      const newCollection = await Collection.findById(data.collectionId);
+      assert.equal(String(newCollection.items[0].post), String(shortPost._id));
+      await Collection.deleteOne({ _id: newCollection._id });
+    } finally { await Collection.deleteOne({ _id: target._id }); }
+  });
+
   const validBody = title => JSON.stringify([
     { id: 'block-1', type: 'text', content: `${title} body` },
   ]);
@@ -154,7 +187,7 @@ if (!integrationEnabled) {
         Collection.deleteMany({ _id: collection?._id }),
         Competition.deleteMany({ _id: competition?._id }),
         ShortSeries.deleteMany({ _id: series?._id }),
-        Notification.deleteMany({ _id: notification?._id }),
+        Notification.deleteMany({ recipientId: { $in: userIds } }),
         InteractionEvent.deleteMany({ actorId: { $in: userIds } }),
         Draft.deleteMany({ authorId: { $in: userIds } }),
         Follow.deleteMany({ followerId: { $in: userIds } }),
@@ -167,6 +200,40 @@ if (!integrationEnabled) {
     }
     await ProviderEvent.deleteMany({ eventId: { $regex: `^${prefix}` } });
     await mongoose.disconnect();
+  });
+
+  test('owner post deletion clears discussions and saves while missing references stay safe', async () => {
+    const disposable = await Post.create({ title: `${prefix} delete`, body: validBody('delete'), author: owner._id, tags: ['delete'] });
+    const unrelated = await Comment.create({ postId: post._id, userId: otherUser._id, content: 'Unrelated comment' });
+    const root = await Comment.create({ postId: disposable._id, userId: otherUser._id, content: 'Root' });
+    const reply = await Comment.create({ postId: disposable._id, userId: owner._id, parentCommentId: root._id, content: 'Reply' });
+    await CommentLike.create({ commentId: reply._id, userId: otherUser._id });
+    await Save.create({ postId: disposable._id, userId: otherUser._id });
+    await Like.create({ postId: disposable._id, userId: otherUser._id });
+    await Report.create([
+      { reporterId: otherUser._id, subjectType: 'post', subjectId: disposable._id, reason: 'spam' },
+      { reporterId: otherUser._id, subjectType: 'comment', subjectId: reply._id, reason: 'spam' },
+      { reporterId: owner._id, subjectType: 'post', subjectId: disposable._id, reason: 'other', status: 'actioned' },
+    ]);
+    const url = `${baseUrl}/api/v1/posts/${disposable._id}`;
+    assert.equal((await fetch(url, { method: 'DELETE' })).status, 401);
+    assert.equal((await fetch(url, { method: 'DELETE', headers: authHeaders(otherUser) })).status, 404);
+    assert.ok(await Post.exists({ _id: disposable._id }));
+    assert.equal((await fetch(url, { method: 'DELETE', headers: authHeaders(owner) })).status, 204);
+    assert.equal(await Post.exists({ _id: disposable._id }), null);
+    assert.equal(await Comment.countDocuments({ postId: disposable._id }), 0);
+    assert.equal(await CommentLike.countDocuments({ commentId: reply._id }), 0);
+    assert.equal(await Save.countDocuments({ postId: disposable._id }), 0);
+    assert.equal(await Like.countDocuments({ postId: disposable._id }), 0);
+    assert.equal(await Report.countDocuments({ subjectId: { $in: [disposable._id, reply._id] }, status: 'pending' }), 0);
+    assert.equal(await Report.countDocuments({ subjectId: disposable._id, status: 'actioned' }), 1);
+    assert.ok(await Comment.exists({ _id: unrelated._id }));
+    assert.equal((await fetch(`${baseUrl}/api/post/${disposable._id}`, { headers: authHeaders(owner) })).status, 404);
+    // Even a legacy dangling save resolves to null and is omitted without user-list rewrites.
+    await Save.create({ postId: disposable._id, userId: otherUser._id });
+    const bookmarks = await (await fetch(`${baseUrl}/api/user/bookmarks`, { headers: authHeaders(otherUser) })).json();
+    assert.ok(bookmarks.every(item => String(item._id) !== String(disposable._id)));
+    assert.equal((await fetch(url, { method: 'DELETE', headers: authHeaders(owner) })).status, 404);
   });
 
   test('write authorization rejects another user without changing the post', async () => {
@@ -224,6 +291,45 @@ if (!integrationEnabled) {
     assert.equal(current.likesCount, 2);
   });
 
+  test('comments, follows and likes create recipient-scoped inbox notifications through current and legacy routes', async () => {
+    const filter = { recipientId: owner._id, actorId: otherUser._id, entityId: shortPost4._id };
+    const likeUrl = `${baseUrl}/api/post/${shortPost4._id}/like`;
+    const headers = authHeaders(otherUser);
+    for (let retry = 0; retry < 2; retry++) assert.equal((await fetch(likeUrl, { method: 'PUT', headers })).status, 200);
+    assert.equal(await Notification.countDocuments({ ...filter, type: 'post_liked' }), 1);
+    assert.equal((await fetch(likeUrl, { method: 'DELETE', headers })).status, 200);
+    assert.equal(await Notification.countDocuments({ ...filter, type: 'post_liked' }), 1);
+    assert.equal((await fetch(`${baseUrl}/api/post/like/${shortPost4._id}`, { method: 'POST', headers })).status, 200);
+    assert.equal(await Notification.countDocuments({ ...filter, type: 'post_liked' }), 2);
+    assert.equal((await fetch(likeUrl, { method: 'PUT', headers: authHeaders(owner) })).status, 200);
+    assert.equal(await Notification.countDocuments({ recipientId: owner._id, actorId: owner._id, type: 'post_liked' }), 0);
+    for (const [url, body] of [
+      [`/api/post/${shortPost4._id}/comments`, { text: 'Current comment' }],
+      [`/api/post/comment/${shortPost4._id}`, { text: 'Legacy comment' }],
+    ]) assert.equal((await fetch(`${baseUrl}${url}`, { method: 'POST', headers, body: JSON.stringify(body) })).status, 201);
+    assert.equal(await Notification.countDocuments({ ...filter, type: 'post_commented' }), 2);
+    const followFilter = { recipientId: owner._id, actorId: otherUser._id, type: 'user_followed' };
+    const before = await Notification.countDocuments(followFilter);
+    const followUrl = `${baseUrl}/api/post/follow/${owner._id}`;
+    await Follow.deleteOne({ followerId: otherUser._id, followingId: owner._id });
+    assert.equal((await fetch(followUrl, { method: 'POST', headers })).status, 200);
+    assert.equal(await Notification.countDocuments(followFilter), before + 1);
+    assert.equal((await fetch(followUrl, { method: 'POST', headers })).status, 200);
+    assert.equal(await Notification.countDocuments(followFilter), before + 1);
+    const explicitFollowUrl = `${baseUrl}/api/writer/${owner._id}/follow`;
+    for (let retry = 0; retry < 2; retry++) assert.equal((await fetch(explicitFollowUrl, { method: 'PUT', headers })).status, 200);
+    assert.equal(await Notification.countDocuments(followFilter), before + 2);
+    assert.equal((await fetch(explicitFollowUrl, { method: 'DELETE', headers })).status, 200);
+    for (let retry = 0; retry < 2; retry++) assert.equal((await fetch(`${baseUrl}/api/v1/onboarding`, {
+      method: 'PUT', headers, body: JSON.stringify({ topicSlugs: [], writerIds: [String(owner._id)], completed: true }),
+    })).status, 200);
+    assert.equal(await Notification.countDocuments(followFilter), before + 3);
+    const inbox = await (await fetch(`${baseUrl}/api/v1/notifications`, { headers: authHeaders(owner) })).json();
+    for (const type of ['post_liked', 'post_commented', 'user_followed']) assert.ok(inbox.data.some(item => item.type === type));
+    const otherInbox = await (await fetch(`${baseUrl}/api/v1/notifications`, { headers })).json();
+    assert.ok(otherInbox.data.every(item => item.recipientId === String(otherUser._id)));
+  });
+
   test('comment editing, likes, paginated replies and deletion preserve ownership and thread history', async () => {
     const listUrl = `${baseUrl}/api/post/${post._id}/comments`;
     const create = async (user, text, parentCommentId) => {
@@ -270,6 +376,27 @@ if (!integrationEnabled) {
     assert.equal((await fetch(url, { method: 'PATCH', headers: authHeaders(owner), body: JSON.stringify({ text: 'Restore' }) })).status, 409);
     assert.equal((await fetch(`${baseUrl}/api/v1/posts/${shortPost._id}/comments/${reply.id}`, { method: 'DELETE', headers: authHeaders(otherUser) })).status, 404);
     assert.equal((await fetch(listUrl, { method: 'POST', headers: authHeaders(owner), body: JSON.stringify({ text: 'Wrong post', parentCommentId: String(new mongoose.Types.ObjectId()) }) })).status, 404);
+
+    const leaf = await create(owner, 'Delete without replies');
+    const leafUrl = `${baseUrl}/api/v1/posts/${post._id}/comments/${leaf.id}`;
+    assert.equal((await fetch(leafUrl, { method: 'DELETE', headers: authHeaders(owner) })).status, 200);
+    const visible = await (await fetch(`${listUrl}?limit=1`)).json();
+    assert.ok(visible.data.length);
+    assert.ok(!visible.data.some(row => row.id === leaf.id));
+    const all = await (await fetch(listUrl)).json();
+    assert.ok(!all.data.some(row => row.id === leaf.id));
+
+    // Deleted ancestors remain only while the chain reaches a live reply.
+    assert.equal((await fetch(`${baseUrl}/api/v1/posts/${post._id}/comments/${reply.id}`, { method: 'DELETE', headers: authHeaders(otherUser) })).status, 200);
+    const kept = await (await fetch(`${listUrl}?parentCommentId=${comment.id}`)).json();
+    assert.equal(kept.data.find(row => row.id === reply.id).repliesCount, 1);
+    assert.equal((await fetch(`${baseUrl}/api/v1/posts/${post._id}/comments/${nested.id}`, { method: 'DELETE', headers: authHeaders(owner) })).status, 200);
+    const hidden = await (await fetch(`${listUrl}?parentCommentId=${comment.id}`)).json();
+    assert.ok(!hidden.data.some(row => row.id === reply.id));
+    const remaining = hidden.data[0];
+    assert.equal((await fetch(`${baseUrl}/api/v1/posts/${post._id}/comments/${remaining.id}`, { method: 'DELETE', headers: authHeaders(owner) })).status, 200);
+    const emptyBranch = await (await fetch(listUrl)).json();
+    assert.ok(!emptyBranch.data.some(row => row.id === comment.id));
   });
 
   test('signed provider webhooks process once when delivered more than once', async () => {
@@ -482,6 +609,10 @@ if (!integrationEnabled) {
     assert.equal(await InteractionEvent.countDocuments({ eventId }), 1);
     assert.equal((await json(await fetch(`${baseUrl}/api/v1/notifications/${notification._id}/read`, { method: 'PUT', headers: ownerHeaders }))).status, 200);
     assert.equal((await Notification.findById(notification._id)).readAt instanceof Date, true);
+    assert.equal((await fetch(`${baseUrl}/api/v1/notifications/${notification._id}`, { method: 'DELETE', headers: otherHeaders })).status, 404);
+    assert.equal((await Notification.findById(notification._id)) !== null, true);
+    assert.equal((await fetch(`${baseUrl}/api/v1/notifications/${notification._id}`, { method: 'DELETE', headers: ownerHeaders })).status, 204);
+    assert.equal(await Notification.findById(notification._id), null);
 
     const entry = await json(await fetch(`${baseUrl}/api/competition/${competition._id}/entries`, {
       method: 'POST', headers: ownerHeaders, body: JSON.stringify({ postId: post._id.toString(), note: 'Integration entry' }),
@@ -523,4 +654,27 @@ if (!integrationEnabled) {
 
     assert.equal((await json(await fetch(`${baseUrl}/api/drafts/${draftId}`, { method: 'DELETE', headers: ownerHeaders }))).status, 204);
   });
+  test('public tag suggestions exclude private and future metadata and deduplicate released tags', async () => {
+    const marker = `${prefix}-tags`;
+    const records = await Post.create([
+      { title: `${marker} released`, author: owner._id, body: validBody(marker), tags: [`${marker}-public`, `${marker}-public`], publicAt: new Date() },
+      { title: `${marker} hidden`, author: owner._id, body: validBody(marker), tags: [`${marker}-private`], publicationStatus: 'unpublished' },
+      { title: `${marker} future`, author: owner._id, body: validBody(marker), tags: [`${marker}-future`], publicAt: new Date(Date.now() + 86400000) },
+    ]);
+    const tagTopic = await Topic.create({ slug: `${marker}-topic`, displayName: `${marker} canonical`, status: 'active' });
+    const draft = await Draft.create({ authorId: owner._id, body: validBody(marker), tags: [`${marker}-draft`] });
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/tags?q=${marker}`);
+      assert.equal(response.status, 200);
+      const data = (await response.json()).data;
+      assert.deepEqual(new Set(data.map(choice => choice.value)), new Set([`${marker}-public`, `${marker}-topic`]));
+      assert.equal(data.length, 2);
+      assert.equal((await fetch(`${baseUrl}/api/v1/tags?q=${'x'.repeat(61)}`)).status, 400);
+    } finally {
+      await Post.deleteMany({ _id: { $in: records.map(record => record._id) } });
+      await Topic.deleteOne({ _id: tagTopic._id });
+      await Draft.deleteOne({ _id: draft._id });
+    }
+  });
+
 }

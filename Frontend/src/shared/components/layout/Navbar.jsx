@@ -181,6 +181,15 @@ export default function Navbar() {
             }
           }} onBlur={() => { closingMobileSearchRef.current = false }} onChange={event => { setSearchValue(event.target.value); setSearchOpen(true); setActiveSuggestionIndex(-1) }} onKeyDown={handleSearchKeyDown} placeholder="Search posts and writers…"
             maxLength={100} autoComplete="off" role="combobox" aria-label="Search posts and writers" aria-autocomplete="list" aria-expanded={suggestionsVisible} aria-controls="search-suggestions" aria-activedescendant={activeSuggestionIndex >= 0 && suggestionItems[activeSuggestionIndex] ? `search-suggestion-${activeSuggestionIndex}` : undefined} className="search-input min-w-0 flex-1 border-none bg-transparent py-[9px] text-[13px] text-[var(--color-text)] outline-none" />
+          {searchValue && <button type="button" aria-label="Clear search" onClick={() => {
+            setSearchValue('')
+            setSuggestionQuery('')
+            setSearchOpen(false)
+            setActiveSuggestionIndex(-1)
+            closingMobileSearchRef.current = true
+            searchInputRef.current?.focus({ preventScroll: true })
+            closingMobileSearchRef.current = false
+          }} className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-transparent text-[24px] text-[var(--color-text-secondary)] before:absolute before:-inset-[6px] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">×</button>}
         </div>
         {suggestionsVisible && <ViewportPopover ref={suggestionsRef} anchorRef={searchRef} matchAnchorWidth id="search-suggestions" role="listbox" aria-label="Search suggestions" className="absolute left-0 right-0 top-[calc(100%+8px)] z-[200] overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]">
           <div role="status" aria-live="polite">
@@ -203,18 +212,18 @@ export default function Navbar() {
 
       <div className="hidden md:flex items-center gap-2 shrink-0 ml-auto">
         <Link to="/membership" style={{ color: 'var(--color-text-inverted)' }} className="inline-flex min-h-9 items-center justify-center rounded-full bg-[var(--color-accent)] px-[18px] text-[13px] font-medium whitespace-nowrap">Join</Link>
-        {loggedIn && <Link id="notification-trigger" to="/notifications" state={{ notificationBackground: location }} aria-haspopup="dialog" aria-label={`${notifications.data?.meta.unreadCount || 0} unread notifications`} className="relative w-10 h-10 md:w-8 md:h-8 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-text-secondary)] flex items-center justify-center"><span aria-hidden="true">♢</span>{notifications.data?.meta.unreadCount > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[var(--color-accent)] text-[9px] text-white flex items-center justify-center">{Math.min(99, notifications.data.meta.unreadCount)}</span>}</Link>}
+        {loggedIn && <Link id="notification-trigger" to="/notifications" state={{ notificationBackground: location }} aria-haspopup="dialog" aria-label={`${notifications.data?.meta.unreadCount || 0} unread notifications`} className="button-size-md relative w-11 h-11 shrink-0 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-text-secondary)] flex items-center justify-center"><span aria-hidden="true">♢</span>{notifications.data?.meta.unreadCount > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[var(--color-accent)] text-[9px] text-[var(--color-text-inverted)] flex items-center justify-center">{Math.min(99, notifications.data.meta.unreadCount)}</span>}</Link>}
         {loggedIn ? <div ref={menuRef} className="relative">
           <button type="button" ref={accountButtonRef} onClick={() => setOpenMenu(value => !value)} aria-label="Open account menu" aria-haspopup="menu" aria-expanded={openMenu} aria-controls="account-menu"
-            className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-transparent p-0 text-[var(--color-text-inverted)] font-semibold text-[12px] uppercase [&>img]:border-0 md:h-8 md:w-8">
+            className="button-target inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-transparent p-0 text-[var(--color-text-inverted)] font-semibold text-[12px] uppercase [&>img]:border-0">
             <Avatar src={avatarUrl} name={user} size={28} />
           </button>
           {openMenu && <ViewportPopover ref={accountMenuRef} anchorRef={accountButtonRef} onAnchorHidden={() => setOpenMenu(false)} id="account-menu" role="menu" tabIndex={-1} aria-label="Account" onKeyDown={handleAccountMenuKeyDown} className="absolute top-[calc(100%+6px)] right-0 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[10px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] p-1 flex flex-col gap-0.5 min-w-[170px] z-[200]">
-            {[{ label: 'View Profile', path: '/profile' }, { label: 'Saved', path: '/saved' }].map(item =>
-              <Link key={item.label} role="menuitem" to={item.path} onClick={() => setOpenMenu(false)} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus:bg-[var(--color-bg-alt)] focus:outline-none">{item.label}</Link>)}
+            {[{ label: 'Profile', path: '/profile' }, { label: 'Library', path: '/saved' }, { label: 'Writing studio', path: '/writing' }].map(item =>
+              <Link key={item.label} role="menuitem" to={item.path} onClick={() => setOpenMenu(false)} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus-visible:bg-[var(--color-bg-alt)] focus:outline-none">{item.label}</Link>)}
             <div className="h-px bg-[var(--color-border)] my-1" />
-            <button type="button" role="menuitem" disabled={isSigningOut} aria-busy={isSigningOut} onClick={signOut} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus:bg-[var(--color-bg-alt)] focus:outline-none">Sign Out</button>
-            <button type="button" role="menuitem" disabled={isSigningOut} aria-busy={isSigningOut} onClick={signOutAllDevices} className="px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus:bg-[var(--color-bg-alt)] focus:outline-none">Sign Out all Devices</button>
+            <button type="button" role="menuitem" disabled={isSigningOut} aria-busy={isSigningOut} onClick={signOut} className="button-target px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus-visible:bg-[var(--color-bg-alt)] focus:outline-none">Sign Out</button>
+            <button type="button" role="menuitem" disabled={isSigningOut} aria-busy={isSigningOut} onClick={signOutAllDevices} className="button-target px-3 py-2 text-[13px] text-[var(--color-text-secondary)] text-left rounded-[6px] hover:bg-[var(--color-bg-alt)] focus-visible:bg-[var(--color-bg-alt)] focus:outline-none">Sign Out all Devices</button>
           </ViewportPopover>}
         </div> : <Button className="navbar-auth-action" variant="secondary" onClick={() => navigate('/login', { state: { returnTo: `${location.pathname}${location.search}${location.hash}` } })}>Sign In</Button>}
       </div>

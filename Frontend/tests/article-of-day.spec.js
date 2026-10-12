@@ -66,6 +66,17 @@ for (const width of [320, 390, 768, 1280]) {
     const dateBounds = await card.getByText('8 September 2026', { exact: true }).boundingBox()
     expect(titleBounds.y - dateBounds.y - dateBounds.height).toBeGreaterThanOrEqual(19)
     expect((await author.boundingBox()).y).toBeLessThan(dateBounds.y)
+    const metadata = author.locator('..')
+    await expect(metadata).toHaveCSS('row-gap', '8px')
+    const content = card.locator(':scope > div').last()
+    await expect(content).toHaveCSS('row-gap', '20px')
+    const bottomSpace = await content.evaluate(element => element.getBoundingClientRect().bottom - element.lastElementChild.getBoundingClientRect().bottom)
+    expect(bottomSpace).toBeCloseTo(width < 768 ? 20 : 28, 0)
+    if (width >= 768) {
+      expect(Math.abs(authorBounds.y - coverBounds.y)).toBeLessThanOrEqual(1)
+      const contentBounds = await content.boundingBox()
+      expect(Math.abs(coverBounds.height - contentBounds.height)).toBeLessThanOrEqual(1)
+    }
     await expect(card.getByRole('link', { name: `Read ${post.title}` })).toHaveAttribute('href', `/post/${post.id}`)
     expect(await card.locator('a button, a a').count()).toBe(0)
     const like = card.getByRole('button', { name: `Appreciate ${post.title}`, exact: true })

@@ -216,7 +216,7 @@ export default function Login({ signUp = false, embedded = false, returnTo, onSi
                   onKeyDown={handleAuthTabKeyDown}
                   key={m} 
                   onClick={() => setMode(m)}
-                  className={`flex-1 py-2.5 rounded-md border-none text-[14px] font-medium cursor-pointer transition-all duration-150
+                  className={`button-target flex-1 py-2.5 rounded-md border-none text-[14px] font-medium cursor-pointer transition-all duration-150
                     ${mode === m ? 'border border-[var(--color-border)] bg-[var(--color-surface-hover)] shadow-[0_2px_6px_rgba(0,0,0,0.12)] text-[var(--color-text)]' : 'border border-transparent bg-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'}`}>
                   {m === 'login' ? 'Login' : 'Sign Up'}
                 </button>
@@ -278,7 +278,7 @@ export default function Login({ signUp = false, embedded = false, returnTo, onSi
 
             {/* Submit */}
             <button type="submit" disabled={loginMutation.isPending || signupMutation.isPending || passwordsDiffer}
-              className="mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-60" aria-busy={loginMutation.isPending || signupMutation.isPending}>
+              className="button-target mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:opacity-60" aria-busy={loginMutation.isPending || signupMutation.isPending}>
               {mode === 'login' ? 'Login' : 'Sign Up'}
             </button>
             {import.meta.env.VITE_GOOGLE_CLIENT_ID && <><div className="my-5 flex items-center gap-3 text-[11px] text-[var(--color-text-muted)]"><span className="h-px flex-1 bg-[var(--color-border)]" />or<span className="h-px flex-1 bg-[var(--color-border)]" /></div><div ref={googleButtonRef} aria-busy={googleMutation.isPending} inert={googleMutation.isPending ? "" : undefined} className="flex min-h-10 justify-center" />{googleMutation.error && <p role="alert" className="mt-2 text-center text-[12px] text-[var(--color-danger)]">{googleMutation.error?.response?.data?.message || 'Google sign-in failed.'}</p>}</>}
@@ -346,14 +346,14 @@ function VerifyEmail({otp, setOtp, boxInputRefs, handleVerifyEmail, handleResend
         </div>
 
         <button type="button" onClick={handleResendOtp} disabled={verifying || resending} aria-busy={resending}
-          className='text-[12px] text-(--color-text-muted) hover:text-(--color-accent) transition-colors mr-auto'
+          className='button-target text-[12px] text-(--color-text-muted) hover:text-(--color-accent) transition-colors mr-auto'
         >
           Resend OTP
         </button>
 
           {/* Submit */}
         <button type="button" onClick={handleVerifyEmail} disabled={verifying || resending} aria-busy={verifying}
-          className="mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)]">
+          className="button-target mt-2.5 w-full rounded-lg border-none bg-[var(--color-accent)] py-3 text-[15px] font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-accent-hover)]">
           Verify Email
         </button>
       </div>

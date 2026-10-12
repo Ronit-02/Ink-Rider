@@ -60,7 +60,8 @@ for (const width of [320, 1280]) for (const [kind, path, label, endpoint] of ent
     await expect(dialog).toHaveCount(0)
     await expect(isCard ? options : trigger).toBeFocused()
     await open()
-    await dialog.getByRole('combobox').selectOption('harassment')
+    await dialog.getByRole('combobox').click()
+    await dialog.getByRole('option', { name: 'Harassment', exact: true }).click()
     const details = dialog.getByRole('textbox')
     await expect(details).toBeVisible()
     if (kind !== 'question' && kind !== 'answer') {
@@ -70,7 +71,7 @@ for (const width of [320, 1280]) for (const [kind, path, label, endpoint] of ent
     await details.fill('Preserved context.')
     await dialog.getByRole('button', { name: 'Submit report', exact: true }).click()
     await expect(dialog.getByRole('alert')).toBeVisible()
-    await expect(dialog.getByRole('combobox')).toHaveValue('harassment')
+    await expect(dialog.getByRole('combobox')).toHaveText('Harassment')
     if (await details.count()) await expect(details).toHaveValue('Preserved context.')
     expect(reports[0]).toEqual({ path: endpoint, body: { reason: 'harassment', details: 'Preserved context.' } })
     await dialog.screenshot({ path: testInfo.outputPath('report.png') })

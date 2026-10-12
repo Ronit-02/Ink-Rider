@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import Avatar from './Avatar'
 
 export default function AuthorMeta({ author, readTime, date, size = 'sm', stacked = false, variant = 'default' }) {
+  const hasAuthor = Boolean(author?.username && author.username !== 'Unknown writer')
+  author = { ...author, username: author?.username || 'Unknown writer' }
   const article = variant === 'article'
   const textSize  = size === 'sm' ? 'text-[12px]' : 'text-[13px]'
   const avatarSz  = size === 'sm' ? 22 : 28
@@ -10,11 +12,11 @@ export default function AuthorMeta({ author, readTime, date, size = 'sm', stacke
     ?.toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  const handle = author.handle || fallbackHandle
+  const handle = hasAuthor ? author.handle || fallbackHandle : null
   const authorPath = handle ? `/author/${encodeURIComponent(handle)}` : null
   const metadata = <div className={`flex max-w-full flex-wrap items-center gap-1.5 ${article ? 'text-[12px] leading-5' : textSize} text-(--color-text-muted)`}>
     {date && <span>{new Date(date).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
-    {date && (!article || readTime) && <span aria-hidden="true">·</span>}
+    {date && readTime && <span aria-hidden="true">·</span>}
     {readTime && <span className="whitespace-nowrap">{readTime}</span>}
   </div>
   const name = <span className={`${article ? 'text-[14px] leading-5 font-semibold text-(--color-text)' : `${textSize} text-(--color-text-secondary) font-medium`} min-w-0 break-words hover:text-(--color-text) transition-colors capitalize`}>
@@ -50,7 +52,7 @@ export default function AuthorMeta({ author, readTime, date, size = 'sm', stacke
         </span>
       )}
 
-      {!stacked && !article && <span className="text-(--color-text-muted)">·</span>}
+      {!stacked && !article && (date || readTime) && <span aria-hidden="true" className="text-(--color-text-muted)">·</span>}
 
       {/* Meta: date + read time */}
       {!article && metadata}

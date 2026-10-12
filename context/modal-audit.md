@@ -1,6 +1,16 @@
 # Modal and overlay audit
 
-## Current modal/header inventory — 2026-10-10
+## Outside-click dismissal consistency — 2026-10-13
+
+All modal implementations with an exposed backdrop now close when the user clicks outside the panel. `ModalLayer` already provides this behavior by default; component-level opt-outs and dirty-form conditions were removed. Native Comments already dismissed this way, and the mobile Account sheet already closes from its backdrop. Full-screen mobile Search has no outside backdrop area. Existing pending-write guards still prevent dismissal during an active mutation, and focus restoration/Escape behavior remain unchanged. Outside dismissal discards local unsubmitted values, consistent with each modal's close behavior.
+
+Changed implementation files: `Frontend/src/shared/components/ui/ModalLayer.tsx`, AddToCollectionDialog, LoginModal, CollectionCard, DeleteDraftButton, Author/index.jsx, DeletePostDialog, CommentActionDialog, ReportModal, and WriteDrafts. Verification updates: `Frontend/tests/add-to-collection.spec.js` and `Frontend/tests/modal-audit.spec.js`. UI rules, this audit, the collection items audit, and the progress tracker were updated. No routes, APIs, schemas, or data flow changed.
+
+## Comment action modals — 2026-10-12
+
+Owner Edit comment and Delete comment now use CommentActionDialog above article, compact Comments, and short-reader surfaces. Both reuse ModalLayer, ModalHeader, Button, and dialog focus, with Close/Cancel/Escape, viewport-bounded internal scrolling, backdrop retention, pending dismissal/repeat guards, error/retry, and focus restoration. Edit preserves failed text; Delete retains only placeholders that connect to surviving replies. Behavior, exact changed files, and completed verification are owned by [comment actions audit](comment-actions-audit.md). These two purposes extend the dated shared-header inventory below.
+
+## Shared modal/header inventory — 2026-10-10
 
 Title alignment follow-up: ModalHeader now expands its title column and vertically centers subtitle-free headings beside Close. Subtitle-bearing headers retain their existing top alignment. This changes only ModalHeader.tsx, the shared browser assertion helper, UI rules, this audit, and the progress tracker; existing callers, title text alignment, panel padding, Close targets, and backend contracts are preserved. Verification is recorded below in the progress tracker.
 
@@ -51,6 +61,8 @@ Computed text contrast and target dimensions are observational audit results. Pa
 Priority: P2. In Ask, Create collection, Create series, Submit article, Comments, and Short read, entering text, pressing Escape, and reopening produces an empty field. Form state is owned by the unmounted component. Source inspection also shows unguarded backdrop dismissal in these implementations (`ModalLayer` defaults to `dismissOnBackdrop=true`; Comments handles backdrop clicks directly).
 
 This conflicts with the registry requirement to avoid backdrop dismissal when it risks losing work. Failed submissions themselves preserve work; the loss occurs on dismissal. A bounded follow-up should preserve drafts across reopening or guard dismissal only when dirty. Existing clean-state Escape/Close behavior should remain available.
+
+This 2026-10-07 recommendation is superseded by the 2026-10-13 user request for consistent outside-click dismissal. All modal backdrops now dismiss while idle; local unsubmitted values follow the existing Close/Escape behavior and are not persisted across reopening.
 
 Files relevant to a fix: the four form owners in the inventory, `ShortReadModal.jsx`, `CommentsModal.tsx`, shared `CommentsSection.jsx`, and potentially `ModalLayer.tsx` for a narrowly configured dismissal contract. Changing shared dismissal policy needs a concrete before/after review under `AGENTS.md`; the audit did not apply such a change.
 

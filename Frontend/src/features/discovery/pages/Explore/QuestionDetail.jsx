@@ -1,8 +1,12 @@
+import Select from '@/shared/components/ui/Select'
 import retainRetryView from '@/shared/utils/retainRetryView'
+import ShortCard from '@/features/discovery/components/ShortCard'
+import QuestionResponseCard from '@/features/discovery/components/QuestionResponseCard'
 import ReportModal, { reportTitle } from '@/shared/components/ui/ReportModal'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { useAnswerReport, useAnswerUpvote, useQuestion, useQuestionAnswer, useQuestionFollow, useQuestionReport, useQuestionUpvote } from '@/features/question/hooks/useQuestions'
+import { useAnswerReport, useAnswerUpvote, useQuestion, useQuestionFollow, useQuestionReport, useQuestionUpvote } from '@/features/question/hooks/useQuestions'
+import QuestionResponseModal from '@/features/question/components/QuestionResponseModal'
 import useAuth from '@/features/auth/hooks/useAuth'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
 import Tag from '@/shared/components/ui/Tag'
@@ -27,8 +31,7 @@ function AnswerReportForm({ questionId, answerId }) {
   const submit = event => { event.preventDefault(); report.mutate({ questionId, answerId, reason, details }) }
   if (report.isSuccess) return <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">Thanks. Your answer report was sent for review.</p>
   return <form onSubmit={submit} className="max-w-[520px]">
-    <label htmlFor={`answer-report-reason-${answerId}`} className="block text-[11px] font-semibold text-[var(--color-text)]">Reason</label>
-    <select id={`answer-report-reason-${answerId}`} value={reason} onChange={event => setReason(event.target.value)} className="mt-2 min-h-10 w-full rounded-[9px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text)]">{REPORT_REASONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+    <Select id={`answer-report-reason-${answerId}`} label="Reason" value={reason} options={REPORT_REASONS.map(([value, label]) => ({ value, label }))} onChange={setReason} className="max-w-none" />
     <label htmlFor={`answer-report-details-${answerId}`} className="mt-3 block text-[11px] font-semibold text-[var(--color-text)]">Details <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label>
     <textarea id={`answer-report-details-${answerId}`} value={details} maxLength={1000} onChange={event => setDetails(event.target.value)} className="mt-2 min-h-20 w-full rounded-[9px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-[12px] text-[var(--color-text)]" />
     {report.isError && <p role="alert" className="mt-2 text-[12px] text-[var(--color-danger)]">{report.error?.response?.data?.message || 'The report could not be submitted.'}</p>}
@@ -44,10 +47,10 @@ function Answer({ answer, questionId }) {
   return <article className="border-t border-[var(--color-border)] py-5">
     <AuthorMeta author={answer.author} date={answer.createdAt} size="sm" />
     <p className="mt-3 whitespace-pre-wrap text-[14px] leading-7 text-[var(--color-text)]">{answer.text}</p>
-    <button data-button-style="action" type="button" onClick={toggleVote} disabled={vote.isPending} aria-pressed={answer.isUpvoted} aria-label={`${answer.isUpvoted ? 'Remove upvote from' : 'Upvote'} answer`} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-full border border-[var(--color-border)] px-3 text-[12px] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2" aria-busy={vote.isPending}>
+    <button data-button-style="action" type="button" onClick={toggleVote} disabled={vote.isPending} aria-pressed={answer.isUpvoted} aria-label={`${answer.isUpvoted ? 'Remove upvote from' : 'Upvote'} answer`} className="button-target mt-3 inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-border)] px-3 text-[12px] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2" aria-busy={vote.isPending}>
       <span data-button-icon aria-hidden="true">▲</span>{answer.upvotesCount}
     </button>
-    <button type="button" aria-haspopup="dialog" onClick={() => loggedIn ? setReportOpen(true) : signIn()} className="ml-2 inline-flex min-h-10 items-center rounded-full px-3 text-[12px] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">{reportTitle('answer')}</button>
+    <button type="button" aria-haspopup="dialog" onClick={() => loggedIn ? setReportOpen(true) : signIn()} className="button-target ml-2 inline-flex min-h-11 items-center rounded-full px-3 text-[12px] text-[var(--color-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">{reportTitle('answer')}</button>
     {reportOpen && <ReportModal title={reportTitle('answer')} onClose={() => setReportOpen(false)}><AnswerReportForm questionId={questionId} answerId={answer.id} /></ReportModal>}
   </article>
 }
@@ -59,10 +62,7 @@ function ReportForm({ questionId }) {
   const submit = event => { event.preventDefault(); report.mutate({ questionId, reason, details }) }
   if (report.isSuccess) return <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">Thanks. Your report was sent for review.</p>
   return <form onSubmit={submit} className="max-w-[520px]">
-    <label htmlFor="question-report-reason" className="block text-[11px] font-semibold text-[var(--color-text)]">Reason</label>
-    <select id="question-report-reason" value={reason} onChange={event => setReason(event.target.value)} className="mt-2 min-h-10 w-full rounded-[9px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[12px] text-[var(--color-text)]">
-      {REPORT_REASONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-    </select>
+    <Select id="question-report-reason" label="Reason" value={reason} options={REPORT_REASONS.map(([value, label]) => ({ value, label }))} onChange={setReason} className="max-w-none" />
     <label htmlFor="question-report-details" className="mt-3 block text-[11px] font-semibold text-[var(--color-text)]">Details <span className="font-normal text-[var(--color-text-muted)]">(optional)</span></label>
     <textarea id="question-report-details" value={details} maxLength={1000} onChange={event => setDetails(event.target.value)} className="mt-2 min-h-20 w-full rounded-[9px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-[12px] text-[var(--color-text)]" />
     {report.isError && <p role="alert" className="mt-2 text-[12px] text-[var(--color-danger)]">{report.error?.response?.data?.message || 'The report could not be submitted.'}</p>}
@@ -75,12 +75,10 @@ export default function QuestionDetail() {
   const { hash } = useLocation()
   const { loggedIn, signIn } = useAuth()
   const question = retainRetryView(useQuestion(id))
-  const answer = useQuestionAnswer(id)
   const follow = useQuestionFollow(id)
   const upvote = useQuestionUpvote('hot')
-  const [text, setText] = useState('')
+  const [responseOpen, setResponseOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
-  const answerRef = useRef(null)
 
   useEffect(() => {
     if (hash !== '#response-posts-title' || !question.data?.responsePosts.length) return undefined
@@ -99,7 +97,6 @@ export default function QuestionDetail() {
   if (question.isError && isMissingResourceError(question.error)) return <MissingResourceState eyebrow="Question unavailable" title="This question is no longer available" detail="It may have been removed or the link may be incorrect. Explore current reader questions instead." recoveryTo="/explore/questions" recoveryLabel="Explore questions" />
   if (question.isError) return <PageFrame><div><p role="alert" className="text-[13px] text-[var(--color-danger)]">This question could not be loaded.</p><Button variant="secondary" className="mt-4" onClick={() => question.refetch()} aria-busy={question.isFetching} disabled={question.isFetching}>Try again</Button></div></PageFrame>
   const item = question.data
-  const submitAnswer = event => { event.preventDefault(); answer.mutate({ questionId: id, text }, { onSuccess: () => { setText(''); answerRef.current?.focus() } }) }
   return <PageFrame>
     <div>
       <article>
@@ -108,7 +105,7 @@ export default function QuestionDetail() {
         {item.context && <p className="mt-4 max-w-[700px] text-[15px] leading-7 text-[var(--color-text-secondary)]">{item.context}</p>}
         <div className="mt-4 flex flex-wrap gap-x-2">{item.tags.map(tag => <Link key={tag} to={`/search?${new URLSearchParams({ q: tag.trim(), type: 'questions' })}`} aria-label={`Questions about ${tag}`} className="inline-flex min-h-11 max-w-full items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] [&>span]:max-w-full [&>span]:break-words [&>span]:whitespace-normal"><Tag label={`#${tag}`} /></Link>)}</div>
         <div className="mt-6 flex flex-wrap items-center gap-2">
-          <button data-button-style="action" data-button-boundary="true" type="button" onClick={() => loggedIn ? upvote.mutate({ questionId: id, isUpvoted: !item.isUpvoted }) : signIn()} disabled={upvote.isPending} aria-label={`${item.isUpvoted ? 'Remove upvote from' : 'Upvote'} question`} aria-pressed={item.isUpvoted} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[var(--color-border)] px-4 text-[12px] font-semibold text-[var(--color-text)]" aria-busy={upvote.isPending}><span data-button-icon aria-hidden="true">▲</span> {item.upvotesCount}</button>
+          <button data-button-style="action" data-button-boundary="true" type="button" onClick={() => loggedIn ? upvote.mutate({ questionId: id, isUpvoted: !item.isUpvoted }) : signIn()} disabled={upvote.isPending} aria-label={`${item.isUpvoted ? 'Remove upvote from' : 'Upvote'} question`} aria-pressed={item.isUpvoted} className="button-target inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-border)] px-4 text-[12px] font-semibold text-[var(--color-text)]" aria-busy={upvote.isPending}><span data-button-icon aria-hidden="true">▲</span> {item.upvotesCount}</button>
           <Button variant="secondary" onClick={() => loggedIn ? follow.mutate({ questionId: id, isFollowing: !item.isFollowing }) : signIn()} disabled={follow.isPending} aria-busy={follow.isPending}>{item.isFollowing ? 'Following question' : 'Follow question'}</Button>
           <Button variant="ghost" aria-haspopup="dialog" onClick={() => loggedIn ? setReportOpen(true) : signIn()}>{reportTitle('question')}</Button>
         </div>
@@ -117,9 +114,10 @@ export default function QuestionDetail() {
       <section className="mt-12 max-w-[760px]" aria-labelledby="answers-title">
         <div className="flex items-baseline justify-between gap-4"><h2 id="answers-title" className="text-[20px] font-bold text-[var(--color-text)]">Answers ({item.answers.length})</h2><span className="text-[12px] text-[var(--color-text-muted)]">{item.followersCount} following</span></div>
         {item.answers.length ? <div className="mt-4">{item.answers.map(answerItem => <Answer key={answerItem.id} answer={answerItem} questionId={id} />)}</div> : <p className="mt-4 text-[13px] text-[var(--color-text-muted)]">No short answers yet. Add useful context for the writers who find this request.</p>}
-        {loggedIn ? <form onSubmit={submitAnswer} className="mt-6 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-4"><label htmlFor="question-answer" className="block text-[12px] font-semibold text-[var(--color-text)]">Add an answer</label><textarea ref={answerRef} id="question-answer" value={text} minLength={10} maxLength={1000} required onChange={event => setText(event.target.value)} className="mt-2 min-h-28 w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-[13px] text-[var(--color-text)]" aria-describedby="question-answer-help" /><p id="question-answer-help" className="mt-1 text-right text-[11px] text-[var(--color-text-muted)]">{text.length}/1,000 characters</p>{answer.isError && <p role="alert" className="mt-2 text-[12px] text-[var(--color-danger)]">{answer.error?.response?.data?.message || 'The answer could not be posted.'}</p>}<Button type="submit" className="mt-3" disabled={text.trim().length < 10 || answer.isPending} aria-busy={answer.isPending}>{'Post answer'}</Button></form> : <p className="mt-6 text-[13px] text-[var(--color-text-secondary)]"><button type="button" onClick={signIn} className="font-semibold text-[var(--color-accent)]">Sign in</button> to add an answer.</p>}
+        <Button className="mt-6" onClick={() => loggedIn ? setResponseOpen(true) : signIn()}>Add an answer</Button>
       </section>
-      {item.responsePosts.length > 0 && <section className="mt-12 max-w-[760px]" aria-labelledby="response-posts-title"><h2 id="response-posts-title" tabIndex={-1} className="scroll-mt-6 outline-none text-[20px] font-bold text-[var(--color-text)]">Published responses</h2><div className="mt-4 space-y-2">{item.responsePosts.map(post => <Link key={post._id} to={`/post/${post._id}`} className="block rounded-[10px] border border-[var(--color-border)] p-4 text-[13px] font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">{post.title}</Link>)}</div></section>}
+      {item.responsePosts.length > 0 && <section className="mt-12 max-w-[760px]" aria-labelledby="response-posts-title"><h2 id="response-posts-title" tabIndex={-1} className="scroll-mt-6 outline-none text-[20px] font-bold text-[var(--color-text)]">Published responses</h2><div className="mt-4 space-y-3">{item.responsePosts.map(post => post.format === 'short' ? <ShortCard key={post.id || post._id} post={{ ...post, id: post.id || post._id, image: post.image || post.coverImage, author: post.author }} /> : <QuestionResponseCard key={post.id || post._id} post={post} />)}</div></section>}
+      {responseOpen && <QuestionResponseModal questionId={id} onClose={() => setResponseOpen(false)} />}
     </div>
   </PageFrame>
 }
