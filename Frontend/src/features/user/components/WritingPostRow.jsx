@@ -9,7 +9,7 @@ export default function WritingPostRow({ post, manage = false }) {
   return <div className="flex items-start gap-4 py-7 border-b border-[var(--color-border)] sm:gap-5 sm:py-8">
     {post.format === 'short' ? <div className="min-w-0 flex-1"><WritingStudioShortCard post={post} /></div> : <>
       <Link to={`/post/${id}`} aria-label={`Read ${post.title}`} className="shrink-0 rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">
-        {post.coverImage ? <img src={post.coverImage} alt="" className="h-16 w-20 rounded-[10px] object-cover bg-[var(--color-bg-alt)] sm:h-20 sm:w-28" /> : <div className="h-16 w-20 rounded-[10px] bg-[var(--color-bg-alt)] sm:h-20 sm:w-28" />}
+        {post.coverImage ? <img src={post.coverImage} alt="" className="aspect-[5/4] w-20 rounded-[10px] object-cover bg-[var(--color-bg-alt)] sm:w-28" /> : <div className="aspect-[5/4] w-20 rounded-[10px] bg-[var(--color-bg-alt)] sm:w-28" />}
       </Link>
       <div className="min-w-0 flex-1">
         <Link to={`/post/${id}`} className="block text-[16px] font-semibold leading-[1.4] text-[var(--color-text)] [overflow-wrap:anywhere] hover:text-[var(--color-accent)] sm:text-[18px]">{post.title}</Link>

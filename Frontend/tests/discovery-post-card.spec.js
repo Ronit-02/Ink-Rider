@@ -100,7 +100,7 @@ for (const width of [320, 390, 1280]) {
         await clickArea(target())
         await expect(page).toHaveURL('/author/leila-noor')
       }
-      for (const label of ['8 September 2026', post.readTime]) {
+      for (const label of width < 540 ? ['8 Sept 26', '1 min'] : ['8 September 2026', post.readTime]) {
         await page.goto(origin)
         const metadata = card.getByText(label, { exact: true })
         await expect(metadata).toBeVisible()
@@ -119,7 +119,7 @@ for (const width of [320, 390, 1280]) {
       await searchRequest
       await expect(page).toHaveURL(/\/search\?q=everyday%20curiosity$/)
       for (const target of [
-        () => card.getByText(post.excerpt, { exact: true }),
+        ...(width >= 540 ? [() => card.getByText(post.excerpt, { exact: true })] : []),
         () => card.getByRole('heading', { name: post.title }),
         ...(image ? [() => card.getByRole('link', { name: `Read ${post.title}`, exact: true })] : []),
       ]) {
@@ -142,6 +142,63 @@ for (const width of [320, 390, 1280]) {
     })
   }
 }
+
+test('image-bearing list cards switch to a compact side cover at 540px', async ({ page }) => {
+  const responsivePost = {
+    ...post,
+    title: 'The Case for Slower Digital Mornings and the Many Small Changes That Make Reading Better Every Day',
+    excerpt: 'A practical guide to making room for curiosity and thoughtful reading, with enough detail to check that the description is hidden only on smaller screens.',
+  }
+  await mockApi(page, { signedIn: false, article: responsivePost })
+  for (const width of [320, 390, 539, 540, 600, 639, 640, 768, 900, 1024]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/search?q=mornings')
+    const card = page.getByRole('article').first()
+    const heading = card.getByRole('heading', { name: responsivePost.title })
+    const cover = card.getByRole('link', { name: `Read ${responsivePost.title}`, exact: true })
+    const author = card.getByRole('link', { name: 'View Leila Noor\'s profile' })
+    const date = card.getByText('8 September 2026', { exact: true })
+    const compactDate = card.getByText('8 Sept 26', { exact: true })
+    const compactReadTime = card.getByText('1 min', { exact: true })
+    const description = card.getByText(responsivePost.excerpt, { exact: true })
+    await expect(heading).toBeVisible()
+    const cardBox = await card.boundingBox()
+    const headingBox = await heading.boundingBox()
+    const coverBox = await cover.boundingBox()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width < 540) {
+      const authorBox = await author.boundingBox()
+      const authorRowBox = await author.locator('..').locator('..').boundingBox()
+      const dateBox = await compactDate.boundingBox()
+      const readTimeBox = await compactReadTime.boundingBox()
+      await expect(date).toBeHidden()
+      await expect(description).toBeHidden()
+      await expect(author.locator('span').last()).toHaveCSS('color', await compactDate.evaluate(element => getComputedStyle(element).color))
+      expect(coverBox.y + coverBox.height).toBeLessThan(authorBox.y)
+      expect(dateBox.x).toBeGreaterThan(authorBox.x + authorBox.width)
+      expect(dateBox.x - (authorBox.x + authorBox.width)).toBeLessThan(24)
+      expect(await compactDate.locator('..').locator('span').allTextContents()).toEqual(['·', '8 Sept 26', '·', '1 min'])
+      expect(Math.abs(dateBox.y - authorBox.y)).toBeLessThan(10)
+      expect(readTimeBox.x).toBeGreaterThan(dateBox.x + dateBox.width)
+      expect(dateBox.y + dateBox.height).toBeLessThan(headingBox.y)
+      expect(headingBox.y - (authorRowBox.y + authorRowBox.height)).toBeLessThan(12)
+      expect(headingBox.y - (authorBox.y + authorBox.height)).toBeLessThan(20)
+      const menuBox = await card.getByRole('button', { name: `More options for ${responsivePost.title}` }).boundingBox()
+      expect(menuBox.height).toBeGreaterThanOrEqual(44)
+      expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(headingBox.y)
+      expect(coverBox.width).toBeGreaterThan(cardBox.width * 0.9)
+      expect(coverBox.width / coverBox.height).toBeLessThan(2.1)
+      const titleLines = await heading.locator('span').first().evaluate(element => element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight))
+      expect(titleLines).toBeLessThanOrEqual(2.05)
+    } else {
+      await expect(date).toBeVisible()
+      await expect(description).toBeVisible()
+      expect(coverBox.x).toBeGreaterThan(headingBox.x + headingBox.width)
+      expect(coverBox.width).toBeLessThanOrEqual(width < 1024 ? 201 : 241)
+      expect(coverBox.height).toBe(140)
+    }
+  }
+})
 
 test('grid author links and remaining card area keep distinct destinations', async ({ page }) => {
   await mockApi(page)

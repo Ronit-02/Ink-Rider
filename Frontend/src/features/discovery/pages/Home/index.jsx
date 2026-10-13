@@ -41,6 +41,22 @@ export default function HomePage() {
   const selectedFeed = FEEDS.find(item => item.id === mode) || FEEDS[1]
   const recordedRequests = useRef(new Set())
   const feedSentinelRef = useRef(null)
+  const feedTabsRef = useRef(null)
+  const [hasMoreFeedTabs, setHasMoreFeedTabs] = useState(false)
+  useEffect(() => {
+    const tabs = feedTabsRef.current
+    if (!tabs) return undefined
+    const updateOverflow = () => setHasMoreFeedTabs(tabs.scrollLeft + tabs.clientWidth < tabs.scrollWidth - 2)
+    const frame = requestAnimationFrame(updateOverflow)
+    const observer = new ResizeObserver(updateOverflow)
+    observer.observe(tabs)
+    window.addEventListener('resize', updateOverflow)
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      window.removeEventListener('resize', updateOverflow)
+    }
+  }, [loggedIn])
 
   const setFeedMode = nextMode => {
     const next = new URLSearchParams(params)
@@ -118,15 +134,21 @@ export default function HomePage() {
         </p>
       </header>
 
-      <div role="tablist" aria-label="Discovery feeds" className="-mx-1 mb-8 flex max-w-full gap-1 overflow-x-auto border-b border-[var(--color-border)] px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {availableFeeds.map(feedOption => (
-          <button key={feedOption.id} id={`home-feed-tab-${feedOption.id}`} type="button" role="tab" aria-selected={mode === feedOption.id} aria-controls="home-feed-panel" tabIndex={mode === feedOption.id ? 0 : -1} onKeyDown={handleFeedKeyDown} onClick={() => setFeedMode(feedOption.id)}
-            className={`min-h-11 shrink-0 whitespace-nowrap px-1 mr-4 pb-3 text-[13px] font-semibold border-b-2 transition-colors ${mode === feedOption.id
-              ? 'text-[var(--color-text)] border-[var(--color-accent)]'
-              : 'text-[var(--color-text-muted)] border-transparent hover:text-[var(--color-text)]'}`}>
-            {feedOption.label}
-          </button>
-        ))}
+      <div className="relative mb-8">
+        <div ref={feedTabsRef} role="tablist" aria-label="Discovery feeds" onScroll={() => {
+          const tabs = feedTabsRef.current
+          if (tabs) setHasMoreFeedTabs(tabs.scrollLeft + tabs.clientWidth < tabs.scrollWidth - 2)
+        }} className="-mx-1 flex max-w-full gap-1 overflow-x-auto overscroll-x-contain scroll-smooth motion-reduce:scroll-auto snap-x snap-proximity border-b border-[var(--color-border)] px-1 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden">
+          {availableFeeds.map(feedOption => (
+            <button key={feedOption.id} id={`home-feed-tab-${feedOption.id}`} type="button" role="tab" aria-selected={mode === feedOption.id} aria-controls="home-feed-panel" tabIndex={mode === feedOption.id ? 0 : -1} onKeyDown={handleFeedKeyDown} onClick={() => setFeedMode(feedOption.id)}
+              className={`min-h-11 shrink-0 snap-start whitespace-nowrap px-1 mr-4 pb-3 text-[13px] font-semibold border-b-2 transition-colors ${mode === feedOption.id
+                ? 'text-[var(--color-text)] border-[var(--color-accent)]'
+                : 'text-[var(--color-text-muted)] border-transparent hover:text-[var(--color-text)]'}`}>
+              {feedOption.label}
+            </button>
+          ))}
+        </div>
+        {hasMoreFeedTabs && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[var(--color-bg)] to-transparent" />}
       </div>
 
       <section id="home-feed-panel" role="tabpanel" aria-labelledby={`home-feed-tab-${mode}`}>
@@ -144,7 +166,7 @@ export default function HomePage() {
       {posts.length > 0 && <section aria-live="polite" aria-busy={feed.isFetchingNextPage}>
         {posts.map((post, index) => <div key={post.id} className="stream-line" style={{ animationDelay: `${Math.min(index % 8, 5) * 45}ms` }}>
           <DiscoveryPostCard post={post} comfortable onHide={hidePost} />
-          {index === 7 && <HomeSections type="shortReads" posts={posts} />}
+          {index >= 5 && (index - 5) % 8 === 0 && <HomeSections type="shortReads" posts={posts} shortOffset={Math.floor((index - 5) / 8) * 4} />}
           {index === 3 && <HomeSections type="writerPicks" posts={posts.slice(0, index + 1)} />}
           {index === 7 && <HomeSections type="categories" posts={posts.slice(0, index + 1)} />}
           {index === 11 && <HomeSections type="collections" posts={posts.slice(0, index + 1)} />}

@@ -44,7 +44,7 @@ export default function MobileProfileSheet({ onClose }: { onClose: () => void })
     finished.current = true
     onClose()
     if (signInRequested.current) requestAnimationFrame(() => auth.signIn())
-    if (destination.current) navigate(destination.current, { state: destination.current === '/notifications' ? { notificationBackground: location } : destination.current === '/signup' ? { returnTo } : undefined })
+    if (destination.current) navigate(destination.current, { state: destination.current === '/signup' ? { returnTo } : undefined })
   }
 
   const followLink = (event: MouseEvent<HTMLAnchorElement>, path: string) => {
@@ -69,9 +69,7 @@ export default function MobileProfileSheet({ onClose }: { onClose: () => void })
           <button type="button" onClick={() => { signInRequested.current = true; requestClose() }} aria-haspopup="dialog" className="inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--color-border)] px-4 text-[13px] font-semibold">Sign In</button>
         </div>}
         <nav aria-label="Account menu">
-          {auth.loggedIn && [{ path: '/saved', label: 'Library' }, { path: '/writing', label: 'Writing studio' }].map(item => <Link key={item.path} to={item.path} onClick={event => followLink(event, item.path)} className={rowClass}>{item.path === '/saved' ? <BookmarkIcon /> : <PenIcon />}<span className="flex-1">{item.label}</span><span aria-hidden="true">→</span></Link>)}
-          <Link to="/write" onClick={event => followLink(event, '/write')} className={rowClass}><PenIcon /><span className="flex-1">Write</span><span aria-hidden="true">→</span></Link>
-          {auth.loggedIn && <Link to="/notifications" state={{ notificationBackground: location }} aria-haspopup="dialog" onClick={event => followLink(event, '/notifications')} className={rowClass}><span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">♢</span><span className="flex-1">Notifications</span><span aria-hidden="true">→</span></Link>}
+          {auth.loggedIn && [{ path: '/saved', label: 'Library' }, { path: '/studio', label: 'Writing studio' }].map(item => <Link key={item.path} to={item.path} onClick={event => followLink(event, item.path)} className={rowClass}>{item.path === '/saved' ? <BookmarkIcon /> : <PenIcon />}<span className="flex-1">{item.label}</span><span aria-hidden="true">→</span></Link>)}
           <Link to="/membership" onClick={event => followLink(event, '/membership')} className={rowClass}><span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">✦</span><span className="flex-1">Join</span><span aria-hidden="true">→</span></Link>
           <Link to="/settings" onClick={event => followLink(event, '/settings')} className={rowClass}><SettingsIcon /><span className="flex-1">Settings</span><span aria-hidden="true">→</span></Link>
           <button type="button" aria-expanded={helpOpen} aria-controls="profile-sheet-help" onClick={() => setHelpOpen(value => !value)} className={`button-target ${rowClass}`}><span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-current text-[11px]">?</span><span className="flex-1">Help</span><span aria-hidden="true">{helpOpen ? '−' : '+'}</span></button>

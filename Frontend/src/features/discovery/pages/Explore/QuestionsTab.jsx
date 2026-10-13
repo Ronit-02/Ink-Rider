@@ -28,13 +28,13 @@ export function QuestionCard({ question, sort = 'hot' }) {
     : signIn()
 
   return (
-    <article className="relative py-6 border-b border-[var(--color-border)]">
+    <article className="relative py-6 max-md:py-9 border-b border-[var(--color-border)]">
       <div className="mb-5 pr-16">
         <div className="relative z-10 min-w-0 flex-1 [&>div]:gap-2 [&>div>div]:flex-wrap [&_a]:min-w-0 [&_a]:max-w-full [&_a]:after:absolute [&_a]:after:inset-0 [&_a]:after:content-[''] [&_a>span]:min-w-0 [&_a>span]:break-words">
           <AuthorMeta author={question.author} date={question.createdAt} size="sm" stacked />
         </div>
         <button data-button-style="action" data-button-boundary="true" type="button" onClick={toggleVote} disabled={vote.isPending} aria-pressed={question.isUpvoted} aria-label={`${question.isUpvoted ? 'Remove upvote from' : 'Upvote'} question`}
-          className={`absolute right-0 top-6 z-10 min-h-11 min-w-12 px-2 py-2 rounded-[12px] border text-center disabled:opacity-50 ${question.isUpvoted ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)] border-[var(--color-accent)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'}`} aria-busy={vote.isPending}>
+          className={`absolute right-0 top-6 max-md:top-9 z-10 min-h-11 min-w-12 px-2 py-2 rounded-[12px] border text-center disabled:opacity-50 ${question.isUpvoted ? 'bg-[var(--color-accent)] text-[var(--color-text-inverted)] border-[var(--color-accent)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)]'}`} aria-busy={vote.isPending}>
           <span data-button-icon aria-hidden="true" className="block text-[11px]">▲</span><span className="block text-[12px] font-semibold tabular-nums">{question.upvotesCount}</span>
         </button>
       </div>

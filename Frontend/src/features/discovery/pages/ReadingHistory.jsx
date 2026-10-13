@@ -12,7 +12,7 @@ import useReadingHistory from '../hooks/useReadingHistory'
 import { ListSkeleton } from '@/shared/components/ui/Skeleton'
 
 function HistoryRow({ item }) {
-  if (item.format === 'short') return <div className="py-5"><ShortCard post={item} /><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">{item.completed ? 'Completed' : item.progress ? `${item.progress}% read` : 'Opened'}</p></div>
+  if (item.format === 'short') return <div className="py-5"><ShortCard post={item} fluid /><p className="mt-2 text-[11px] text-[var(--color-text-muted)]">{item.completed ? 'Completed' : item.progress ? `${item.progress}% read` : 'Opened'}</p></div>
   return <ReadingHistoryCard item={item} />
 }
 
@@ -47,8 +47,9 @@ export default function ReadingHistoryPage({ embedded = false }) {
     const difference = new Date(right.lastReadAt).getTime() - new Date(left.lastReadAt).getTime()
     return sort === 'oldest' ? -difference : difference
   })
-  const history = filterHistory(query.data?.history || [])
   const continueReading = filterHistory(query.data?.continueReading || [])
+  const continueIds = new Set(continueReading.map(item => item.id))
+  const history = filterHistory(query.data?.history || []).filter(item => !continueIds.has(item.id))
   return <Frame>
     {!embedded && <PageHeader title="Reading history" description="Continue unfinished stories or revisit what you have read." />}
     <div className="mb-8 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -59,8 +60,8 @@ export default function ReadingHistoryPage({ embedded = false }) {
     </div>
     <div id="history-format-tabpanel" role="tabpanel" aria-label={`${format === 'article' ? 'Stories' : 'Shorts'} history`}>
     {query.isPending ? <div role="status" aria-label="Loading reading history"><ListSkeleton count={5} role={undefined} /></div> : query.isError ? <div><p role="alert" className="text-[13px] text-[var(--color-danger)]">Reading history could not be loaded.</p><Button className="mt-4" onClick={() => query.refetch()} aria-busy={query.isFetching} disabled={query.isFetching}>Try again</Button></div> : <>
-      {continueReading.length > 0 && <section className="mb-12"><h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Continue reading</h2>{continueReading.map(item => <HistoryRow key={item.id} item={item} />)}</section>}
-      <section><h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">{sort === 'recent' ? 'Recent history' : 'Reading history'}</h2>{history.map(item => <HistoryRow key={item.id} item={item} />)}{history.length === 0 && <p className="py-12 text-[13px] text-[var(--color-text-muted)]">{status === 'all' ? `${format === 'article' ? 'Stories' : 'Shorts'} you open will appear here.` : 'No reading history matches this status.'}</p>}</section>
+      {continueReading.length > 0 && <section className="mb-12"><h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Continue reading</h2><div className={format === 'short' ? 'card-grid card-grid--short gap-4' : undefined}>{continueReading.map(item => <HistoryRow key={item.id} item={item} />)}</div></section>}
+      <section><h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">{sort === 'recent' ? 'Recent history' : 'Reading history'}</h2><div className={format === 'short' ? 'card-grid card-grid--short gap-4' : undefined}>{history.map(item => <HistoryRow key={item.id} item={item} />)}</div>{history.length === 0 && <p className="py-12 text-[13px] text-[var(--color-text-muted)]">{status === 'all' ? `${format === 'article' ? 'Stories' : 'Shorts'} you open will appear here.` : 'No reading history matches this status.'}</p>}</section>
     </>}
     </div>
   </Frame>

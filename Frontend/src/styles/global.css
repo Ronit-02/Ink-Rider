@@ -210,15 +210,38 @@ select:focus-visible {
   outline: none;
 }
 
-/* Writing fields are intentionally borderless. A left-edge indicator preserves
-   keyboard focus without making prose look like a collection of utility boxes. */
+/* Keep prose clear of the left focus marker. */
 textarea.editor-writing-field {
   padding-left: 0.75rem;
 }
 
+textarea.editor-slash-hint::placeholder { opacity: 0; }
+textarea.editor-slash-hint:focus::placeholder { opacity: 1; }
+
 textarea.outline-none.editor-writing-field:focus-visible {
   outline: none;
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--color-focus) 55%, var(--color-bg));
+  box-shadow: -2px 0 0 color-mix(in srgb, var(--color-focus) 55%, var(--color-bg));
+}
+
+@media (hover: hover) {
+  .editor-block-row:hover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2px;
+    height: 1.6em;
+    background: var(--color-border);
+    pointer-events: none;
+  }
+
+  .editor-block-row:hover [data-editor-block-controls] {
+    opacity: 1;
+  }
+
+  .editor-block-row:hover [data-editor-block-controls] button {
+    pointer-events: auto;
+  }
 }
 
 /* The container already changes border on focus. Keep the field-level cue
@@ -272,22 +295,60 @@ textarea.outline-none.editor-writing-field:focus-visible {
 }
 
 .card-grid--short {
-  --card-grid-min-width: 250px;
-  --card-grid-max-width: 250px;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--card-grid-max-width)), var(--card-grid-max-width)));
-  align-items: start;
-  justify-content: start;
+  --card-grid-min-width: 0px;
+  --card-grid-max-width: none;
 }
 
-@media (max-width: 639px) {
-  .card-grid--short {
-    justify-content: center;
+.card-grid--short,
+.home-short-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+}
+
+@media (min-width: 376px) and (max-width: 391px) {
+  .card-grid--short,
+  .home-short-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+@media (max-width: 375px) {
+  .card-grid--short,
+  .home-short-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card-grid--short > *,
+  .home-short-grid > * {
+    max-width: 250px;
+    justify-self: center;
   }
 }
 
 .card-grid--collection {
-  --card-grid-min-width: 360px;
-  --card-grid-max-width: 520px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.card-grid--collection > * {
+  min-width: 0;
+  max-width: none;
+}
+
+@media (min-width: 600px) {
+  .card-grid--collection {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .card-grid--collection {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .card-grid--collection-home {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .card-grid--post {
@@ -296,7 +357,24 @@ textarea.outline-none.editor-writing-field:focus-visible {
 }
 
 .competition-entry-grid {
-  grid-template-columns: repeat(auto-fill, min(100%, var(--card-grid-max-width)));
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.competition-entry-grid > * {
+  min-width: 0;
+  max-width: none;
+}
+
+@media (min-width: 540px) {
+  .competition-entry-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .competition-entry-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 /* ─── Animation utilities ─────────────────────────────────────────────────── */
@@ -423,10 +501,11 @@ textarea.outline-none.editor-writing-field:focus-visible {
 /* ─── Sidebar hide on mobile ─────────────────────────────────────────────── */
 @media (max-width: 767px) {
   .sidebar-desktop { display: none !important; }
-}
-/* Pointer-only block chrome stays quiet; keyboard users can reveal it by focus. */
-@media (min-width: 640px) {
-  [data-editor-block-controls] { opacity: 0; pointer-events: none; }
-  [data-editor-block]:hover [data-editor-block-controls],
-  [data-editor-block-controls]:focus-within { opacity: 1; pointer-events: auto; }
+
+  /* Lists and page sections use bottom borders as separators on wider screens. */
+  :is(#main-content, #mobile-profile-sheet) [class~="border-b"]:not(input):not(textarea):not(nav):not([role="tablist"]):not([class~="border"]),
+  #main-content [class~="divide-y"] > :not(:first-child) {
+    border-bottom-width: 0;
+    border-top-width: 0;
+  }
 }

@@ -1,6 +1,18 @@
 # Article and short component audit
 
+## Narrow feed-card spacing — 2026-10-13
+
+The image-bearing discovery list card shown in the supplied narrow-screen screenshot had excess space around the content. Below 540 px, comfortable feed cards now use 24 px vertical insets instead of 40 px, including the first card. A follow-up centers the author within the menu row and gives the menu wrapper 8 px negative vertical margins, so its 44 px touch target does not make the row appear taller. The title starts 8 px after the compact row and remains below the menu target. This changes only spacing in `DiscoveryPostCard` and `PostCardMenu`; cover ratio, metadata, footer, actions, links, typography, colors, API, and schemas stay as before. Focused lint and production build passed on 2026-10-13. The focused browser test could not start with its API server because MongoDB was unavailable; the frontend-only attempt found no local Playwright Chromium executable. Browser geometry remains unverified.
+
+The author name in that compact row now uses the same muted text token as the date and reading time below 540 px. The link, hover behavior, and wider-screen name color remain unchanged.
+
+## Responsive post-card covers — 2026-10-13
+
+The active article and short card covers now use the existing `ImageBox` with an optional 16:9 aspect ratio wherever cover width changes: DiscoveryPostCard grid/narrow list, ShortCard, and CompetitionEntryCard. FeaturedPostCard uses the same ratio on narrow screens and continues filling its text-defined desktop row. WritingPostRow thumbnails retain their 5:4 shape while scaling from their existing 80 px and 112 px widths. Cards without media remain content-driven; the fixed ShortCard outer height and existing grid tracks are unchanged. No route, API, schema, typography, color, or interaction change was needed. Frontend lint and production build passed. The normal focused browser run could not start because its configured MongoDB service was unavailable; a frontend-only run was blocked from local loopback navigation by the sandbox. Browser geometry remains unverified.
+
 ## Competition entry grid spacing — 2026-10-13
+
+The current responsive Entries layout uses one/two/three full-width tracks below 540 px/from 540 px/from 1024 px. Article cards fill each track; short entries keep their compact ShortCard dimensions and center inside the track. This supersedes the earlier capped-track state documented below. The card cover remains 16:9 and reader voting, links, winner/rank, and unavailable states are preserved. Frontend lint and build passed on 2026-10-13; browser geometry remains unverified.
 
 The competition Entries section used the shared `.card-grid--post` auto-fit tracks. With two entries in a wide frame, those tracks expanded across the frame while each card remained capped at 360 px, leaving a large visual gap. The Entries grid now uses a scoped auto-fill rule with tracks capped at the card width, so the cards sit next to one another and extra room remains after the final card. Entry card layout, type, colors, voting, links, API, and schema are unchanged. Changed `Frontend/src/features/discovery/pages/Explore/CompetitionDetail.jsx`, `Frontend/src/styles/global.css`, and `Frontend/tests/competition-entries-layout.spec.js`. Focused lint, production build, and scoped whitespace check passed. The focused Chromium run could not start because the Playwright Chromium executable is missing locally, so browser geometry remains unverified.
 

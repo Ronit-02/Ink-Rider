@@ -104,12 +104,19 @@ for (const width of [320, 1280]) {
   test(`short depth link is retained in publication at ${width}px`, async ({ page }) => {
     await setup(page, width)
     const { writes } = await fixture(page)
-    await page.goto('/write?draft=short-draft')
-    await page.getByText('Publishing options', { exact: true }).click()
-    await checkDropdown(page, 'Deeper article (optional)', article.title)
+    await page.goto('/studio?draft=short-draft')
     await page.getByRole('button', { name: 'Publish', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'Publish story' })
+    await checkDropdown(page, 'Link a full post (optional)', article.title, dialog)
+    const depth = dialog.getByRole('combobox', { name: 'Link a full post (optional)', exact: true })
+    await depth.click()
+    await dialog.getByRole('option', { name: 'None — leave this short unlinked', exact: true }).click()
+    await expect(depth).toHaveText('None — leave this short unlinked')
+    await depth.click()
+    await dialog.getByRole('option', { name: article.title, exact: true }).click()
+    await dialog.getByRole('button', { name: 'Publish', exact: true }).click()
     await expect.poll(() => writes.find(write => write.path === '/api/post/')?.body).toContain(`name="depthParentId"\r\n\r\n${id}`)
-    await expect(page.getByRole('combobox', { name: 'Deeper article (optional)', exact: true })).toHaveText(article.title)
+    await expect(page.getByRole('combobox', { name: 'Link a full post (optional)', exact: true })).toHaveText(article.title)
   })
 
   test(`Member Hub audience is preserved in the update payload at ${width}px`, async ({ page }) => {

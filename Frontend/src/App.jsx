@@ -46,6 +46,8 @@ export default function App() {
   const notificationsOpen = location.pathname === '/notifications'
   const loggedIn = useSelector(state => Boolean(state.auth.user))
   const background = notificationsOpen && loggedIn ? location.state?.notificationBackground || { pathname: '/', search: '', hash: '' } : location
+  const studioParams = new URLSearchParams(background.search || '')
+  const studioEditorOpen = ['draft', 'edit', 'new', 'question'].some(key => studioParams.has(key))
   return (
     <LoginPromptProvider><Suspense fallback={<RouteLoader />}><Routes location={background}>
       {/* ── Public full-screen routes ── */}
@@ -86,10 +88,11 @@ export default function App() {
         <Route path="/staff"            element={<PrivateRoute message="Sign in to access the staff console."><StaffConsole /></PrivateRoute>} />
 
         {/* ── Account and private routes ── */}
-        <Route path="/write"           element={<WritePage />} />
+        <Route path="/write" element={<Navigate to={`/studio${location.search}${location.hash}`} replace />} />
         <Route path="/profile/edit" element={<PrivateRoute message="Sign in to edit your profile."><EditProfilePage /></PrivateRoute>} />
         <Route path="/profile"         element={<ProfilePage />} />
-        <Route path="/writing" element={<PrivateRoute message="Sign in to manage your writing."><WritingPage /></PrivateRoute>} />
+        <Route path="/writing" element={<Navigate to={`/studio${location.search}${location.hash}`} replace />} />
+        <Route path="/studio" element={studioEditorOpen ? <WritePage /> : <PrivateRoute message="Sign in to manage your writing."><WritingPage /></PrivateRoute>} />
         <Route path="/settings"        element={<SettingsPage />} />
         <Route path="/help"            element={<HelpPage />} />
 

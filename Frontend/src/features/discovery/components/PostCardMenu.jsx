@@ -13,7 +13,7 @@ import { AddToCollectionDialog } from '@/features/collection'
 const InfoIcon = () => <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7v1" /></svg>
 const FlagIcon = () => <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M5 21V3h14l-3 5 3 5H5" /></svg>
 
-export default function PostCardMenu({ post, onHide, variant = 'list' }) {
+export default function PostCardMenu({ post, onHide, variant = 'list', compactMobile = false }) {
   const { loggedIn, signIn } = useAuth()
   const { notify } = useToast()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -43,7 +43,7 @@ export default function PostCardMenu({ post, onHide, variant = 'list' }) {
   }
 
   return <>
-    <div className={`${variant === 'grid' ? 'absolute right-3 top-3 z-20' : 'relative z-20 shrink-0'}`}>
+    <div className={`${variant === 'grid' ? 'absolute right-3 top-3 z-20' : 'relative z-20 shrink-0'} ${compactMobile ? 'max-[540px]:-my-2' : ''}`}>
       <ActionMenuTrigger
         ref={triggerRef}
         type="button"

@@ -4,5 +4,10 @@ import { fetchReadingHistory } from '../api/readingHistory'
 
 export default function useReadingHistory() {
   const { user, isReady } = useSelector(state => state.auth)
-  return useQuery({ queryKey: ['reading-history', user], queryFn: fetchReadingHistory, enabled: isReady && Boolean(user) })
+  return useQuery({
+    queryKey: ['reading-history', user],
+    queryFn: fetchReadingHistory,
+    enabled: isReady && Boolean(user),
+    refetchOnMount: 'always',
+  })
 }

@@ -19,8 +19,8 @@ async function mockApi(page, { member = true } = {}) {
   })
 }
 
-const detailRoutes = ['/search?q=memory', `/post/${postId}`, '/author/maya-sen', '/collections/missing', '/shorts/series/missing', '/history', '/membership', '/explore/questions/missing', '/explore/competitions/missing']
-const primaryRoutes = ['/', '/explore/trending', '/explore/questions', '/explore/competitions', '/opportunities', '/author', '/collections', '/saved', '/shorts', '/members', '/notifications', '/staff', '/write', '/profile', '/settings', '/help', '/unknown-page']
+const detailRoutes = ['/search?q=memory', `/post/${postId}`, '/author/maya-sen', '/collections/missing', '/shorts/series/missing', '/history', '/membership', '/explore/questions/missing', '/explore/competitions/missing', '/opportunities']
+const primaryRoutes = ['/', '/explore/trending', '/explore/questions', '/explore/competitions', '/author', '/collections', '/saved', '/shorts', '/members', '/notifications', '/staff', '/studio', '/profile', '/settings', '/help', '/unknown-page']
 
 for (const width of [320, 1280]) {
   test(`only detail and drill-down pages have a consistent Back control at ${width}px`, async ({ page }) => {
@@ -73,7 +73,7 @@ for (const width of [320, 1280]) {
   })
 }
 
-for (const [path, parent] of [[`/post/${postId}`, '/'], ['/author/maya-sen', '/'], ['/explore/questions/missing', '/explore/questions'], ['/explore/competitions/missing', '/explore/competitions'], ['/collections/missing', '/collections'], ['/shorts/series/missing', '/shorts']]) {
+for (const [path, parent] of [[`/post/${postId}`, '/'], ['/author/maya-sen', '/'], ['/explore/questions/missing', '/explore/questions'], ['/explore/competitions/missing', '/explore/competitions'], ['/collections/missing', '/collections'], ['/shorts/series/missing', '/shorts'], ['/opportunities', '/profile']]) {
   test(`direct entry ${path} falls back to ${parent}`, async ({ page }) => {
     await mockApi(page)
     await page.goto(path)

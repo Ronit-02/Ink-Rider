@@ -21,6 +21,7 @@ test('Home deferred collections expose a retryable failure state', async ({ page
     const requestUrl = new URL(route.request().url())
     if (requestUrl.pathname === '/api/auth/refresh-token') return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
     if (requestUrl.pathname === '/api/post/feed') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: posts, meta: { nextCursor: null } }) })
+    if (requestUrl.pathname === '/api/post/shorts') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
     if (requestUrl.pathname === '/api/collection') return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'Unavailable' }) })
     return route.abort('blockedbyclient')
   })

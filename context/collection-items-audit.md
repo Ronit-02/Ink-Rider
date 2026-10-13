@@ -1,5 +1,15 @@
 # Picked stories in collections — 2026-10-12
 
+## Existing collection membership in Save dialog — 2026-10-14
+
+The shared Save story dialog now requests the optional current `postId` when loading the signed-in user's owned collections. Collection choices return `containsPost`, and the existing visibility badge is extended with “Already added” when the story or short already belongs to that collection. Articles and shorts use the same behavior. The existing duplicate-safe backend append, creation flow, modal structure, Select presentation, routes, schemas, and stored data remain unchanged.
+
+The Add to a collection checkbox remains enabled for these posts. Once an already-containing collection is selected, the final action is disabled and reads “Already in collection,” preventing a redundant submission while leaving other collections available.
+
+Changed `Backend/controllers/collection.controller.js`, `Frontend/src/features/collection/api/collections.js`, `Frontend/src/features/collection/hooks/useCollections.js`, `Frontend/src/features/collection/components/AddToCollectionDialog.tsx`, and `Frontend/tests/add-to-collection.spec.js`. No optional redesign or approval-dependent change was included.
+
+Verification on 2026-10-14: frontend lint and production build passed; the focused Playwright spec was blocked before test execution because its configured backend could not connect to MongoDB in the local environment.
+
 ## Save entry point — 2026-10-13
 
 The current story entry point is Save. Discovery post/short previews, article detail, and short readers open the shared dialog, with Save in your Library selected by default and Add to a collection optionally selected alone or together. The collection picker, creation form, validation, visibility badges, pagination, retry, owner scope, and duplicate-safe append remain the same. The dialog uses the existing bookmark mutation for Library state. Direct Add to collection controls were removed from these story surfaces. Collection detail now exposes direct Add to collection for owners beside Save order, using the existing eligible published-story read and append mutation. Library has Saved, History, and Collections top tabs, with owned and saved collections listed separately. No backend route, schema, migration, or stored-data change was needed. The older entry-point description below records the superseded 2026-10-12 flow.

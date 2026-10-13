@@ -41,6 +41,7 @@ export default function useDialogFocus(onClose, initialFocusRef, enabled = true)
 
     const handleKeyDown = event => {
       if (event.key === 'Escape') {
+        if (event.target instanceof HTMLElement && event.target.matches('[role="combobox"][aria-expanded="true"]')) return
         event.preventDefault()
         onCloseRef.current()
         return

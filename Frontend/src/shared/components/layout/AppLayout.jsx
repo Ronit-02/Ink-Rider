@@ -13,7 +13,7 @@ import { useServerUnavailable } from '@/app/serverAvailability'
 const BACK_ROUTES = [
   '/post/:id', '/author/:handle', '/explore/questions/:id',
   '/explore/competitions/:id', '/collections/:id', '/shorts/series/:id',
-  '/search', '/membership', '/history', '/profile/edit',
+  '/search', '/membership', '/history', '/profile/edit', '/opportunities',
 ]
 
 export default function AppLayout() {

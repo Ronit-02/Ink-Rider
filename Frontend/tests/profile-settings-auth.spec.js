@@ -59,13 +59,13 @@ for (const width of [320, 390, 1280]) {
     await expect(page.locator('html')).toHaveClass(/dark/)
     await page.reload()
     await expect(page.locator('html')).toHaveClass(/dark/)
-    await page.goto('/write?draft=private-draft')
-    await expect(page).toHaveURL(/\/write\?draft=/)
+    await page.goto('/studio?draft=private-draft')
+    await expect(page).toHaveURL(/\/studio\?draft=/)
     await expect(main.getByText('Sign in to access your saved story.')).toBeVisible()
     expect(privateReads).toEqual([])
     await main.getByRole('button', { name: 'Sign In', exact: true }).click()
     await expect(page.getByRole('dialog', { name: 'Sign in to Ink Rider' })).toBeVisible()
-    await expect(page).toHaveURL(/\/write\?draft=private-draft$/)
+    await expect(page).toHaveURL(/\/studio\?draft=private-draft$/)
   })
 }
 

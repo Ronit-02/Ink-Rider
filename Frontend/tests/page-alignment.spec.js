@@ -23,12 +23,12 @@ const surfaces = [
   ['search-questions', '/search?q=memory&type=questions', 'Search results'],
   ['post', `/post/${id}`, post.title], ['author', '/author/maya-sen', writer.displayName],
   ['collections', '/collections', collection.title], ['collection', `/collections/${id}`, collection.title],
-  ['saved', '/saved', 'Library'], ['writing', '/writing', 'Writing studio'], ['shorts', '/shorts', 'Short reads'],
+  ['saved', '/saved', 'Library'], ['writing', '/studio', 'Writing studio'], ['shorts', '/shorts', 'Short reads'],
   ['series', `/shorts/series/${id}`, series.title], ['history', '/history', 'Reading history'],
   ['opportunities', '/opportunities', 'Answer what readers are asking for'],
   ['members', '/members', 'Closer to the creative process'],
   ['membership', '/membership', 'Go deeper with the writers you love'],
-  ['write', '/write', null], ['profile', '/profile', writer.displayName], ['profile-edit', '/profile/edit', 'Edit profile'],
+  ['profile', '/profile', writer.displayName], ['profile-edit', '/profile/edit', 'Edit profile'],
   ['settings', '/settings', null], ['help', '/help', null], ['staff', '/staff', 'Staff console'],
 ]
 
@@ -166,7 +166,7 @@ for (const width of [320, 1280]) {
     await mockApi(page, { guest: true })
     const output = path.resolve('node_modules/.cache/page-alignment', `${width}-other`)
     await fs.mkdir(output, { recursive: true })
-    for (const url of ['/saved', '/history', '/opportunities', '/members', '/profile', '/notifications', '/staff', '/onboarding', '/write?draft=private', '/author', '/unknown-page', '/login', '/signup']) {
+    for (const url of ['/saved', '/history', '/opportunities', '/members', '/profile', '/notifications', '/staff', '/onboarding', '/studio?draft=private', '/author', '/unknown-page', '/login', '/signup']) {
       await page.goto(url)
       await expect(page.getByRole('main')).toHaveCount(1)
       await expect(page.getByRole('main')).toBeVisible()
@@ -205,7 +205,7 @@ for (const width of [320, 1280]) {
 test('route inventory requires an explicit alignment audit for new pages', async () => {
   const app = await fs.readFile(path.resolve('src/App.jsx'), 'utf8')
   const routes = [...new Set([...app.matchAll(/<Route\s+path="([^"]+)"/g)].map(match => match[1]))].sort()
-  expect(routes).toEqual(['/', '/login', '/signup', '/onboarding', '/explore', 'trending', 'questions', 'competitions', '/explore/competitions/:id', '/explore/questions/:id', '/opportunities', '/search', '/post/:id', '/author', '/author/:handle', '/collections', '/saved', '/collections/:id', '/shorts', '/shorts/series/:id', '/history', '/members', '/notifications', '/membership', '/staff', '/write', '/writing', '/profile', '/profile/edit', '/settings', '/help', '*'].sort())
+  expect(routes).toEqual(['/', '/login', '/signup', '/onboarding', '/explore', 'trending', 'questions', 'competitions', '/explore/competitions/:id', '/explore/questions/:id', '/opportunities', '/search', '/post/:id', '/author', '/author/:handle', '/collections', '/saved', '/collections/:id', '/shorts', '/shorts/series/:id', '/history', '/members', '/notifications', '/membership', '/staff', '/write', '/writing', '/studio', '/profile', '/profile/edit', '/settings', '/help', '*'].sort())
 })
 
 for (const width of [320, 1280]) {
@@ -219,7 +219,7 @@ for (const width of [320, 1280]) {
     await fs.mkdir(output, { recursive: true })
     for (const [url, role, labels] of [
       ['/staff', 'tab', ['Competitions', 'Vote review']],
-      ['/writing', 'tab', ['Posts', 'Drafts', 'Analytics']],
+      ['/studio', 'tab', ['Posts', 'Drafts', 'Analytics']],
       ['/saved', 'tab', ['Collections', 'History']],
       ['/members', 'button', ['Early access', 'Workshops', 'Creator studio']],
     ]) {

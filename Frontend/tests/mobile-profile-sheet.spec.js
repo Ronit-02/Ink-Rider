@@ -57,7 +57,7 @@ for (const size of [{ width: 320, height: 480 }, { width: 360, height: 640 }, { 
   })
 }
 
-test('login retains Write in Account while Home retains Collections; sign out keeps public writing available', async ({ page }) => {
+test('login shows Writing studio in Account while Home retains Collections', async ({ page }) => {
   await mockApi(page)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/shorts')
@@ -74,7 +74,8 @@ test('login retains Write in Account while Home retains Collections; sign out ke
   await expect(nav.getByRole('link', { name: 'Write' })).toHaveCount(0)
   await nav.getByRole('button', { name: 'Account' }).click()
   await expect(dialog.getByRole('link', { name: /Profile/ })).toBeVisible()
-  await expect(dialog.getByRole('link', { name: 'Write', exact: true })).toBeVisible()
+  await expect(dialog.getByRole('link', { name: 'Writing studio', exact: true })).toHaveAttribute('href', '/studio')
+  await expect(dialog.getByRole('link', { name: 'Write', exact: true })).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: 'Sign In' })).toHaveCount(0)
   await expect(dialog.getByRole('link', { name: 'Sign Up' })).toHaveCount(0)
   await dialog.getByRole('button', { name: 'Sign Out', exact: true }).click()
@@ -84,7 +85,7 @@ test('login retains Write in Account while Home retains Collections; sign out ke
 })
 
 for (const width of [320, 390, 767]) {
-  test(`Home Collections and profile Write navigate at ${width}px`, async ({ page }) => {
+  test(`Home Collections and profile Writing studio navigate at ${width}px`, async ({ page }) => {
     await mockApi(page, true)
     await page.setViewportSize({ width, height: 480 })
     await page.goto('/')
@@ -97,15 +98,15 @@ for (const width of [320, 390, 767]) {
     }
     await nav.getByRole('button', { name: 'Account', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Account', exact: true })
-    const write = dialog.getByRole('link', { name: 'Write', exact: true })
-    await expect(write).toHaveAttribute('href', '/write')
-    await expect(write).toBeVisible()
-    expect((await write.boundingBox()).height).toBeGreaterThanOrEqual(44)
+    const studio = dialog.getByRole('link', { name: 'Writing studio', exact: true })
+    await expect(studio).toHaveAttribute('href', '/studio')
+    await expect(studio).toBeVisible()
+    expect((await studio.boundingBox()).height).toBeGreaterThanOrEqual(44)
     if (width === 390) {
       await dialog.locator('[data-profile-sheet]').screenshot({ path: 'test-results/profile-write-menu.png' })
     }
-    await write.click()
-    await expect(page).toHaveURL(/\/write$/)
+    await studio.click()
+    await expect(page).toHaveURL(/\/studio$/)
     await expect(dialog).toHaveCount(0)
     await page.goto('/')
     await nav.getByRole('link', { name: 'Collections', exact: true }).click()
@@ -116,7 +117,7 @@ for (const width of [320, 390, 767]) {
     await page.setViewportSize({ width: 1280, height: 800 })
     await expect(nav).toBeHidden()
     const desktop = page.getByRole('navigation', { name: 'Desktop primary navigation' })
-    await expect(desktop.getByRole('link', { name: 'Write', exact: true })).toBeVisible()
+    await expect(desktop.getByRole('link', { name: 'Writing studio', exact: true })).toBeVisible()
     await expect(desktop.getByRole('link', { name: 'Collections', exact: true })).toBeVisible()
   })
 }
@@ -135,7 +136,7 @@ test('sheet exits on desktop resize and stays usable with reduced motion', async
   await expect(trigger).toBeHidden()
   const sidebar = page.getByRole('navigation', { name: 'Desktop primary navigation' })
   await expect(sidebar.getByRole('link', { name: 'Settings' })).toBeVisible()
-  await expect(sidebar.getByRole('link', { name: 'Write' })).toBeVisible()
+  await expect(sidebar.getByRole('link', { name: 'Writing studio' })).toBeVisible()
   await page.setViewportSize({ width: 390, height: 640 })
   await trigger.click()
   await dialog.getByRole('button', { name: 'Close account menu' }).click()

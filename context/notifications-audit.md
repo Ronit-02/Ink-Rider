@@ -2,6 +2,14 @@
 
 Audited: 2026-10-09.
 
+## Mobile navbar entry — 2026-10-13
+
+The signed-in mobile notification trigger now sits immediately right of navbar search and carries the same unread count, route background state, and dialog label as the desktop trigger. Its Account-sheet row was removed. The existing centered mobile inbox modal, desktop anchored popover, search interaction, page layout, themes, notification API, and schemas remain unchanged. Source changes are limited to `Navbar.jsx` and `MobileProfileSheet.tsx`; the mobile browser assertion in `notifications-modal.spec.js` now checks placement and opener focus. Frontend README, UI rules/registry, and progress tracker describe the new entry. Frontend lint and production build passed on 2026-10-13. The focused browser check could not run: the configured backend could not connect to MongoDB, and a frontend-only run found no local Playwright Chromium executable. Physical placement and focus behavior remain browser-unverified. No optional refactor or approval decision remains.
+
+## Navbar trigger spacing — 2026-10-13
+
+The desktop navbar notification trigger's visible square is now 36 px instead of 44 px, reducing space around its glyph. A 4 px invisible extension on each side retains the 44 px pointer target. Its unread badge, accessible label, route, and anchored inbox behavior are unchanged. This frontend-only change is confined to `Frontend/src/shared/components/layout/Navbar.jsx`.
+
 ## Inbox deletion — 2026-10-13
 
 The existing inbox row now includes a Delete button for each notification. A recipient-scoped `DELETE /api/v1/notifications/:notificationId` endpoint removes only the signed-in recipient's record and returns 204; invalid IDs return 400 and missing or other-recipient records return 404. The frontend waits for success before refreshing the inbox and unread badge, and retains the row with error feedback on failure. No schema or delivery trigger changes were needed. Existing desktop popover/mobile modal placement, typography, colors, row links, read actions, and pagination remain in place.

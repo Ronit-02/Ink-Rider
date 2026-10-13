@@ -4,7 +4,7 @@ const post = { id: '507f1f77bcf86cd799439021', title: 'A focused idea', excerpt:
 const collection = { id: '507f1f77bcf86cd799439030', title: 'Useful ideas', visibility: 'private', isOwner: true, postsCount: 0, posts: [] }
 const visibleCollections = [collection, { ...collection, id: '507f1f77bcf86cd799439041', title: 'Public notes', visibility: 'public' }, { ...collection, id: '507f1f77bcf86cd799439042', title: 'Unlisted reading', visibility: 'unlisted' }]
 
-async function mockApi(page, { guest = false, short = false } = {}) {
+async function mockApi(page, { guest = false, short = false, alreadyAdded = false } = {}) {
   const state = { writes: [], bookmarks: [], creations: [], reads: 0, empty: false, failAdd: false, failCreate: false, failList: false, hold: null, pending: null, holdBookmark: false, pendingBookmark: null, holdCreate: false, pendingCreate: null }
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const url = new URL(route.request().url())
@@ -28,7 +28,8 @@ async function mockApi(page, { guest = false, short = false } = {}) {
     if (path === '/api/collection') {
       state.reads += 1
       expect(url.searchParams.get('mine')).toBe('true')
-      return route.fulfill(state.failList ? { status: 400, json: { message: 'Read failed' } } : { json: { data: state.empty ? [] : url.searchParams.has('cursor') ? [{ ...collection, id: '507f1f77bcf86cd799439040', title: 'Second page' }] : visibleCollections, meta: { nextCursor: state.empty || url.searchParams.has('cursor') ? null : 'next-page' } } })
+      const firstPage = visibleCollections.map((item, index) => index === 0 && alreadyAdded ? { ...item, containsPost: true } : item)
+      return route.fulfill(state.failList ? { status: 400, json: { message: 'Read failed' } } : { json: { data: state.empty ? [] : url.searchParams.has('cursor') ? [{ ...collection, id: '507f1f77bcf86cd799439040', title: 'Second page' }] : firstPage, meta: { nextCursor: state.empty || url.searchParams.has('cursor') ? null : 'next-page' } } })
     }
     if (path === `/api/post/${post.id}`) return route.fulfill({ json: { postData: { ...post, _id: post.id, format: short ? 'short' : 'article', body: JSON.stringify([{ id: 'text', type: 'text', content: post.excerpt }]) } } })
     if (path === '/api/search') return route.fulfill({ json: { data: { posts: [post], shorts: [{ ...post, format: 'short' }], writers: [] } } })
@@ -37,6 +38,30 @@ async function mockApi(page, { guest = false, short = false } = {}) {
   })
   return state
 }
+
+test('save dialog shows when the story already belongs to a collection', async ({ page }) => {
+  await mockApi(page, { alreadyAdded: true })
+  await page.goto(`/post/${post.id}`)
+  await page.getByRole('button', { name: 'Save this article' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Save story', exact: true })
+  await dialog.getByRole('checkbox', { name: 'Add to a collection' }).check()
+  const choice = dialog.getByRole('combobox', { name: 'Choose one of your collections' })
+  await choice.click()
+  await expect(dialog.getByRole('option', { name: 'Useful ideas Private · Already added', exact: true })).toBeVisible()
+})
+
+test('save dialog disables adding the story again to the selected collection', async ({ page }) => {
+  await mockApi(page, { alreadyAdded: true })
+  await page.goto(`/post/${post.id}`)
+  await page.getByRole('button', { name: 'Save this article' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Save story', exact: true })
+  const addToCollection = dialog.getByRole('checkbox', { name: 'Add to a collection' })
+  await expect(addToCollection).toBeEnabled()
+  await addToCollection.check()
+  await dialog.getByRole('combobox', { name: 'Choose one of your collections' }).click()
+  await dialog.getByRole('option', { name: 'Useful ideas Private · Already added', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: 'Already in collection', exact: true })).toBeDisabled()
+})
 
 for (const width of [320, 1280]) {
   test(`card picks existing and creates a collection with the story at ${width}px`, async ({ page }, testInfo) => {
@@ -194,7 +219,7 @@ for (const surface of ['article', 'short']) {
 test(`${surface} opens the same save picker and restores focus`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 844 })
     const state = await mockApi(page, { short: surface === 'short' })
-    await page.goto(surface === 'writing' ? '/writing' : `/post/${post.id}`)
+    await page.goto(surface === 'writing' ? '/studio' : `/post/${post.id}`)
     const opener = page.getByRole('button', { name: surface === 'short' ? 'Save this short read' : 'Save this article' })
     const trigger = opener
     await trigger.click()

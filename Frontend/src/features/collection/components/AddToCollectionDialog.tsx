@@ -39,7 +39,9 @@ export default function AddToCollectionDialog({ postId, title, onClose, returnFo
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState('public')
-  const collections = useCollectionChoices(!saveMode || addToCollection)
+  const collections = useCollectionChoices(!saveMode || addToCollection, postId)
+  const selectedCollection = collections.data?.pages.flatMap(page => page.data).find(collection => collection.id === selectedCollectionId)
+  const selectedCollectionAlreadyContainsPost = Boolean(selectedCollection?.containsPost)
   const add = useAddCollectionPost()
   const bookmark = useBookmarkPost(postId)
   const create = useCreateCollection({ successMessage: 'Story added to your new collection.' })
@@ -83,12 +85,14 @@ export default function AddToCollectionDialog({ postId, title, onClose, returnFo
               : <Select id={`${id}-collection`} label="Choose one of your collections" value={selectedCollectionId}
                 onChange={value => { setSelectedCollectionId(value); add.reset() }} disabled={pending}
                 options={collections.data?.pages.flatMap(page => page.data).map(collection => ({
-                  value: collection.id, label: collection.title, badge: `${collection.visibility[0].toUpperCase()}${collection.visibility.slice(1)}`,
+                  value: collection.id, label: collection.title, badge: collection.containsPost
+                    ? `${collection.visibility[0].toUpperCase()}${collection.visibility.slice(1)} · Already added`
+                    : `${collection.visibility[0].toUpperCase()}${collection.visibility.slice(1)}`,
                 })) || []} className="max-w-none" />}
             {collections.hasNextPage && <Button variant="secondary" className="mt-3" disabled={collections.isFetchingNextPage || pending} aria-busy={collections.isFetchingNextPage} onClick={() => collections.fetchNextPage()}>Load more collections</Button>}
           </>}
           {add.isError && <p role="alert" className="mt-3 text-[13px] text-[var(--color-danger)]">{errorMessage(add.error, 'The story could not be added. Try again.')}</p>}
-          <div className="mt-5 flex flex-wrap justify-end gap-2"><Button variant="secondary" disabled={pending} onClick={() => { add.reset(); setCreating(true) }}>Create new collection</Button><Button disabled={pending || !selectedCollectionId} aria-busy={pending} onClick={() => addTo(selectedCollectionId)}>{saveMode ? 'Save story' : 'Add to collection'}</Button></div>
+          <div className="mt-5 flex flex-wrap justify-end gap-2"><Button variant="secondary" disabled={pending} onClick={() => { add.reset(); setCreating(true) }}>Create new collection</Button><Button disabled={pending || !selectedCollectionId || selectedCollectionAlreadyContainsPost} aria-busy={pending} onClick={() => addTo(selectedCollectionId)}>{selectedCollectionAlreadyContainsPost ? 'Already in collection' : saveMode ? 'Save story' : 'Add to collection'}</Button></div>
         </>}
         {saveMode && !addToCollection && <div className="mt-5 flex justify-end"><Button disabled={pending || (!saveInLibrary && !currentBookmark)} aria-busy={pending} onClick={() => addTo('')}>{saveInLibrary ? 'Save story' : 'Remove from Library'}</Button></div>}
         {creating && <form onSubmit={submit}>

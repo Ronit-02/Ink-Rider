@@ -4,7 +4,7 @@ import ReportForm from '@/shared/components/ui/ReportForm'
 import ReportModal, { reportTitle } from '@/shared/components/ui/ReportModal'
 import ShareMenu from '@/shared/components/ui/ShareMenu'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { BookmarkIcon, ShareIcon } from '@/shared/icons'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
 import Tag from '@/shared/components/ui/Tag'
@@ -14,7 +14,6 @@ import { PostDetailSkeleton } from '@/shared/components/ui/Skeleton'
 import MissingResourceState from '@/shared/components/ui/MissingResourceState'
 import isMissingResourceError from '@/shared/errors/isMissingResourceError'
 import PostBody from './PostBody'
-import AuthorBio from './AuthorBio'
 import CommentsSection from './CommentsSection'
 import { AIStickyButtons, AccessPanel, SummaryPanel, ReadAloudPanel } from './AIPanel'
 import useFetchPost from '../hooks/useFetchPost'
@@ -22,9 +21,12 @@ import usePostLike from '../hooks/usePostLike'
 import AppreciationButton from '@/features/post/components/AppreciationButton'
 import useReportPost from '../hooks/useReportPost'
 import useReadingProgress from '../hooks/useProgressBar'
+import usePersistReadingProgress from '../hooks/usePersistReadingProgress'
 import useAuth from '@/features/auth/hooks/useAuth'
 import { createInteractionEvent, recordInteractionEvents } from '@/features/discovery/api/events'
 import useEntitlements from '@/features/membership/hooks/useEntitlements'
+import useWriter from '@/features/user/hooks/useWriter'
+import DiscoveryPostCard from '@/features/discovery/components/DiscoveryPostCard'
 import ShortReadModal from '@/features/discovery/components/ShortReadModal'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import ImageBox from '@/shared/components/ui/ImageBox'
@@ -60,6 +62,7 @@ export default function PostPage() {
 
 function ArticlePage() {
   const navigate  = useNavigate()
+  const location = useLocation()
   const { id: postId } = useParams();
   const { loggedIn, signIn } = useAuth()
   const entitlements = useEntitlements(loggedIn)
@@ -76,6 +79,7 @@ function ArticlePage() {
 
   // Hooks
   const { data: postData, isLoading: fetchPostIsLoading, isError, error, refetch } = retainRetryView(useFetchPost(postId));
+  const authorPostsQuery = useWriter(postData?.author?.handle)
   const likeMutation = usePostLike(postId)
   const reportMutation = useReportPost(postId)
   const pageRef = useRef(null)
@@ -83,9 +87,30 @@ function ArticlePage() {
   const shareTriggerRef = useRef(null)
   const saveTriggerRef = useRef(null)
   const progress = useReadingProgress(pageRef, readingEndRef)
+  usePersistReadingProgress(postId, progress, loggedIn)
   const recordedPostId = useRef(null)
   const recordedCompletion = useRef(false)
   const recordedDepths = useRef(new Set())
+  const restoredProgress = useRef(false)
+
+  useEffect(() => {
+    const savedProgress = Number(location.state?.readingProgress)
+    if (restoredProgress.current || !postData?._id || !Number.isFinite(savedProgress) || savedProgress <= 0) return
+    const scroller = document.querySelector('[data-app-scroll="true"]')
+    const end = readingEndRef.current
+    if (!scroller || !end) return
+    const restore = () => {
+      const scrollTop = scroller.scrollTop
+      const scrollerTop = scroller.getBoundingClientRect().top
+      const endPosition = end.getBoundingClientRect().top - scrollerTop + scrollTop
+      const total = endPosition - scroller.clientHeight
+      if (total <= 0) return
+      scroller.scrollTop = total * Math.min(100, savedProgress) / 100
+      restoredProgress.current = true
+    }
+    const frame = requestAnimationFrame(restore)
+    return () => cancelAnimationFrame(frame)
+  }, [location.state, postData])
 
   const closeShareMenu = ({ restoreFocus = false } = {}) => {
     setShowShare(false)
@@ -170,6 +195,7 @@ function ArticlePage() {
   const postBlocks = parsePostBlocks(postData.body)
   if (!postBlocks) return <PostErrorState onRetry={() => navigate('/')} invalidContent />
   const capabilities = new Set(entitlements.data?.capabilities || [])
+  const moreFromAuthor = (authorPostsQuery.data?.posts || []).filter(post => String(post.id) !== String(postId)).slice(0, 5)
   const articleText = [postData.title, ...postBlocks.filter(block => !['image', 'divider'].includes(block.type)).map(block => String(block.content || '').replace(/<[^>]*>/g, ' '))]
     .join('. ').replace(/\s+/g, ' ').trim()
 
@@ -210,7 +236,7 @@ function ArticlePage() {
       <PageFrame className="flex flex-col gap-8 xl:flex-row">
 
         {/* ── Article column ── */}
-        <div className={`min-w-0 w-full flex-1 ${hasSidePanel ? '' : 'max-w-[760px]'}`}>
+        <div className="min-w-0 w-full flex-1">
 
           {/* Tags */}
           {postData.tags?.length > 0 && (
@@ -306,15 +332,20 @@ function ArticlePage() {
 
           <Divider className="my-10" />
 
-          {/* Author bio */}
-          <AuthorBio author={postData.author} />
-
-          <Divider className="my-10" />
-
           <div ref={readingEndRef} />
 
           {/* Comments (renamed from Responses) */}
           <CommentsSection postId={postId} initialCount={postData.commentsCount || 0} />
+
+          {moreFromAuthor.length > 0 && <section className="mt-14 w-full max-w-none" aria-labelledby="more-from-author-heading">
+            <div className="mb-6">
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">More to read</p>
+              <h2 id="more-from-author-heading" className="text-[24px] font-bold tracking-[-0.03em] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>More from {postData.author?.username || 'this writer'}</h2>
+            </div>
+            <div className="grid w-full grid-cols-1 min-[540px]:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
+              {moreFromAuthor.map(post => <DiscoveryPostCard key={post.id} post={post} variant="grid" />)}
+            </div>
+          </section>}
         </div>
 
         {/* ── AI sticky buttons ── */}

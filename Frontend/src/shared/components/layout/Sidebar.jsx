@@ -14,7 +14,7 @@ const LINKS = [
       { id: 'questions',    label: 'Questions',    path: '/explore/questions' },
       { id: 'competitions', label: 'Competitions', path: '/explore/competitions' },
   ]},
-  { to: '/write',            label: 'Write',       icon: <PenIcon /> },
+  { to: '/studio',           label: 'Writing studio', icon: <PenIcon /> },
   { to: '/collections',      label: 'Collections', icon: <CollectionIcon /> },
   { to: '/shorts',           label: 'Short Reads', icon: <ShortsIcon /> },
   { to: '/members',          label: 'Member Hub', icon: <MembershipIcon /> },

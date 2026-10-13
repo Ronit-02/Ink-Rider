@@ -1,5 +1,141 @@
 # Ink-Rider progress tracker
 
+## Save dialog collection membership — 2026-10-14
+
+The Save story dialog now identifies owned collections that already contain the current story or short directly in the collection option badge. The existing collection listing accepts an optional post ID and returns `containsPost`; routes, schemas, duplicate-safe append behavior, and modal structure remain unchanged. Updated the collection controller, collection API/query hook, shared Save dialog, focused Add to collection spec, collection audit, and UI rules.
+
+The Add to a collection checkbox remains enabled, while selecting an already-containing collection disables the final action and labels it “Already in collection.”
+
+Verification: frontend lint and production build passed on 2026-10-14. The focused Playwright spec could not start its configured API server because MongoDB was unavailable locally; the new assertion is present but live browser execution remains pending.
+
+## Desktop and hover block controls — 2026-10-14
+
+The write editor now exposes the active block's + and × controls at all widths. On pointer devices, hovering another row reveals its controls and a short left marker; clicking the writing line still focuses its field. Desktop + uses the existing anchored insert menu, while compact + keeps the insertion sheet. Updated the editor, focused browser checks, Frontend README, UI rules, and write-page audit. Verification on 2026-10-14: frontend lint, production build, and `git diff --check` passed. All 26 focused mocked-API Chrome editor layout/tag checks passed across 320–2560 px; a transient tag autosave assertion and an interrupted temporary Playwright config in the combined run passed on focused reruns with the stable config. Live persistence and physical devices were not exercised.
+
+## Writing studio tabs — 2026-10-14
+
+Writing studio now has Published, Drafts, and Analytics top tabs. Published and Drafts each contain Stories/Shorts categories with independent URL state. Published retains owner post management and its All/Published/Scheduled/Unpublished status filter; Drafts retains continuation and deletion; Analytics retains its entitlement gate. Legacy `writingTab=posts|shorts` links remain readable. The personal Profile and public Author pages remain as before. Updated `Frontend/src/features/user/pages/Profile/index.jsx`, `Frontend/src/features/user/components/PublishedWritingTabs.tsx`, `Frontend/tests/account-groups.spec.js`, Frontend README, account-groups audit, project overview, UI rules, and UI registry.
+
+Verification on 2026-10-14: frontend lint and production build passed. Focused mocked-API Chrome checks passed for the Writing studio account flow at 320 and 1280 px (2 checks) and Writing studio short-card reader engagement (1 check). Browser runs used installed Chrome against a local Vite server because the default Playwright headless shell and ffmpeg were unavailable; initial sandboxed localhost attempts were blocked before reaching the app. No live backend or database behavior was exercised.
+
+## Story row click recovery — 2026-10-14
+
+An empty Story row can regain focus when clicked after focus moves away. The compact block-control layer no longer intercepts clicks over the text field; +/× remain clickable. Updated the editor, focused browser checks, UI rules, and write-page audit. Verification on 2026-10-14: frontend lint and production build passed; nine mocked-API Chrome checks passed, including click recovery at 320/390/768 px and +/× behavior through 2560 px.
+
+## Editor heading label — 2026-10-14
+
+The write editor now shows an “Editing” eyebrow above Write Post/Write Short and Edit Post/Edit Short, following the existing page-header typography and accent color. Updated the editor, focused browser checks, Frontend README, UI rules, and write-page audit. Verification on 2026-10-14: frontend lint and production build passed; four focused mocked-API Chrome checks passed at 320/1280 px for Post and Short headings.
+
+## Instructions button shape — 2026-10-14
+
+The editor's text-labelled Instructions button is now pill-shaped. The modal, focus behavior, and publishing flow are unchanged. Updated the editor, focused browser check, UI rules, and write-page audit. Verification on 2026-10-14: frontend lint, production build, and three focused mocked-API Chrome checks passed at 320/1280 px; the checks cover pill geometry, modal content, and focus return.
+
+## Focused slash hint — 2026-10-14
+
+The “Press / for formatting options” placeholder now appears only in the focused empty paragraph; it disappears from unfocused blocks, including after focus moves to another paragraph or the title. Updated editor styling, focused browser checks, UI rules, and write-page audit. Verification on 2026-10-14: frontend lint, production build, `git diff --check`, and two mocked-API Chrome focus checks at 320/1280 px passed.
+
+## Mobile word-count spacing — 2026-10-14
+
+The short editor's `0/500 words` count now sits close above the fixed mobile navigation at the bottom of the scroll. Only editor bottom padding and the counter margin below 768 px changed; wider layouts remain as they were. Updated the editor, focused 320/390 px browser checks, UI rules, and write-page audit. Verification on 2026-10-14: frontend lint, production build, `git diff --check`, and two mocked-API Chrome spacing checks at 320/390 px passed. The count remains visible above the mobile navigation; live persistence and physical devices were not exercised.
+
+## Compact editor block controls — 2026-10-14
+
+Below 1024 px, the writing area uses 24 px side gutters instead of the former 48 px left gutter. The active block's + sits to the left and × to the right, aligned with its first line; 44 px touch targets and the existing insertion/deletion behavior remain. Updated editor layout, instructions copy, responsive browser geometry checks, Frontend README, UI rules/registry, and write-page audit. Verification on 2026-10-14: frontend lint and production build passed; 21 focused mocked-API Chrome editor checks passed, followed by 6 responsive layout checks after the final gutter reduction. The 320 px layout was visually reviewed. Live persistence and physical touch remain unverified.
+
+## Writing instructions — 2026-10-14
+
+The editor's circular “i” control is now a text-labelled Instructions button immediately before Publish/Update. Its modal presents five short bullet points for writing and publishing. Updated the focused browser check, Frontend README, UI rules, and write-page audit. Verification: frontend lint and production build passed; all 3 focused mocked-API Chrome checks passed at 320 and 1280 px, including modal list content and Escape focus return.
+
+## Write editor refinements — 2026-10-13
+
+The editor now gives title/story text a 12 px inset from the focus edge and grows loaded multiline titles and blocks. It shows Write Post/Write Short (Edit variants for published posts), shared Back, and an instructions button beside Publish. Desktop block +/× controls and the bottom formatting hint are removed; below 1024 px, +/× sit to the left of the active block and + opens the existing insertion sheet. The paragraph placeholder points to slash formatting. The publishing modal groups selected tags, omits redundant readiness text, and gives the optional full-post link an explicit None choice. Existing autosave, cover handling, publication validation, APIs, and stored formats remain. Changed the editor page, TagPicker, global editor CSS, focused browser specs, Frontend README, UI rules/registry, and write-page audit. Frontend lint, production build, security artifact check (76 files, no source maps), 45 focused mocked-API Chrome checks across 320–2560 px, and `git diff --check` passed. Initial browser runs could not reach a Vite server across permission contexts; restarting the local server in the browser's permission context resolved this. Live persistence and physical devices remain unverified.
+
+## Disabled button explanations and Publish readiness — 2026-10-13
+
+Write Publish/Update requires a nonempty title and story content before opening the publishing modal; divider-only blocks do not count. Both the header and modal final action expose specific missing requirements. A single application-level hover tooltip covers disabled shared and native buttons, prioritizing caller-provided `data-disabled-reason`, then busy state, form validation, movement boundaries, and a general unmet-requirements explanation. Source changes: editor page, new DisabledButtonTooltip, and application root; focused editor browser checks and Frontend README/UI rules/registry were updated. Frontend lint and build passed. Three mocked-API Chrome checks confirmed the header reason at 320/1280 px and native-button hover behavior; later browser verification is noted above. Live persistence and physical devices remain unverified.
+
+## Write publishing modal and alignment — 2026-10-13
+
+The editor now keeps title and body at the writing column's left edge. Publish/Update opens a native dialog for tags, article cover, optional short depth link, and eligible release time; the final action validates the existing requirements. Failed publication stays in the dialog for retry, and dismissal returns focus to Publish/Update. Guest Publish still opens sign-in. The tag dropdown consumes Escape before the dialog, and short phone viewports scroll an active slash-command block above its toolbar. Changed the editor page, TagPicker, dialog-focus hook, global editor textarea padding, focused browser specs, Frontend README, UI rules, and the write audit. Frontend lint, production build, and scoped whitespace checks passed on 2026-10-13. All 23 focused mocked-API Chrome editor checks passed across 320–2560 px, covering modal validation/failure, alignment, tags, guest sign-in, block controls, and the short-viewport insert menu. Live persistence and physical-device behavior remain unverified.
+
+## Phone question-list spacing — 2026-10-13
+
+Question cards in Explore and Search now have 36 px vertical padding below 768 px; the upvote control stays aligned to the first row. Home Hot Questions rows use 24 px vertical padding. The added space separates adjacent questions after phone dividers were hidden. Desktop spacing and question actions are unchanged. Focused lint, frontend production build, and scoped whitespace checks passed on 2026-10-13; browser and physical-device appearance remain unverified.
+
+## Phone list and section dividers — 2026-10-13
+
+At the bottom-navigation breakpoint below 768 px, bottom-border separators between page list items and sections, including Account-sheet rows, are hidden through scoped CSS. Tab-strip dividers, card outlines, field borders, active-tab indicators, spacing, and desktop presentation remain. Frontend production build and scoped whitespace checks passed on 2026-10-13; browser and physical-device appearance remain unverified.
+
+## Library tab order and collection categories — 2026-10-13
+
+Library top tabs now appear Saved, Collections, History. Within Collections, shared Pill tabs switch between My collections (default) and Saved collections (`collectionSection=saved`), showing one list at a time with keyboard selection and reload persistence. Existing cards, visibility and sort filters, cursor Load more, APIs, and schemas remain. Updated the focused account-group checks for tab order, collection selection, pagination, and URL retention. Focused lint, frontend production build, and scoped whitespace checks passed on 2026-10-13. Browser checks could not execute: the managed API server could not connect to MongoDB, and the frontend-only run found no local Playwright Chromium executable.
+
+## Shared filter panel sizing — 2026-10-13
+
+The shared FilterPopover used across discovery, Search, Collections, Library, Shorts, Profile, and Author is capped at 360 px (90vw on narrow screens) with 16 px padding and tighter header, group, and footer spacing. Existing controls retain 44 px targets, labels, colors, placement, focus handling, and URL behavior. Frontend lint, production build, and scoped whitespace checks passed on 2026-10-13. The focused browser run could not start because the API server could not connect to MongoDB, so visual geometry across screen sizes remains unverified.
+
+## Home article-card phone spacing — 2026-10-13
+
+The image-bearing Home feed article card keeps its existing cover, metadata, title, topic, action, and divider structure. Below 540 px, comfortable feed cards use 16 px vertical insets, 16 px below the cover, and 8 px before the footer to tighten spacing between stories and rebalance the content below the image. Other discovery-card surfaces and widths are unchanged. Focused DiscoveryPostCard lint, frontend production build, and scoped whitespace checks passed on 2026-10-13. Browser layout remains unverified locally because the Playwright API server cannot connect to MongoDB.
+
+## Shared ShortCard grid responsiveness — 2026-10-13
+
+Short-card grids on Shorts, Search, Author, Profile, Writing studio, collection detail, Saved, and short-format History now use the same responsive tracks and compact ShortCard presentation as Home. Columns repeat at a 170 px minimum, use two cards from 376 to 391 px, and fall back to one centered card capped at 250 px below 376 px. Fluid cards have 16 px side padding through 1023 px, with 12 px in the 376–391 px two-column band. Single cards in series, questions, competitions, and mixed article layouts keep their existing placement. Existing card actions, readers, APIs, routes, and stored data are unchanged. Frontend lint, production build, and scoped whitespace checks passed on 2026-10-13. The side-padding follow-up passed focused ShortCard lint and a production build on 2026-10-13. Browser layout verification remains unavailable locally because the Playwright API server cannot connect to MongoDB.
+
+## Home discovery layout — 2026-10-13
+
+At every width, Home Writer's picks and Browse categories use the existing grid discovery card in touch-scrollable, snapping carousels; category choices also scroll horizontally. Home feed and section item dividers remain visible. Short reads use the existing ShortCard in responsive grids of at most four, placed after story six and then every eight stories when further shorts are available. Home short cards fill columns that repeat whenever another 170 px track fits; from 376 to 391 px they use two compact columns with 270 px minimum height; below 376 px they use one centered card capped at 250 px, because the two-column layout makes names and titles unreadable at 270 px. A visible one- or two-line description and 44 px actions remain; the shared short-grid follow-up below applies this behavior to other card grids. The change uses existing feed and shorts APIs without backend, route, or schema changes. Focused frontend lint and production build passed on 2026-10-13 after the below-392 px correction. The focused Playwright run could not start because its API web server could not connect to MongoDB; browser and physical touch verification remain outstanding.
+
+## Unified Writing studio — 2026-10-13
+
+Writing management and the Post/Short chooser now live at `/studio`. Write a post opens the chooser and creates a typed draft at `/studio?draft=<id>`; existing draft/edit/question editor targets also use `/studio`. Old `/write` and `/writing` URLs redirect with query and hash preserved. Desktop sidebar and signed-in mobile Account link to Writing studio; the separate Write entry and draft-list page were removed. Draft rows keep title/saved details on the left and place accessible icon-only Continue writing and Delete draft actions on the right at all widths. Frontend lint, build, and focused Playwright test discovery passed on 2026-10-13. Browser navigation was denied by the local sandbox (`ERR_NETWORK_ACCESS_DENIED`), so layout and focus behavior remain unverified. See [write page audit](write-page-audit.md#unified-writing-studio--2026-10-13).
+
+## Mobile notification entry — 2026-10-13
+
+Signed-in mobile users now open Notifications from the navbar immediately right of search, with the existing unread badge and inbox modal. The Notifications row was removed from the mobile Account sheet. Desktop placement, notification route/API, theme, and search behavior remain unchanged. Frontend lint and production build passed. The focused browser check could not run because the configured backend could not connect to MongoDB and local Playwright Chromium was missing; mobile placement and focus return remain browser-unverified. See [notifications audit](notifications-audit.md).
+
+## Responsive competition entries — 2026-10-13
+
+Competition detail Entries now fills one column below 540 px, two from 540 px, and three from 1024 px. Article cards fill their tracks with the existing 16:9 cover; compact short cards keep their 250 px maximum and are centered in their tracks. Voting, winner/rank labels, links, unavailable entries, APIs, and schemas are unchanged. Frontend lint and production build passed on 2026-10-13; browser geometry and physical devices remain unverified.
+
+## Responsive Top authors — 2026-10-13
+
+Home Top authors now uses one ranked profile-link column below 540 px, two from 540 px, and four from 1024 px. Rows keep the existing Avatar, ranking, typography, colors, and destination while containing long names and featured-story counts. Feed-derived ranking, routes, APIs, and schemas are unchanged. Frontend lint and production build passed on 2026-10-13; browser geometry and physical devices remain unverified.
+
+## Responsive collection grids — 2026-10-13
+
+CollectionCard grids in Home Browse collections, Collections, Library, and public Author now fill their available columns rather than capping each card at 520 px. They use one column below 600 px, two from 600 px, and three from 1024 px; Home remains two columns at wider sizes for its two featured items. Loading placeholders follow the same grid. The CollectionCard surface, 120 px inset cover, typography, colors, actions, routes, APIs, and schemas remain unchanged. Frontend lint and build passed on 2026-10-13; browser geometry and physical devices remain unverified.
+
+## Shared discovery article grid placement — 2026-10-13
+
+Browse categories, public Author, personal Profile, and Member Hub early releases now follow Writer's picks article-card breakpoints: one column below 540 px, two from 540 px, and three from 1024 px. Author/Profile ShortCard grids retain their existing fixed 250 px tracks; Member Hub short cards retain their own width. The shared DiscoveryPostCard, its 16:9 cover, card actions, typography, colors, routes, APIs, and schemas are unchanged. Frontend lint and production build passed on 2026-10-13; browser geometry and physical devices remain unverified.
+
+## Writer's picks responsive grid — 2026-10-13
+
+Home Writer's picks now uses one full-width card column below 540 px, two from 540 px, and three from 1024 px, keeping cards from growing excessively around tablet and desktop widths. This removes the shared grid's 360 px card cap from this section. Article covers continue using the existing 16:9 DiscoveryPostCard presentation, with text determining card height. Other grids, card actions, routes, APIs, and schemas are unchanged. Frontend lint and production build passed on 2026-10-13. Browser geometry and physical devices remain unverified.
+
+## Narrow feed-card spacing — 2026-10-13
+
+Comfortable discovery list cards now use 24 px vertical insets below 540 px. Image-bearing cards center the author in a compact menu row and place the title 8 px below it, while the menu retains its 44 px touch target. The change is limited to `DiscoveryPostCard` and `PostCardMenu`; larger layouts and card behavior remain as before. Focused lint and production build passed on 2026-10-13. Browser geometry remains unverified: the configured API server could not connect to MongoDB, and the frontend-only attempt found no local Playwright Chromium executable. See [post components audit](post-components-audit.md).
+
+The compact author name now matches the date and reading-time muted text color below 540 px through `AuthorMeta`. Wider-screen name color remains unchanged.
+
+## Responsive post-card covers — 2026-10-13
+
+Active post covers in discovery grid/narrow list, short, featured, and competition cards now scale at 16:9 with available width; studio row thumbnails retain their 5:4 shape. `ImageBox` exposes an optional aspect ratio for reusable media. Desktop discovery list and featured row composition remain at their existing sizing rules. Frontend lint and production build passed on 2026-10-13. The normal focused browser run could not start because its configured MongoDB service was unavailable; a frontend-only run was blocked from local loopback navigation by the sandbox. Browser geometry, physical devices, and other engines were not checked. See [post components audit](post-components-audit.md) and [UI rules](ui-rules.md).
+
+## Covered discovery cards at middle widths — 2026-10-13
+
+Below 540 px, list-style DiscoveryPostCard hides its description and places abbreviated publication date and reading time immediately after writer identity on the left, separated by dots. Image-bearing cards retain the visual order of cover, combined writer/metadata row, then a two-line title with an 8 px gap after the row; their full-width stacked cover uses a 16:9 ratio. From 540 px, image-bearing cards use the side-by-side composition with a 200 px cover and 24 px gap until 1024 px; the prior 240 px cover and 32 px gap remain from 1024 px. Text-only cards retain their existing responsive layout, while grid and short cards remain unchanged. The shared card change applies on Home, Trending, Search, and other list surfaces without route, API, schema, or stored-data changes. Updated DiscoveryPostCard, AuthorMeta, the browser regression spec, and UI rules. Focused lint and production build passed. Mocked-API Chrome checks passed for visual order, shortened metadata with dot separators and left alignment, tight title gap, hidden description, title cap, cover placement, and overflow at 320, 390, 539, 540, 600, 639, 640, 768, 900, and 1024 px; six card-link destination checks passed at 320, 390, and 1280 px with and without covers. Physical devices, live data, and other browser engines were not checked.
+
+## Home small-screen scrolling and section layout — 2026-10-13
+
+Home section heading/action rows now wrap on narrow screens. The feed tabs and Short reads shelf retain native horizontal touch scrolling with proximity snap points and contained horizontal overscroll; a trailing tab fade appears only when more choices remain off-screen. No route, API, schema, typography, color, card, or navigation changes were made. Updated the Home page components, the home-sections browser fixture for the existing shorts request, frontend README, and UI rules. Frontend lint and production build passed. Both focused home-sections Chrome checks passed. A mocked-API mobile Chrome probe at 320 and 390 px confirmed touch drag on the Short reads shelf, touch drag on overflowed tabs at 320 px, and no page-wide horizontal overflow. Physical devices, assistive technology, live data, and other browser engines were not checked.
+
+## Notification trigger spacing — 2026-10-13
+
+The desktop navbar notification trigger's visible square was reduced from 44 px to 36 px, with a 44 px pointer target retained. The inbox and unread badge behavior are unchanged. Targeted frontend lint and production build passed; browser appearance was not checked.
+
 ## Save dialog checkbox styling — 2026-10-13
 
 The Save dialog's Library and collection checkboxes now use theme border, surface, accent, and focus colors in place of browser-default blue controls. Native checkbox inputs, label activation, keyboard toggling, checked defaults, and pending-write disabling remain. Only the dialog component, its focused browser spec, and the owning UI rule changed. Frontend lint and production build passed. Two mocked-API Chrome checks passed for Light/Dark color and keyboard behavior; both screenshots were reviewed. Live persistence and other browser engines were not exercised.
@@ -834,3 +970,51 @@ Update this file only after a verified change to implementation progress. Put de
 # 2026-10-13 — card reuse and Writing studio row
 
 Verified by frontend lint and production build: public writer and personal profile articles use DiscoveryPostCard grid, Writing studio article rows use extracted WritingPostRow with existing owner actions, and member early access articles use the shared grid card with a Member early access badge. Existing routes and backend contracts are unchanged. Browser checks were not completed in this run.
+
+### 2026-10-13 — Backend production dependency audit
+
+- Refreshed the backend lockfile to resolve the reported production findings in brace-expansion, morgan, multer, nodemailer, proxy-addr, and sharp. Application code and dependency declarations were unchanged.
+- Verification on 2026-10-13: `npm audit --omit=dev --audit-level=low` reported zero vulnerabilities; backend `npm test` passed 106/106. The full dependency audit still reports three development-only high findings through nodemon/chokidar/braces.
+
+### 2026-10-13 — Frontend full dependency audit
+
+- Refreshed the frontend lockfile to resolve the reported `brace-expansion` and `source-map-js` findings. Application code and dependency declarations were unchanged.
+- Verification on 2026-10-13: frontend `npm audit --audit-level=low` reported zero vulnerabilities, and `npm run build` passed.
+
+## Writer opportunities Back navigation — 2026-10-14
+
+The `/opportunities` Reader demand page now uses the existing shared AppLayout Back row. History returns to the preceding route; direct entry falls back to Profile, where Find reader demand links to this page. No opportunity content, visual style, API, schema, or backend behavior changed. Updated `AppLayout.jsx`, `BackButton.tsx`, the back-navigation route matrix and direct-entry case, Frontend README, back-button audit, UI rules, and UI registry.
+
+Verification on 2026-10-14: frontend ESLint and Vite production build passed; scoped `git diff --check` found no whitespace errors. Focused Playwright checks could not launch because the configured Chromium headless-shell executable is absent. The first managed test attempt also could not start the backend because MongoDB was unavailable; a Vite-only mocked-API rerun reached browser launch and failed on the missing executable. Browser behavior remains unverified in this environment.
+## Blank-space editor focus — 2026-10-14
+
+The writing area now shows a text cursor over blank space, and a pointer press there focuses the vertically nearest editable title or story field. Direct field and block-control interactions remain intact. Changed the editor page, focused browser spec, Frontend README, UI rules, and write-page audit. Frontend production build, focused ESLint, and `git diff --check` passed on 2026-10-14. The focused browser check could not start because the configured API server could not connect to MongoDB; pointer behavior remains unverified in a browser.
+## Editor line navigation — 2026-10-14
+
+Arrow Up and Arrow Down now stay within multiline blocks line by line and cross block boundaries immediately when the caret is already on the first or last visual line, using DOM mirror geometry for wrapped lines. Frontend lint and production build passed.
+## Publish modal hierarchy — 2026-10-14
+
+Publishing options now has secondary visual weight, the unlinked short dropdown value is None, and selected tags sit below the search controls. Frontend production build passed; TSX lint remains covered by the existing frontend lint exclusion.
+
+## Published draft history — 2026-10-14
+
+Successful publication now replaces the draft editor history entry with the published post route. This prevents Back from reopening the deleted draft and showing the draft-load error. Frontend editor lint passed.
+
+## Writing studio published status controls — 2026-10-14
+
+Removed the unused All/Published/Scheduled/Unpublished button group from Writing studio Published. Stories/Shorts categories, item status labels, owner actions, and API behavior remain. Frontend lint and production build passed.
+
+## Empty draft autosave guard — 2026-10-14
+
+Empty direct editor sessions no longer create or update drafts. Autosave starts once the title or a block contains a non-whitespace character. Frontend lint and production build passed.
+
+## Lazy draft creation — 2026-10-14
+
+Writing studio’s Post/Short chooser now opens the new editor without creating an empty server draft. Autosave creates it after title or story content is entered. Frontend lint and production build passed.
+
+## Icon-only filter triggers — 2026-10-14
+
+All shared filter triggers now display only the existing filter icon and active-count badge; the visible “Filters” label is hidden while the trigger retains an accessible name. Updated the shared `FilterPopover`, filter-reset assertions, and UI rules. No routes, filter behavior, layout structure, APIs, or stored data changed. Verification is pending the frontend lint/build checks for this change.
+
+
+- 2026-10-14: Added durable authenticated article reading checkpoints. The existing reader keeps scroll progress local, rounds saved checkpoints down to 10% increments, sends at most one update per 10 seconds, and flushes on visibility/page exit/unmount. A unique per-user/post `ReadingState` record stores latest progress, last-read time, and completion; History prefers it while preserving legacy interaction-event fallback. Existing routes, UI structure, styles, analytics events, and unrelated working-tree changes remain unchanged. Frontend lint/build and backend lint passed. Backend contract tests were attempted but 25 network-listener cases were blocked by the sandbox (`connect EACCES`); 81 non-network contracts passed.

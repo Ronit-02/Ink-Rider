@@ -35,7 +35,7 @@ for (const loggedIn of [false, true]) {
     const sheet = page.getByRole('dialog', { name: 'Account', exact: true })
     await expect(sheet.getByRole('link', { name: 'Settings' })).toBeVisible()
     await expect(sheet.getByRole('button', { name: 'Help' })).toBeVisible()
-    await expect(sheet.getByRole('link', { name: 'Write', exact: true })).toHaveCount(1)
+    await expect(sheet.getByRole('link', { name: 'Writing studio', exact: true })).toHaveCount(loggedIn ? 1 : 0)
     if (!loggedIn) {
       expect(privateReads).toEqual([])
       await expect(sheet.getByRole('link', { name: 'Sign Up' })).toBeVisible()
