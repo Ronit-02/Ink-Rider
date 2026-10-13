@@ -47,8 +47,9 @@ export default function ReadingHistoryPage({ embedded = false }) {
     const difference = new Date(right.lastReadAt).getTime() - new Date(left.lastReadAt).getTime()
     return sort === 'oldest' ? -difference : difference
   })
-  const history = filterHistory(query.data?.history || [])
   const continueReading = filterHistory(query.data?.continueReading || [])
+  const continueIds = new Set(continueReading.map(item => item.id))
+  const history = filterHistory(query.data?.history || []).filter(item => !continueIds.has(item.id))
   return <Frame>
     {!embedded && <PageHeader title="Reading history" description="Continue unfinished stories or revisit what you have read." />}
     <div className="mb-8 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">

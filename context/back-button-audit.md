@@ -20,6 +20,8 @@ The requested separate `/profile/edit` route opts into the existing shell Back r
 
 ## Inventory
 
+The 2026-10-14 Reader demand correction opts `/opportunities` into the shared AppLayout Back row. History returns to the preceding page; a fresh entry falls back to Profile, where the Find reader demand link lives. Its existing PageFrame, typography, question actions, APIs, and data remain unchanged. This supersedes the earlier primary-route exclusion below.
+
 | Surface | Placement owner | Completed placement |
 |---|---|---|
 | Article `/post/:id` | AppLayout | Dedicated row aligned with article content, before tags/cover and reading tools |
@@ -32,6 +34,7 @@ The requested separate `/profile/edit` route opts into the existing shell Back r
 | History `/history` | AppLayout | Signed-in view matches shared PageFrame and its gutters (2026-10-10); guest access prompt omits Back (2026-10-10) |
 | Membership `/membership` | AppLayout | Dedicated row before page heading |
 | Edit profile `/profile/edit` | AppLayout | Existing shared Back row; direct-entry Profile fallback |
+| Writer opportunities `/opportunities` | AppLayout | Shared Back row; direct-entry Profile fallback |
 | Settings `/settings` | AppLayout | No Back control, per the 2026-10-09 settings request |
 | Help `/help` | AppLayout | No Back control, per the 2026-10-09 settings request |
 | Login `/login` | Login form | Removed on 2026-10-09; brand link returns home |

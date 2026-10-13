@@ -1,5 +1,17 @@
 # Account grouping audit — 2026-10-12
 
+## Writing studio published status controls — 2026-10-14
+
+The Published tab no longer renders the All/Published/Scheduled/Unpublished status button group. It shows the selected Stories or Shorts category using the existing owner rows/cards and management actions; status labels and actions remain on each item. Existing post reads, routes, filters on other account surfaces, APIs, and stored data remain unchanged.
+
+## Writing studio tab hierarchy — 2026-10-14
+
+The requested Writing studio hierarchy is now Published (Stories/Shorts), Drafts (Stories/Shorts), and Analytics. Published retains its owner post cards and status filter, so scheduled and unpublished records remain manageable. Draft categories filter the existing draft list without changing draft actions. The shared Pill category control is reused with local labels; profile and public Author presentation remain unchanged. Existing owner-post, draft, analytics, and entitlement APIs and data models remain unchanged. Current URL and keyboard behavior belong to UI rules. This supersedes the earlier four-tab Writing studio layout described below.
+
+Implementation: `Frontend/src/features/user/pages/Profile/index.jsx` and `Frontend/src/features/user/components/PublishedWritingTabs.tsx` (shared by Writing studio); verification: `Frontend/tests/account-groups.spec.js`; documentation: Frontend README, project overview, UI rules, UI registry, this audit, and progress tracker. No optional refactor or schema change is included.
+
+Verification on 2026-10-14: two focused mocked-API Chrome account-flow checks passed at 320/1280 px, covering the new hierarchy, categories, URL persistence, draft filtering, status management, analytics, and existing Library navigation. A Writing studio short-card reader engagement check also passed. Frontend lint and production build passed. Tests used installed Chrome and a local Vite server; live persistence and other browser engines were not exercised.
+
 ## Published work and Profile editing link — 2026-10-12
 
 Author's section is now Published work with Posts/Shorts/Collections pills. Collections reuses the existing author-scoped public read, collection cards, cursor pagination, and newest/most-saved sorting with separate URL state; loading/failure/retry/empty content stays inside the category panel. Personal Profile's Your published writing adds the same writing-sort Filters and a shared secondary Edit in Writing studio link to `/writing`. Current category/URL/filter rules belong to UI rules. This supersedes earlier Articles/Posts and shorts headings and Profile's unsorted published view.

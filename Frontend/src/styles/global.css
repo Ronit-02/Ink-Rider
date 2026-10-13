@@ -210,15 +210,38 @@ select:focus-visible {
   outline: none;
 }
 
-/* Writing fields are intentionally borderless. A left-edge indicator preserves
-   keyboard focus without making prose look like a collection of utility boxes. */
+/* Keep prose clear of the left focus marker. */
 textarea.editor-writing-field {
   padding-left: 0.75rem;
 }
 
+textarea.editor-slash-hint::placeholder { opacity: 0; }
+textarea.editor-slash-hint:focus::placeholder { opacity: 1; }
+
 textarea.outline-none.editor-writing-field:focus-visible {
   outline: none;
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--color-focus) 55%, var(--color-bg));
+  box-shadow: -2px 0 0 color-mix(in srgb, var(--color-focus) 55%, var(--color-bg));
+}
+
+@media (hover: hover) {
+  .editor-block-row:hover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2px;
+    height: 1.6em;
+    background: var(--color-border);
+    pointer-events: none;
+  }
+
+  .editor-block-row:hover [data-editor-block-controls] {
+    opacity: 1;
+  }
+
+  .editor-block-row:hover [data-editor-block-controls] button {
+    pointer-events: auto;
+  }
 }
 
 /* The container already changes border on focus. Keep the field-level cue
@@ -478,10 +501,11 @@ textarea.outline-none.editor-writing-field:focus-visible {
 /* ─── Sidebar hide on mobile ─────────────────────────────────────────────── */
 @media (max-width: 767px) {
   .sidebar-desktop { display: none !important; }
-}
-/* Pointer-only block chrome stays quiet; keyboard users can reveal it by focus. */
-@media (min-width: 640px) {
-  [data-editor-block-controls] { opacity: 0; pointer-events: none; }
-  [data-editor-block]:hover [data-editor-block-controls],
-  [data-editor-block-controls]:focus-within { opacity: 1; pointer-events: auto; }
+
+  /* Lists and page sections use bottom borders as separators on wider screens. */
+  :is(#main-content, #mobile-profile-sheet) [class~="border-b"]:not(input):not(textarea):not(nav):not([role="tablist"]):not([class~="border"]),
+  #main-content [class~="divide-y"] > :not(:first-child) {
+    border-bottom-width: 0;
+    border-top-width: 0;
+  }
 }

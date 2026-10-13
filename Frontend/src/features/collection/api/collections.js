@@ -1,7 +1,7 @@
 import api from '@/app/api'
 
-export async function fetchCollections({ mine, saved, authorId, sort, cursor }) {
-  const response = await api.get('/api/collection', { params: { mine: mine || undefined, saved: saved || undefined, authorId: authorId || undefined, sort: sort || undefined, cursor: cursor || undefined, limit: 12 } })
+export async function fetchCollections({ mine, saved, authorId, sort, cursor, postId }) {
+  const response = await api.get('/api/collection', { params: { mine: mine || undefined, saved: saved || undefined, authorId: authorId || undefined, sort: sort || undefined, cursor: cursor || undefined, postId: postId || undefined, limit: 12 } })
   return response.data
 }
 

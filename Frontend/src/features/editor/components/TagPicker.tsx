@@ -54,17 +54,18 @@ export default function TagPicker({ tags, onChange }: Props) {
   }
 
   return <div>
-    <label htmlFor="editor-tag-input" className="mb-2 block text-[13px] font-semibold">Tags <span className="font-normal text-[var(--color-text-secondary)]">(at least one)</span></label>
-    {tags.length > 0 && <div className="mb-3 flex flex-wrap gap-2">{tags.map(tag => <span key={tag} className="inline-flex max-w-full items-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] pl-3 text-[12px] text-[var(--color-text-secondary)]">
-      <span className="break-all">{tag}</span><button type="button" aria-label={`Remove ${tag} tag`} className="h-11 w-11 shrink-0 rounded-full" onClick={() => onChange(tags.filter(value => value !== tag))}>×</button>
-    </span>)}</div>}
+    <label htmlFor="editor-tag-input" className="mb-2 flex items-center justify-between gap-3 text-[13px] font-semibold"><span>Tags <span className="font-normal text-[var(--color-text-secondary)]">(at least one)</span></span><span className="text-[11px] font-normal text-[var(--color-text-muted)]">{tags.length}/20</span></label>
     <div ref={anchor} className="flex gap-2">
       <input ref={field} id="editor-tag-input" aria-label="Add a tag" role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={open ? 'editor-tag-options' : undefined} aria-activedescendant={open && rows.length ? `editor-tag-${selected}` : undefined} aria-describedby="editor-tag-help"
         value={input} maxLength={60} disabled={full} placeholder="Search or add a tag…" onFocus={() => setOpen(true)} onClick={() => setOpen(true)}
         onChange={event => { setInput(event.target.value); setActive(0); setOpen(true) }}
         onKeyDown={event => {
           if (event.nativeEvent.isComposing) return
-          if (event.key === 'Escape' || event.key === 'Tab') { setOpen(false); return }
+          if (event.key === 'Escape' || event.key === 'Tab') {
+            if (event.key === 'Escape' && open) { event.preventDefault(); event.stopPropagation() }
+            setOpen(false)
+            return
+          }
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault(); setOpen(true)
             if (rows.length) setActive((selected + (event.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length)
@@ -73,6 +74,9 @@ export default function TagPicker({ tags, onChange }: Props) {
         }} className="min-h-11 min-w-0 flex-1 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[13px] text-[var(--color-text)]" />
       <Button variant="secondary" className="!min-h-11" disabled={!valid || full || tags.includes(normalized)} onClick={() => add(normalized)}>Add</Button>
     </div>
+    {tags.length > 0 && <div aria-label="Selected tags" className="mt-3 flex flex-wrap gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-2">{tags.map(tag => <span key={tag} className="inline-flex min-h-11 max-w-full items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] pl-3 text-[13px] font-medium text-[var(--color-text)]">
+      <span className="break-all">{tag}</span><button type="button" aria-label={`Remove ${tag} tag`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[18px] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-alt)] hover:text-[var(--color-text)]" onClick={() => onChange(tags.filter(value => value !== tag))}>×</button>
+    </span>)}</div>}
     <p id="editor-tag-help" className="mt-2 text-[12px] text-[var(--color-text-secondary)]">{full ? '20 tags selected. Remove one to add another.' : normalized.includes(',') ? 'Add one tag at a time, without commas.' : 'Choose an existing tag or create your own.'}</p>
     {options.isError && query === input.trim() && <div className="mt-2 text-[12px] text-[var(--color-text-secondary)]"><p role="alert">Tag suggestions could not load. You can still add your own.</p><Button variant="ghost" onClick={() => options.refetch()}>Retry tags</Button></div>}
     {open && !full && <ViewportPopover ref={panel} anchorRef={anchor} align="start" matchAnchorWidth preferredSide="bottom" onAnchorHidden={() => setOpen(false)}

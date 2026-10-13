@@ -8,7 +8,6 @@ import useAuth from '@/features/auth/hooks/useAuth'
 import Button from '@/shared/components/ui/Button'
 import ButtonLink from '@/shared/components/ui/ButtonLink'
 import FilterBar from '@/shared/components/ui/FilterBar'
-import Pill from '@/shared/components/ui/Pill'
 import { ListSkeleton, Skeleton } from '@/shared/components/ui/Skeleton'
 import useEntitlements from '@/features/membership/hooks/useEntitlements'
 import { openBillingPortal, startMembershipCheckout } from '@/features/membership/api/membership'
@@ -29,13 +28,11 @@ import WritingStudioShortCard from '../../components/WritingStudioShortCard'
 import WritingPostRow from '../../components/WritingPostRow'
 
 const WRITING_TABS = [
-  { id: 'posts', label: 'Stories' },
-  { id: 'shorts', label: 'Shorts' },
+  { id: 'published', label: 'Published' },
   { id: 'drafts', label: 'Drafts' },
   { id: 'analytics', label: 'Analytics' },
 ]
 
-const postStatus = post => post.publicationStatus === 'unpublished' ? 'unpublished' : post.publicAt && new Date(post.publicAt).getTime() > Date.now() ? 'scheduled' : 'published'
 
 function StatCard({ label, value, sub }) {
   return (
@@ -67,7 +64,7 @@ export default function ProfilePage() {
   const legacyTab = params.get('profileTab')
   const legacyParams = new URLSearchParams(params)
   legacyParams.delete('profileTab')
-  const legacyPath = WRITING_TABS.some(item => item.id === legacyTab) ? '/studio' : ['bookmarks', 'history'].includes(legacyTab) ? '/saved' : null
+  const legacyPath = ['posts', 'shorts', 'drafts', 'analytics'].includes(legacyTab) ? '/studio' : ['bookmarks', 'history'].includes(legacyTab) ? '/saved' : null
   if (legacyPath === '/studio') legacyParams.set('writingTab', legacyTab)
   if (legacyTab === 'history') legacyParams.set('libraryTab', 'history')
   const legacyDestination = legacyPath ? `${legacyPath}${legacyParams.size ? `?${legacyParams}` : ''}${location.hash}` : null
@@ -98,8 +95,9 @@ export function MemberProfile({ accountActions = null, writing = false }) {
   const { notify } = useToast()
   const [params, setParams] = useSearchParams()
   const requestedTab = params.get('writingTab')
-  const tab = writing ? (TABS.some(item => item.id === requestedTab) ? requestedTab : 'posts') : 'overview'
-  const status = ['published', 'scheduled', 'unpublished'].includes(params.get('postStatus')) ? params.get('postStatus') : 'all'
+  const tab = writing ? (TABS.some(item => item.id === requestedTab) ? requestedTab : 'published') : 'overview'
+  const writingFormat = params.get('writingFormat') === 'short' || (requestedTab === 'shorts' && !params.has('writingFormat')) ? 'short' : 'article'
+  const draftFormat = params.get('draftFormat') === 'short' ? 'short' : 'article'
   const viewer = useSelector(state => state.auth.user)
   const profile = retainRetryView(useQuery({ queryKey: ['me', 'profile'], queryFn: fetchMyProfile, enabled: !writing }))
   const publishedWriting = retainRetryView(useWriter(!writing ? profile.data?.handle : undefined))
@@ -137,9 +135,17 @@ export function MemberProfile({ accountActions = null, writing = false }) {
 
   const setTab = nextTab => {
     const next = new URLSearchParams(params)
-    if (nextTab === 'posts') next.delete('writingTab')
+    if (requestedTab === 'shorts' && !next.has('writingFormat')) next.set('writingFormat', 'short')
+    if (nextTab === 'published') next.delete('writingTab')
     else next.set('writingTab', nextTab)
     setParams(next, { replace: true })
+  }
+  const setWritingFormat = (key, format) => {
+    const next = new URLSearchParams(params)
+    if (format === 'article') next.delete(key)
+    else next.set(key, format)
+    if (key === 'writingFormat' && ['posts', 'shorts'].includes(next.get('writingTab'))) next.delete('writingTab')
+    setParams(next, { replace: true, preventScrollReset: true })
   }
   const handleTabKeyDown = event => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
@@ -201,11 +207,11 @@ export function MemberProfile({ accountActions = null, writing = false }) {
           : <div className="border-y border-[var(--color-border)] py-14"><p className="text-[15px] text-[var(--color-text-secondary)]">{publishedFormat === 'short' ? 'No published shorts yet.' : 'No published posts yet.'}</p></div>}
         </div>
       </section>}
-      {writing && ['posts', 'shorts'].includes(tab) && <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Post status">
-        {[{ value: 'all', label: 'All' }, { value: 'published', label: 'Published' }, { value: 'scheduled', label: 'Scheduled' }, { value: 'unpublished', label: 'Unpublished' }].map(item => <Pill key={item.value} label={item.label} active={status === item.value} onClick={() => { const next = new URLSearchParams(params); if (item.value === 'all') next.delete('postStatus'); else next.set('postStatus', item.value); setParams(next) }} />)}
-      </div>}
-      {['posts', 'shorts'].includes(tab) && (posts.isError ? <ProfileDataError message="Published posts could not be loaded." onRetry={() => posts.refetch()} /> : <PostRows posts={(posts.data || []).filter(post => (post.format || 'article') === (tab === 'shorts' ? 'short' : 'article') && (status === 'all' || postStatus(post) === status))} manage gridShorts={tab === 'shorts'} emptyMessage={status === 'all' ? `You haven’t published any ${tab === 'shorts' ? 'shorts' : 'stories'} yet.` : `No ${status} ${tab === 'shorts' ? 'shorts' : 'stories'}.`} />)}
-      {tab === 'drafts' && (drafts.isLoading ? <div role="status" aria-label="Loading drafts"><ListSkeleton count={4} role={undefined} /></div> : drafts.isError ? <ProfileDataError message="Drafts could not be loaded." onRetry={() => drafts.refetch()} /> : drafts.data?.length ? <div>{drafts.data.map(draft => <div key={draft._id} className="flex min-w-0 items-center gap-3 border-b border-[var(--color-border)] py-7 sm:gap-5 sm:py-8"><div className="min-w-0 flex-1"><p className="font-semibold text-[16px] leading-[1.4] text-[var(--color-text)] [overflow-wrap:anywhere] sm:text-[18px]">{draft.title || 'Untitled draft'}</p><p className="mt-2 text-[12px] leading-5 text-[var(--color-text-muted)]">{draft.format === 'short' ? 'Short' : 'Article'} · Saved {new Date(draft.updatedAt).toLocaleString()}</p></div><div className="flex shrink-0 items-center gap-1 sm:gap-2"><Link to={`/studio?draft=${draft._id}`} aria-label={`Continue writing: ${draft.title || 'Untitled draft'}`} title="Continue writing" className="flex h-11 w-11 items-center justify-center rounded-[10px] text-[var(--color-accent)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"><PenIcon /></Link><DeleteDraftButton draft={draft} /></div></div>)}</div> : <p className="py-10 text-center text-[13px] text-[var(--color-text-muted)]">Your autosaved drafts will appear here.</p>)}
+      {writing && tab === 'published' && <div className="mb-6"><PublishedWritingTabs value={writingFormat} onChange={value => setWritingFormat('writingFormat', value)} controlsId="studio-published-panel" firstLabel="Stories" ariaLabel="Published categories" /></div>}
+      {writing && tab === 'published' && <div id="studio-published-panel" role="tabpanel" aria-label={`${writingFormat === 'short' ? 'Shorts' : 'Stories'} content`}>
+      {posts.isError ? <ProfileDataError message="Published posts could not be loaded." onRetry={() => posts.refetch()} /> : <PostRows posts={(posts.data || []).filter(post => (post.format || 'article') === writingFormat)} manage gridShorts={writingFormat === 'short'} emptyMessage={`You haven’t published any ${writingFormat === 'short' ? 'shorts' : 'stories'} yet.`} />}</div>}
+      {writing && tab === 'drafts' && <div className="mb-6"><PublishedWritingTabs value={draftFormat} onChange={value => setWritingFormat('draftFormat', value)} controlsId="studio-drafts-panel" firstLabel="Stories" ariaLabel="Draft categories" /></div>}
+      {tab === 'drafts' && <div id={writing ? 'studio-drafts-panel' : undefined} role={writing ? 'tabpanel' : undefined} aria-label={writing ? `${draftFormat === 'short' ? 'Shorts' : 'Stories'} drafts` : undefined}>{drafts.isLoading ? <div role="status" aria-label="Loading drafts"><ListSkeleton count={4} role={undefined} /></div> : drafts.isError ? <ProfileDataError message="Drafts could not be loaded." onRetry={() => drafts.refetch()} /> : (writing ? drafts.data?.filter(draft => (draft.format || 'article') === draftFormat) : drafts.data)?.length ? <div>{(writing ? drafts.data.filter(draft => (draft.format || 'article') === draftFormat) : drafts.data).map(draft => <div key={draft._id} className="flex min-w-0 items-center gap-3 border-b border-[var(--color-border)] py-7 sm:gap-5 sm:py-8"><div className="min-w-0 flex-1"><p className="font-semibold text-[16px] leading-[1.4] text-[var(--color-text)] [overflow-wrap:anywhere] sm:text-[18px]">{draft.title || 'Untitled draft'}</p><p className="mt-2 text-[12px] leading-5 text-[var(--color-text-muted)]">{draft.format === 'short' ? 'Short' : 'Article'} · Saved {new Date(draft.updatedAt).toLocaleString()}</p></div><div className="flex shrink-0 items-center gap-1 sm:gap-2"><Link to={`/studio?draft=${draft._id}`} aria-label={`Continue writing: ${draft.title || 'Untitled draft'}`} title="Continue writing" className="flex h-11 w-11 items-center justify-center rounded-[10px] text-[var(--color-accent)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus:ring-[var(--color-focus)]"><PenIcon /></Link><DeleteDraftButton draft={draft} /></div></div>)}</div> : <p className="py-10 text-center text-[13px] text-[var(--color-text-muted)]">{writing ? `No ${draftFormat === 'short' ? 'short' : 'story'} drafts yet.` : 'Your autosaved drafts will appear here.'}</p>}</div>}
       {tab === 'analytics' && (entitlements.isPending ? <p role="status">Checking analytics access...</p> : entitlements.isError ? <ProfileDataError message="Analytics access could not be loaded." onRetry={() => entitlements.refetch()} /> : null)}
       {tab === 'analytics' && !entitlements.isPending && !entitlements.isError && !canViewAnalytics && <section className="rounded-[18px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-7 text-center"><h2 className="font-semibold text-[16px] text-[var(--color-text)]">Advanced writer analytics</h2><p className="mt-2 text-[13px] text-[var(--color-text-secondary)]">See opens, completions, engagement, and completion rate with membership.</p><Button className="mt-5" disabled={billing.isPending} onClick={() => billing.mutate()} aria-busy={billing.isPending}>{'Become a member'}</Button></section>}
       {tab === 'analytics' && canViewAnalytics && (analytics.isLoading ? <div role="status" aria-label="Loading writer analytics"><ListSkeleton count={5} role={undefined} /></div> : analytics.isError ? <ProfileDataError message="Analytics could not be loaded." onRetry={() => analytics.refetch()} /> : analytics.data && <div className="flex flex-col gap-7"><div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))' }}><StatCard label="Article opens" value={analytics.data.totalViews} /><StatCard label="Completed reads" value={analytics.data.totalCompletions} /><StatCard label="Completion rate" value={`${analytics.data.completionRate}%`} /><StatCard label="Published posts" value={analytics.data.totalPosts} /></div><section><h2 className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-text-muted)] mb-3">Post performance</h2>{analytics.data.posts.map(post => <div key={post.id} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-4 py-3 border-b border-[var(--color-border)] text-[12px]"><Link to={`/post/${post.id}`} className="font-semibold text-[var(--color-text)] truncate">{post.title}</Link><span className="text-[var(--color-text-muted)]">{post.opens} opens</span><span className="text-[var(--color-text-muted)]">{post.completions} completed</span><span className="text-[var(--color-text-muted)]">{post.likes} likes</span></div>)}</section></div>)}

@@ -20,7 +20,7 @@ const parsePostIds = input => {
   return values;
 };
 
-const presentCollections = async (collections, actorId, includePosts = false) => {
+const presentCollections = async (collections, actorId, includePosts = false, postId = null) => {
   const ownerIds = collections.map(collection => collection.author?._id).filter(Boolean);
   const profiles = await Profile.find({ userId: { $in: ownerIds } }).select('userId handle displayName avatarUrl');
   const profileByOwner = new Map(profiles.map(profile => [profile.userId.toString(), profile]));
@@ -47,6 +47,7 @@ const presentCollections = async (collections, actorId, includePosts = false) =>
       followersCount: collection.followersCount || collection.followers?.length || 0,
       isFollowing: Boolean(actorId && collection.followers?.some(id => id.toString() === actorId)),
       isOwner,
+      ...(postId ? { containsPost: orderedItems.some(item => item.post?._id?.toString() === postId) } : {}),
       createdAt: collection.createdAt,
       updatedAt: collection.updatedAt,
       author: {
@@ -74,6 +75,8 @@ const getCollections = async (req, res) => {
     const requestedLimit = Number.parseInt(req.query.limit, 10);
     const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 24) : 12;
     const cursor = req.query.cursor ? decodeCursor(req.query.cursor) : null;
+    const postId = req.query.postId ? String(req.query.postId) : null;
+    if (postId && !isValidId(postId)) return res.status(400).json({ message: 'Invalid post id' });
     if (req.query.cursor && !cursor) return res.status(400).json({ message: 'Invalid collection cursor' });
     const filter = saved
       ? { savedBy: req.auth.userId, $or: [{ visibility: 'public' }, { visibility: 'unlisted' }, { visibility: { $exists: false }, isPublic: true }] }
@@ -110,7 +113,7 @@ const getCollections = async (req, res) => {
       .limit(limit + 1);
     const hasMore = documents.length > limit;
     const page = hasMore ? documents.slice(0, limit) : documents;
-    const data = await presentCollections(page, req.auth?.userId);
+    const data = await presentCollections(page, req.auth?.userId, false, postId);
     const last = page.at(-1);
     return res.status(200).json({
       data,
@@ -166,6 +169,11 @@ const validateCollectionInput = async (body, partial = false) => {
     const description = String(body.description || '').trim();
     if (description.length > 500) return { error: 'Description is too long' };
     result.description = description;
+  }
+  if (!partial || body.coverImage !== undefined) {
+    const coverImage = String(body.coverImage || '').trim();
+    if (coverImage.length > 2000) return { error: 'Cover image URL is too long' };
+    result.coverImage = coverImage;
   }
   if (!partial || body.visibility !== undefined) {
     const visibility = body.visibility || 'public';

@@ -12,7 +12,8 @@ for (const width of [320, 1280]) {
     })
     await page.goto('/studio?new=article')
     const paragraph = page.getByRole('textbox', { name: 'Paragraph block', exact: true })
-    await paragraph.fill('/')
+    await paragraph.scrollIntoViewIfNeeded()
+    await paragraph.press('/')
     const menu = page.getByRole('listbox', { name: 'Insert block' })
     await expect(menu).toBeVisible()
     expect(await menu.evaluate(element => {

@@ -3,12 +3,12 @@ import { addCollectionPost, createCollection, deleteCollection, fetchCollection,
 import useToast from '@/shared/hooks/useToast'
 import { useSelector } from 'react-redux'
 
-export const useCollectionChoices = (selected = true) => {
+export const useCollectionChoices = (selected = true, postId = '') => {
   const user = useSelector(state => state.auth.user)
   const ready = useSelector(state => state.auth.isReady)
   return useInfiniteQuery({
-    queryKey: ['collections', 'choices', user],
-    queryFn: ({ pageParam }) => fetchCollections({ mine: true, cursor: pageParam }),
+    queryKey: ['collections', 'choices', user, postId],
+    queryFn: ({ pageParam }) => fetchCollections({ mine: true, cursor: pageParam, postId }),
     initialPageParam: null,
     getNextPageParam: page => page.meta.nextCursor || undefined,
     enabled: ready && Boolean(user) && selected,

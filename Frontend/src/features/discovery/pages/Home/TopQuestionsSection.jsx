@@ -32,7 +32,7 @@ export default function TopQuestionsSection() {
       <div className="grid gap-0">
         {questions.map(q => (
           <Link key={q.id} to="/explore/questions"
-            className="flex items-start gap-4 py-4 border-b border-[var(--color-border-light)]
+            className="flex items-start gap-4 py-4 max-md:py-6 border-b border-[var(--color-border-light)]
               hover:bg-[var(--color-surface-hover)] -mx-2 px-2 rounded transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">
             {/* Upvote count */}
             <div className="flex-shrink-0 w-10 text-center">

@@ -1,5 +1,79 @@
 # Write page improvement audit — 2026-10-12
 
+## Lazy draft creation from Writing studio — 2026-10-14
+
+The Post/Short chooser no longer creates an empty server draft. It opens the existing `?new=` editor route, whose autosave guard creates the draft after the first non-whitespace title or block character. Existing draft reopening and publication behavior remain unchanged.
+
+## Empty draft autosave guard — 2026-10-14
+
+Direct editor autosave now skips empty drafts when both the title and all block content are blank. The first non-whitespace character enables the existing autosave flow. Existing draft records are not overwritten when a user clears the editor; draft creation, update payloads, and publication remain unchanged.
+
+## Published draft history — 2026-10-14
+
+After successful publication, the draft is deleted as before, but the editor now replaces the draft URL with the published post URL in browser history. Back therefore cannot reopen the deleted draft and show the draft-load error. Publication payloads, deletion behavior, and post routes remain unchanged.
+
+## Publish modal hierarchy — 2026-10-14
+
+The publish modal now presents Publishing options as a secondary section label, uses the concise None value for an unlinked short, and places selected tags below the tag search controls. Existing modal behavior, tag selection, APIs, and publication payloads remain unchanged.
+
+## Arrow navigation within blocks — 2026-10-14
+
+Arrow Up and Arrow Down now retain native textarea movement through each visual line in a block. The editor measures the caret's visual line before the key action and crosses immediately when it is already on the first or last line, avoiding an extra endpoint step. Block creation, deletion, autosave, publication, and stored content remain unchanged.
+
+## Word-count bottom spacing at wider widths — 2026-10-14
+
+The earlier phone fix left the shared PageFrame's 96 px bottom padding and the word-count row's 24 px bottom margin in place from 768 px upward. The editor now uses its 8 px frame bottom padding and no extra counter margin at every width. The shared PageFrame defaults, other pages, editor controls, data flow, and APIs remain unchanged. Responsive verification is recorded in the progress tracker.
+
+## Blank-space writing focus — 2026-10-14
+
+The existing writing area now shows the text cursor over blank space. Clicking there focuses the nearest editable title or story textarea by vertical position. Direct input clicks and block buttons retain their own behavior. This is confined to the editor page; draft autosave, publication, APIs, and stored blocks are unchanged. A focused browser check covers blank-space and direct-field clicks.
+
+## Desktop and hover block controls — 2026-10-14
+
+Audit: the editor already has active-block +/× controls, a compact insertion sheet, and a desktop anchored insert menu. A responsive class hid the controls at 1024 px and above. The editor now exposes them at all widths, retains right text padding beside the delete target, and shows the controls plus a left line when a row is hovered on pointer devices. The control layer remains transparent to clicks on the text field. Backend routes, block storage, autosave, and publication remain unchanged. Focused browser verification is recorded in the progress tracker.
+
+## Story row click recovery — 2026-10-14
+
+Audit: compact +/× controls sat in an absolute layer across the first Story line. When the row remained active after focus moved elsewhere, the transparent layer intercepted a click back into its textarea. The layer now passes pointer events through; only the visible buttons accept clicks. The editor's block state, autosave, and backend contracts are unchanged. Focused browser results are recorded in the progress tracker.
+
+## Editor heading label — 2026-10-14
+
+Audit: the editor has a local title header, while shared PageHeader and nearby pages already establish the small uppercase accent eyebrow. The editor now shows “Editing” above Write Post/Write Short and Edit Post/Edit Short using that convention. Routes, APIs, data, controls, and publication behavior are unchanged. Verification is recorded in the progress tracker.
+
+## Instructions button shape — 2026-10-14
+
+The existing Instructions button now uses a pill radius. Its label, 44 px height, placement, modal, and behavior remain the same. No backend or data change is involved; verification is recorded in the progress tracker.
+
+## Focused slash hint — 2026-10-14
+
+Audit: the slash hint is the existing placeholder of editor text blocks; browser focus already identifies the current block. The editor now marks paragraph fields for focus-only placeholder styling, so the hint appears only in the empty paragraph being edited. Other block placeholders, controls, data, and APIs remain unchanged. Verification is recorded in the progress tracker.
+
+## Mobile word-count spacing — 2026-10-14
+
+Audit: the shared PageFrame added 96 px bottom padding while AppLayout already reserved space for the fixed mobile navigation. The editor's word-count row added another 24 px margin. The initial fix used 8 px PageFrame bottom padding and no counter margin below 768 px, leaving a small visible gap above navigation when scrolled to the bottom. The wider-width follow-up above extends that spacing to all widths. This changes no backend, draft, or publication behavior; browser verification is recorded in the progress tracker.
+
+## Compact block-control placement — 2026-10-14
+
+Audit: the editor already owns compact +/× block controls, the writing section gutter, and the native insertion sheet. The requested placement changes only editor layout and copy. Backend routes, autosave, publication, and stored blocks remain unchanged. The compact writing column now uses 24 px side gutters, with + left and × right of the active block, aligned to its first line. The existing 44 px targets remain. Responsive browser geometry is covered by the editor layout spec; results are in the progress tracker.
+
+## Writing instructions copy — 2026-10-14
+
+The editor's existing instructions modal now opens from a text-labelled Instructions button. Its guide is a five-point list covering title/story, slash choices, phone/tablet block controls, autosave, and publishing. The modal shell, focus behavior, writing flow, and backend contracts remain unchanged. Verification is recorded in the progress tracker.
+
+## Publish modal and writing alignment — 2026-10-13
+
+Follow-up on 2026-10-13: Header Publish/Update is disabled until title and story content are present; divider-only blocks do not satisfy story content. The header and modal action provide specific disabled reasons. An application-level DisabledButtonTooltip supplies hover feedback for disabled shared and native buttons; the editor browser spec covers its shared/native behavior. Source changes are the editor page, new shared tooltip, application root, and focused tests; current verification is recorded in the progress tracker.
+
+Audit: the current editor used the shared PageFrame, Button, TagPicker, Select, ModalLayer, ModalHeader, and dialog-focus hook. Its inline Publishing details held article cover, tags, optional short depth, and eligible release time above the title. A 96 px desktop left inset plus 12 px textarea padding shifted title and body text. Existing draft autosave and post create/update APIs already hold the needed data; no backend or stored-data change is needed.
+
+The header Publish/Update action opens a native modal with the existing controls and final validation. Failed submission remains in the modal for retry; dismissal restores the header trigger. Guest Publish still opens sign-in. The 2026-10-13 refinements below supersede the original flush-padding, desktop block-action, and phone toolbar descriptions. The initial modal change passed 23 focused mocked-API Chrome checks across 320–2560 px; live persistence and physical devices were not verified.
+
+## Editor interaction refinements — 2026-10-13
+
+Audit: the existing editor, TagPicker, shared BackButton, MobileBlockMenu, Select, ModalLayer/Header, autosave, and `/api/drafts`, `/api/post`, and depth-option flows already support the requested behavior. The remaining defects were left-edge text clearance, redundant block and hint controls, unclear optional depth selection, selected-tag presentation, and loaded textarea height. Only editor UI, tag presentation, CSS, focused browser specs, and documentation need changes; backend routes, schemas, typography, palette, and publication rules remain as built.
+
+The editor uses a 12 px text inset, autogrows loaded title and story fields, shows Back plus Write Post/Short or Edit Post/Short, and places an instructions dialog trigger immediately before Publish. Phones and tablets (<1024 px) show active-block + on the left and × on the right with the existing insertion sheet; desktop uses the slash menu without those buttons. The paragraph placeholder explains the slash shortcut and the bottom hint is gone. The publishing modal groups selected tags, removes redundant readiness prose, and offers an explicit None value for the optional full-post link. Existing autosave, cover upload, publication validation, and API payloads remain. Focused browser tests were updated; verification is recorded in the progress tracker.
+
 ## Unified Writing studio — 2026-10-13
 
 Before: `/write` showed a second saved-draft list with Write new, while `/writing` held the owner Stories, Shorts, Drafts, and Analytics tabs. Draft continuation and deletion sat below the title/details on narrow screens. The frontend used the existing authenticated `/api/drafts` endpoints, post editor, publication API, and owner-scoped draft deletion; no backend or schema change was needed.

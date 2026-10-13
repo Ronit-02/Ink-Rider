@@ -8,6 +8,7 @@ import store from './app/store.js'
 import AuthProvider from './app/providers/AuthProvider.jsx'
 import { ToastProvider } from './shared/hooks/useToast.jsx'
 import ToastViewport from './shared/components/ui/ToastViewport.jsx'
+import DisabledButtonTooltip from './shared/components/ui/DisabledButtonTooltip.jsx'
 import './styles/global.css'
 
 const savedTheme = localStorage.getItem('ink-theme')
@@ -27,6 +28,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <ToastProvider>
               <App />
               <ToastViewport />
+              <DisabledButtonTooltip />
             </ToastProvider>
           </BrowserRouter>
         </QueryClientProvider>

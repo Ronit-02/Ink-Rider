@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const InteractionEvent = require('../schemas/interaction-event.schema');
+const ReadingState = require('../schemas/reading-state.schema');
 const Post = require('../schemas/post.schema');
 const { presentDiscoveryPosts } = require('../services/post-presenter.service');
 const { getPostAccessContext, accessiblePostClause } = require('../services/post-access.service');
@@ -84,7 +85,18 @@ const getReadingHistory = async (req, res) => {
       state.progress = Math.max(state.progress, event.eventType === 'complete' ? 100 : (event.metadata?.readingDepth || 0));
       stateByPost.set(id, state);
     }
-    const states = [...stateByPost.values()].slice(0, 50);
+    const legacyStates = [...stateByPost.values()];
+    const savedStates = await ReadingState.find({ userId: req.auth.userId }).sort({ lastReadAt: -1 }).limit(100).lean();
+    const savedByPost = new Map(savedStates.map(state => [state.postId.toString(), state]));
+    const states = [...new Set([...savedByPost.keys(), ...legacyStates.map(state => state.postId)])]
+      .map(postId => {
+        const saved = savedByPost.get(postId);
+        const legacy = stateByPost.get(postId);
+        return saved ? { postId, lastReadAt: saved.lastReadAt, progress: saved.progress, completed: saved.completed } : legacy;
+      })
+      .filter(Boolean)
+      .sort((left, right) => new Date(right.lastReadAt) - new Date(left.lastReadAt))
+      .slice(0, 50);
     const context = await getPostAccessContext(req.auth.userId);
     const documents = await Post.find({ _id: { $in: states.map(state => state.postId) }, ...accessiblePostClause(context) })
       .populate({ path: 'author', select: 'picture username' });

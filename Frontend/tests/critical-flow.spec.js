@@ -20,12 +20,13 @@ test('reader can draft, publish, read, save, comment, and reload a short article
   await page.getByRole('dialog', { name: 'What do you want to write?' }).getByRole('button', { name: /^Short/ }).click()
   await expect(page.locator('input[type=file]')).toHaveCount(0)
   await page.getByPlaceholder('A focused idea…').fill('A browser-tested short reading flow')
-  await page.getByPlaceholder('Write something…').fill('This short article verifies the complete reader and writer journey from draft to durable discussion.')
-  await page.getByLabel('Add a tag', { exact: true }).fill('testing')
-  await page.getByRole('button', { name: 'Add', exact: true }).click()
-
+  await page.getByPlaceholder('Press / for formatting options').fill('This short article verifies the complete reader and writer journey from draft to durable discussion.')
   await expect(page).toHaveURL(/\/studio\?draft=/, { timeout: 10_000 })
   await page.getByRole('button', { name: 'Publish', exact: true }).click()
+  const publishDialog = page.getByRole('dialog', { name: 'Publish story' })
+  await publishDialog.getByLabel('Add a tag', { exact: true }).fill('testing')
+  await publishDialog.getByRole('button', { name: 'Add', exact: true }).click()
+  await publishDialog.getByRole('button', { name: 'Publish', exact: true }).click()
   await page.waitForURL(/\/post\/[a-f0-9]{24}/, { waitUntil: 'domcontentloaded', timeout: 30_000 })
 
   const saveButton = page.getByRole('button', { name: 'Save this article' })
