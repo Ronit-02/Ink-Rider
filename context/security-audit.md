@@ -20,3 +20,5 @@ Security is a continuous release requirement, not a one-time certification. Ink-
 Source-level tests and build checks provide useful but incomplete evidence.
 
 On 2026-10-13, the backend production dependency lockfile was refreshed with `npm audit fix`. `npm audit --omit=dev --audit-level=low` then reported zero vulnerabilities. The backend contract suite passed (106/106). A separate full dependency audit still reports three high findings through the development-only `nodemon` → `chokidar` → `braces` chain; npm's suggested forced fix would downgrade nodemon and was not applied.
+
+On 2026-10-13, the frontend lockfile was refreshed for `brace-expansion` and `source-map-js`. `npm audit --audit-level=low` then reported zero vulnerabilities, and the frontend production build passed.

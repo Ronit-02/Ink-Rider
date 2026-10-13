@@ -839,3 +839,8 @@ Verified by frontend lint and production build: public writer and personal profi
 
 - Refreshed the backend lockfile to resolve the reported production findings in brace-expansion, morgan, multer, nodemailer, proxy-addr, and sharp. Application code and dependency declarations were unchanged.
 - Verification on 2026-10-13: `npm audit --omit=dev --audit-level=low` reported zero vulnerabilities; backend `npm test` passed 106/106. The full dependency audit still reports three development-only high findings through nodemon/chokidar/braces.
+
+### 2026-10-13 — Frontend full dependency audit
+
+- Refreshed the frontend lockfile to resolve the reported `brace-expansion` and `source-map-js` findings. Application code and dependency declarations were unchanged.
+- Verification on 2026-10-13: frontend `npm audit --audit-level=low` reported zero vulnerabilities, and `npm run build` passed.
