@@ -834,3 +834,8 @@ Update this file only after a verified change to implementation progress. Put de
 # 2026-10-13 — card reuse and Writing studio row
 
 Verified by frontend lint and production build: public writer and personal profile articles use DiscoveryPostCard grid, Writing studio article rows use extracted WritingPostRow with existing owner actions, and member early access articles use the shared grid card with a Member early access badge. Existing routes and backend contracts are unchanged. Browser checks were not completed in this run.
+
+### 2026-10-13 — Backend production dependency audit
+
+- Refreshed the backend lockfile to resolve the reported production findings in brace-expansion, morgan, multer, nodemailer, proxy-addr, and sharp. Application code and dependency declarations were unchanged.
+- Verification on 2026-10-13: `npm audit --omit=dev --audit-level=low` reported zero vulnerabilities; backend `npm test` passed 106/106. The full dependency audit still reports three development-only high findings through nodemon/chokidar/braces.
