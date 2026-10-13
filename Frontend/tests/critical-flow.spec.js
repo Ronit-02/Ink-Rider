@@ -15,8 +15,8 @@ test('reader can draft, publish, read, save, comment, and reload a short article
   expect(loginResponse.status()).toBe(200)
   await page.waitForURL('**/', { waitUntil: 'domcontentloaded', timeout: 30_000 })
 
-  await page.goto('/write', { waitUntil: 'domcontentloaded' })
-  await page.getByRole('button', { name: 'Write new', exact: true }).click()
+  await page.goto('/studio', { waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: 'Write a post', exact: true }).click()
   await page.getByRole('dialog', { name: 'What do you want to write?' }).getByRole('button', { name: /^Short/ }).click()
   await expect(page.locator('input[type=file]')).toHaveCount(0)
   await page.getByPlaceholder('A focused idea…').fill('A browser-tested short reading flow')
@@ -24,7 +24,7 @@ test('reader can draft, publish, read, save, comment, and reload a short article
   await page.getByLabel('Add a tag', { exact: true }).fill('testing')
   await page.getByRole('button', { name: 'Add', exact: true }).click()
 
-  await expect(page).toHaveURL(/\/write\?draft=/, { timeout: 10_000 })
+  await expect(page).toHaveURL(/\/studio\?draft=/, { timeout: 10_000 })
   await page.getByRole('button', { name: 'Publish', exact: true }).click()
   await page.waitForURL(/\/post\/[a-f0-9]{24}/, { waitUntil: 'domcontentloaded', timeout: 30_000 })
 

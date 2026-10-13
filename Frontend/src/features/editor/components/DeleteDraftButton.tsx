@@ -13,7 +13,7 @@ export default function DeleteDraftButton({ draft }: { draft: Draft }) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   return <>
-    <Button ref={triggerRef} variant="action" className="shrink-0 !text-[var(--color-danger)]" aria-label={`Delete draft: ${draft.title || 'Untitled draft'}`} onClick={() => setOpen(true)}>Delete draft</Button>
+    <Button ref={triggerRef} variant="ghost" className="!h-11 !w-11 shrink-0 !px-0 !text-[var(--color-danger)]" aria-label={`Delete draft: ${draft.title || 'Untitled draft'}`} title="Delete draft" onClick={() => setOpen(true)}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></Button>
     {open && <DeleteDraftDialog draft={draft} trigger={triggerRef.current} onClose={() => setOpen(false)} />}
   </>
 }

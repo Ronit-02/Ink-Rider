@@ -85,7 +85,7 @@ export default function CollectionDetail() {
       <h3 id={`collection-${group.id}-title`} className="mb-5 text-[18px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{group.title}</h3>
       <div className={group.id === 'shorts' ? 'card-grid card-grid--short items-start gap-4' : undefined}>
         {group.posts.map((post, index) => <div key={post.id} className="relative min-w-0">
-          {group.id === 'shorts' ? <ShortCard post={post} /> : <DiscoveryPostCard post={post} flushTop={index === 0} />}
+          {group.id === 'shorts' ? <ShortCard post={post} fluid /> : <DiscoveryPostCard post={post} flushTop={index === 0} />}
           {collection.isOwner && <div className={group.id === 'shorts' ? 'mt-2 flex justify-end gap-1' : 'absolute right-0 top-5 z-10 flex gap-1'}>
             <button type="button" onClick={() => move(post.id, -1)} disabled={index === 0 || update.isPending} aria-label={`Move ${post.title} earlier`} className="button-target min-h-11 min-w-11 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 h-11 w-11 sm:min-h-0 sm:min-w-0">↑</button>
             <button type="button" onClick={() => move(post.id, 1)} disabled={index === group.posts.length - 1 || update.isPending} aria-label={`Move ${post.title} later`} className="button-target min-h-11 min-w-11 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 h-11 w-11 sm:min-h-0 sm:min-w-0">↓</button>

@@ -16,7 +16,7 @@ const guides = [
   {
     title: 'Write and publish',
     description: 'Any signed-in account can write. Open Write to start or continue a draft, preview your work, and publish when it is ready. Keep an eye on the editor’s save status before leaving.',
-    links: [{ label: 'Start writing', to: '/write' }],
+    links: [{ label: 'Start writing', to: '/studio' }],
   },
   {
     title: 'Ask questions and participate',

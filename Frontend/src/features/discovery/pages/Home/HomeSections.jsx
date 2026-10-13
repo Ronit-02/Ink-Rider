@@ -12,7 +12,7 @@ import ShortCard from '@/features/discovery/components/ShortCard'
 import useShorts from '@/features/discovery/hooks/useShorts'
 
 function SectionBar({ title, action, children }) {
-  return <div className="mb-5 flex items-end justify-between gap-4"><div><SectionHeading>{title}</SectionHeading>{children}</div>{action}</div>
+  return <div className="mb-5 flex flex-wrap items-end justify-between gap-4"><div className="min-w-44 flex-1"><SectionHeading>{title}</SectionHeading>{children}</div>{action}</div>
 }
 
 function SectionPlaceholder() {
@@ -54,6 +54,12 @@ function DeferredSection({ children }) {
   </div>
 }
 
+function StoryCarousel({ posts, label }) {
+  return <div aria-label={label} className="flex gap-4 snap-x snap-mandatory overflow-x-auto overscroll-x-contain pb-3 [-webkit-overflow-scrolling:touch]">
+    {posts.map(post => <div key={post.id} className="w-[min(85%,320px)] shrink-0 snap-start"><DiscoveryPostCard post={post} variant="grid" /></div>)}
+  </div>
+}
+
 function CategorySection({ posts }) {
   const [selectedCategory, setSelectedCategory] = useState(null)
   const categories = [...new Set(posts.flatMap(post => post.tags || []))].slice(0, 7)
@@ -63,33 +69,33 @@ function CategorySection({ posts }) {
     <SectionBar title="Browse categories" action={<Link to={selectedCategory ? `/search?q=${encodeURIComponent(selectedCategory)}` : '/search'} className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-[18px] py-2 text-[13px] font-medium text-[var(--color-text)] transition-all duration-150 hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">View more →</Link>}>
       <p className="mt-1 text-[13px] text-[var(--color-text-secondary)]">Follow a thread of curiosity through the latest writing.</p>
     </SectionBar>
-    <div className="flex flex-wrap gap-2">
-      {categories.map(category => <button key={category} type="button" aria-pressed={selectedCategory === category} onClick={() => setSelectedCategory(current => current === category ? null : category)} className={`button-target min-h-11 rounded-full border px-4 py-2 text-[12px] font-medium transition-colors sm:min-h-0 ${selectedCategory === category ? 'border-[var(--color-text)] bg-[var(--color-text)] text-[var(--color-text-inverted)]' : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-text)] hover:text-[var(--color-text)]'}`}>{category}</button>)}
+    <div className="flex gap-2 snap-x overflow-x-auto overscroll-x-contain pb-2 [-webkit-overflow-scrolling:touch]">
+      {categories.map(category => <button key={category} type="button" aria-pressed={selectedCategory === category} onClick={() => setSelectedCategory(current => current === category ? null : category)} className={`button-target min-h-11 shrink-0 snap-start rounded-full border px-4 py-2 text-[12px] font-medium transition-colors sm:min-h-0 ${selectedCategory === category ? 'border-[var(--color-text)] bg-[var(--color-text)] text-[var(--color-text-inverted)]' : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-text)] hover:text-[var(--color-text)]'}`}>{category}</button>)}
     </div>
-    {visiblePosts.length > 0 ? <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">{visiblePosts.map(post => <DiscoveryPostCard key={post.id} post={post} variant="grid" />)}</div> : <p className="mt-6 py-8 text-center text-[13px] text-[var(--color-text-muted)]">No stories match this category yet.</p>}
+    {visiblePosts.length > 0 ? <div className="mt-6"><StoryCarousel posts={visiblePosts} label="Browse categories stories" /></div> : <p className="mt-6 py-8 text-center text-[13px] text-[var(--color-text-muted)]">No stories match this category yet.</p>}
   </section>
 }
 
 function CollectionsSection() {
   const query = retainRetryView(useCollections(false))
   const collections = query.data?.pages.flatMap(page => page.data) || []
-  if (query.isPending) return <section><SectionBar title="Browse collections" /><div role="status" aria-label="Loading collections" className="card-grid card-grid--collection gap-4"><div className="h-40 animate-pulse rounded-[16px] bg-[var(--color-bg-alt)]" /><div className="h-40 animate-pulse rounded-[16px] bg-[var(--color-bg-alt)]" /></div></section>
+  if (query.isPending) return <section><SectionBar title="Browse collections" /><div role="status" aria-label="Loading collections" className="card-grid card-grid--collection card-grid--collection-home gap-4"><div className="h-40 animate-pulse rounded-[16px] bg-[var(--color-bg-alt)]" /><div className="h-40 animate-pulse rounded-[16px] bg-[var(--color-bg-alt)]" /></div></section>
   if (query.isError) return <section><SectionBar title="Browse collections" /><div role="alert" className="border-y border-[var(--color-border)] py-8"><p className="text-[13px] text-[var(--color-danger)]">Collections could not be loaded.</p><button type="button" onClick={() => query.refetch()} className="button-target mt-3 inline-flex min-h-11 items-center rounded-full border border-[var(--color-border)] px-4 py-2 text-[12px] font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0" aria-busy={query.isFetching} disabled={query.isFetching}>Try again</button></div></section>
   if (!collections.length) return null
-  return <section><SectionBar title="Browse collections" action={<Link to="/collections" className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-[18px] py-2 text-[13px] font-medium text-[var(--color-text)] transition-all duration-150 hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">See all →</Link>} /><div className="card-grid card-grid--collection gap-4">{collections.slice(0, 2).map(collection => <CollectionCard key={collection.id} collection={collection} />)}</div></section>
+  return <section><SectionBar title="Browse collections" action={<Link to="/collections" className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-[18px] py-2 text-[13px] font-medium text-[var(--color-text)] transition-all duration-150 hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">See all →</Link>} /><div className="card-grid card-grid--collection card-grid--collection-home gap-4">{collections.slice(0, 2).map(collection => <CollectionCard key={collection.id} collection={collection} />)}</div></section>
 }
 
 function WriterPicks({ posts }) {
   if (!posts.length) return null
-  return <section><SectionBar title="Writer's picks" action={<Link to="/explore/trending" className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-[18px] py-2 text-[13px] font-medium text-[var(--color-text)] transition-all duration-150 hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">View trending →</Link>} /><div className="card-grid card-grid--post gap-4">{posts.slice(0, 4).map(post => <DiscoveryPostCard key={post.id} post={post} variant="grid" />)}</div></section>
+  return <section><SectionBar title="Writer's picks" action={<Link to="/explore/trending" className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-[18px] py-2 text-[13px] font-medium text-[var(--color-text)] transition-all duration-150 hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">View trending →</Link>} /><StoryCarousel posts={posts.slice(0, 4)} label="Writer's picks stories" /></section>
 }
 
-function ShortReadsSection() {
+function ShortReadsSection({ offset = 0 }) {
   const query = retainRetryView(useShorts('latest'))
   const seen = new Set()
   const shorts = (query.data?.pages.flatMap(page => page.data) || [])
     .filter(post => post?.id && !seen.has(post.id) && seen.add(post.id))
-    .slice(0, 4)
+    .slice(offset, offset + 4)
 
   if (!query.isPending && !query.isError && shorts.length === 0) return null
 
@@ -97,12 +103,12 @@ function ShortReadsSection() {
     <SectionBar title="Short reads" action={<Link to="/shorts" className="inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-[18px] py-2 text-[13px] font-medium text-[var(--color-text)] transition-all duration-150 hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">See all →</Link>}>
       <p className="mt-1 text-[13px] text-[var(--color-text-secondary)]">Focused ideas under 500 words.</p>
     </SectionBar>
-    {query.isPending && <div role="status" aria-label="Loading short reads" className="flex gap-4 overflow-x-auto pb-3">
-      {[0, 1, 2, 3].map(item => <div key={item} aria-hidden="true" className="h-[380px] w-[250px] shrink-0 animate-pulse rounded-[16px] border border-[var(--color-border)] bg-[var(--color-bg-alt)]" />)}
+    {query.isPending && <div role="status" aria-label="Loading short reads" className="home-short-grid gap-4">
+      {[0, 1, 2, 3].map(item => <div key={item} aria-hidden="true" className="aspect-[2/3] min-h-[285px] w-full animate-pulse rounded-[16px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] min-[376px]:max-[391px]:min-h-[270px]" />)}
     </div>}
     {query.isError && <div role="alert" className="border-y border-[var(--color-border)] py-6"><p className="text-[13px] text-[var(--color-danger)]">Short reads could not be loaded.</p><Button className="mt-3" variant="secondary" onClick={() => query.refetch()} aria-busy={query.isFetching} disabled={query.isFetching}>Try again</Button></div>}
-    {shorts.length > 0 && <div className="flex gap-4 overflow-x-auto pb-3" aria-label="Latest short reads">
-      {shorts.map(post => <div key={post.id} className="w-[250px] shrink-0"><ShortCard post={post} /></div>)}
+    {shorts.length > 0 && <div className="home-short-grid gap-4" aria-label="Latest short reads">
+      {shorts.map(post => <ShortCard key={post.id} post={post} fluid />)}
     </div>}
   </section>
 }
@@ -120,16 +126,16 @@ function TopAuthors({ posts }) {
     return [...map.values()].sort((a, b) => b.likes - a.likes || b.stories - a.stories).slice(0, 4)
   }, [posts])
   if (!authors.length) return null
-  return <section><SectionBar title="Top authors" action={<Link to="/search?q=writer" className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-[18px] py-2 text-[13px] font-medium text-[var(--color-text)] transition-all duration-150 hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Find writers →</Link>} /><div className="grid gap-0 sm:grid-cols-2 sm:gap-x-8">{authors.map((author, index) => <Link key={author.id} to={`/author/${author.handle || encodeURIComponent(author.username)}`} className="flex items-center gap-3 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2"><span className="w-5 text-[12px] text-[var(--color-text-muted)]">0{index + 1}</span><Avatar src={author.picture} name={author.username} size={40} /><span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold text-[var(--color-text)]">{author.username}</span><span className="mt-1 block text-[11px] text-[var(--color-text-muted)]">{author.stories} featured {author.stories === 1 ? 'story' : 'stories'}</span></span></Link>)}</div></section>
+  return <section><SectionBar title="Top authors" action={<Link to="/search?q=writer" className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-[18px] py-2 text-[13px] font-medium text-[var(--color-text)] transition-all duration-150 hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Find writers →</Link>} /><div className="grid grid-cols-1 gap-x-6 min-[540px]:grid-cols-2 lg:grid-cols-4">{authors.map((author, index) => <Link key={author.id} to={`/author/${author.handle || encodeURIComponent(author.username)}`} className="flex min-w-0 items-center gap-3 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2"><span className="w-5 shrink-0 text-[12px] text-[var(--color-text-muted)]">0{index + 1}</span><Avatar src={author.picture} name={author.username} size={40} /><span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold text-[var(--color-text)]">{author.username}</span><span className="mt-1 block truncate text-[11px] text-[var(--color-text-muted)]">{author.stories} featured {author.stories === 1 ? 'story' : 'stories'}</span></span></Link>)}</div></section>
 }
 
-export default function HomeSections({ type, posts }) {
+export default function HomeSections({ type, posts, shortOffset = 0 }) {
   const content = {
     writerPicks: <WriterPicks posts={posts} />,
     categories: <CategorySection posts={posts} />,
     collections: <CollectionsSection />,
     topAuthors: <TopAuthors posts={posts} />,
-    shortReads: <ShortReadsSection />,
+    shortReads: <ShortReadsSection offset={shortOffset} />,
   }[type]
   return type === 'shortReads' ? content : <DeferredSection>{content}</DeferredSection>
 }

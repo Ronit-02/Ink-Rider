@@ -26,7 +26,7 @@ export default function WritingPostMenu({ post }) {
   return <>
     <ActionMenuTrigger ref={triggerRef} aria-label={`Manage ${post.title}`} aria-expanded={open} aria-controls={open ? menuId : undefined} disabled={publication.isPending} onClick={() => setOpen(value => !value)} />
     {open && <ActionMenu id={menuId} label={`Manage ${post.title}`} anchorRef={triggerRef} onClose={closeMenu}>
-      <ActionMenuItem icon={<PenIcon />} disabled={publication.isPending} onClick={() => navigate(`/write?edit=${id}`)}>Edit</ActionMenuItem>
+      <ActionMenuItem icon={<PenIcon />} disabled={publication.isPending} onClick={() => navigate(`/studio?edit=${id}`)}>Edit</ActionMenuItem>
       <ActionMenuItem icon={<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 16v4h16v-4" /><path d={post.publicationStatus === 'unpublished' ? 'M12 16V4m-5 5 5-5 5 5' : 'M12 4v12m-5-5 5 5 5-5'} /></svg>} disabled={publication.isPending} aria-busy={publication.isPending} onClick={() => publication.mutate({ postId: id, status: post.publicationStatus === 'unpublished' ? 'published' : 'unpublished' })}>{post.publicationStatus === 'unpublished' ? 'Republish' : 'Unpublish'}</ActionMenuItem>
       <ActionMenuItem icon={<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7" /></svg>} tone="danger" disabled={publication.isPending} onClick={() => openDialog('delete')}>Delete post</ActionMenuItem>
     </ActionMenu>}

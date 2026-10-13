@@ -46,7 +46,7 @@ const toStoryPost = post => ({
 
 function SavedStoryList({ posts, shorts = false }) {
   if (!posts.length) return <p className="py-16 text-center text-[13px] text-[var(--color-text-muted)]">{shorts ? 'Shorts you save will appear here.' : 'Stories you save will appear here.'}</p>
-  return <div>{posts.map(post => <DiscoveryPostCard key={post._id || post.id} post={toStoryPost(post)} />)}</div>
+  return <div className={shorts ? 'card-grid card-grid--short gap-4' : undefined}>{posts.map(post => <DiscoveryPostCard key={post._id || post.id} post={toStoryPost(post)} variant={shorts ? 'grid' : undefined} />)}</div>
 }
 
 function SavedContent() {
@@ -104,6 +104,8 @@ function SavedContent() {
 
 function LibraryCollections() {
   const [params, setParams] = useSearchParams()
+  const section = params.get('collectionSection') === 'saved' ? 'saved' : 'mine'
+  const sections = ['mine', 'saved']
   const sort = ['latest', 'popular'].includes(params.get('collectionSort')) ? params.get('collectionSort') : 'latest'
   const visibility = ['public', 'unlisted', 'private'].includes(params.get('collectionVisibility')) ? params.get('collectionVisibility') : 'all'
   const mine = retainRetryView(useCollections(true, sort))
@@ -116,8 +118,14 @@ function LibraryCollections() {
     else next.set(key, value)
     return next
   })
+  const handleSectionKeyDown = event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+    event.preventDefault()
+    const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? sections.length - 1 : (sections.indexOf(section) + (event.key === 'ArrowRight' ? 1 : -1) + sections.length) % sections.length
+    update('collectionSection', sections[nextIndex], 'mine')
+    requestAnimationFrame(() => document.querySelectorAll('[role="tab"][aria-controls="library-collections-panel"]')[nextIndex]?.focus())
+  }
   const list = (query, items, label, empty) => <section className="mb-10" aria-label={label}>
-    <h2 className="mb-5 text-[15px] font-semibold text-[var(--color-text)]">{label}</h2>
     {query.isPending ? <div role="status" aria-label={`Loading ${label.toLowerCase()}`} className="card-grid card-grid--collection gap-5"><PostCardSkeleton compact /><PostCardSkeleton compact /></div>
       : query.isError ? <div className="py-8 text-center"><p role="alert" className="text-[13px] text-[var(--color-danger)]">{label} could not be loaded.</p><Button variant="secondary" className="mt-3" onClick={() => query.refetch()}>Try again</Button></div>
         : items.length ? <div className="card-grid card-grid--collection gap-5">{items.map(item => <CollectionCard key={item.id} collection={item} />)}</div>
@@ -125,16 +133,23 @@ function LibraryCollections() {
     {!query.isPending && !query.isError && query.hasNextPage && <div className="pt-7 text-center"><Button variant="secondary" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage} aria-busy={query.isFetchingNextPage}>Load more</Button></div>}
   </section>
   return <>
-    <div className="mb-8 flex justify-end"><FilterBar label="Collections" options={[{ id: 'all', label: 'All collections' }, { id: 'public', label: 'Public' }, { id: 'unlisted', label: 'Unlisted' }, { id: 'private', label: 'Private' }]} value={visibility} onChange={value => update('collectionVisibility', value, 'all')} sortOptions={[{ id: 'latest', label: 'Newest collections' }, { id: 'popular', label: 'Most saved' }]} sortValue={sort} onSortChange={value => update('collectionSort', value, 'latest')} onReset={() => setParams(current => { const next = new URLSearchParams(current); next.delete('collectionVisibility'); next.delete('collectionSort'); return next })} /></div>
-    {list(mine, owned, 'My collections', 'Collections you create will appear here.')}
-    {list(saved, savedItems, 'Saved collections', 'Collections you save will appear here.')}
+    <div className="mb-8 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex max-w-full flex-wrap gap-2" role="tablist" aria-label="Collection sections">
+        <Pill label="My collections" role="tab" ariaControls="library-collections-panel" tabIndex={section === 'mine' ? 0 : -1} active={section === 'mine'} onKeyDown={handleSectionKeyDown} onClick={() => update('collectionSection', 'mine', 'mine')} />
+        <Pill label="Saved collections" role="tab" ariaControls="library-collections-panel" tabIndex={section === 'saved' ? 0 : -1} active={section === 'saved'} onKeyDown={handleSectionKeyDown} onClick={() => update('collectionSection', 'saved', 'mine')} />
+      </div>
+      <FilterBar label="Collections" options={[{ id: 'all', label: 'All collections' }, { id: 'public', label: 'Public' }, { id: 'unlisted', label: 'Unlisted' }, { id: 'private', label: 'Private' }]} value={visibility} onChange={value => update('collectionVisibility', value, 'all')} sortOptions={[{ id: 'latest', label: 'Newest collections' }, { id: 'popular', label: 'Most saved' }]} sortValue={sort} onSortChange={value => update('collectionSort', value, 'latest')} onReset={() => setParams(current => { const next = new URLSearchParams(current); next.delete('collectionVisibility'); next.delete('collectionSort'); return next })} />
+    </div>
+    <div id="library-collections-panel" role="tabpanel" aria-label={section === 'mine' ? 'My collections content' : 'Saved collections content'}>
+      {section === 'mine' ? list(mine, owned, 'My collections', 'Collections you create will appear here.') : list(saved, savedItems, 'Saved collections', 'Collections you save will appear here.')}
+    </div>
   </>
 }
 
 export default function SavedPage() {
   const [params, setParams] = useSearchParams()
   const tab = ['saved', 'history', 'collections'].includes(params.get('libraryTab')) ? params.get('libraryTab') : params.get('savedSection') === 'collections' ? 'collections' : 'saved'
-  const tabs = ['saved', 'history', 'collections']
+  const tabs = ['saved', 'collections', 'history']
   const setTab = nextTab => {
     const next = new URLSearchParams(params)
     if (next.get('savedSection') === 'collections') next.delete('savedSection')

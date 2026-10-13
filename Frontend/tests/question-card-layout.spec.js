@@ -106,7 +106,7 @@ for (const { width, signedIn } of [320, 390, 1280].flatMap(width => [false, true
     if (signedIn) {
       const responseDialog = page.getByRole('dialog', { name: 'Add a response' })
       await expect(responseDialog).toBeVisible()
-      await expect(responseDialog.getByRole('link', { name: 'Write a new post' })).toHaveAttribute('href', '/write?question=question-1')
+      await expect(responseDialog.getByRole('link', { name: 'Write a new post' })).toHaveAttribute('href', '/studio?question=question-1')
     }
     else await expect(page.getByRole('dialog', { name: 'Sign in to Ink Rider' })).toBeVisible()
     await page.goto('/explore/questions')

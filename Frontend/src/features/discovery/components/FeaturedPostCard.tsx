@@ -22,7 +22,7 @@ export default function FeaturedPostCard({ post, label = 'Article of the day', r
   return (
     <article className="group relative grid overflow-hidden rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)] md:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
       <p className="px-5 py-5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)] md:col-span-2 md:px-7">{label}</p>
-      <Link to={`/post/${post.id}`} aria-label={`Read ${post.title}`} className="relative z-10 block h-[280px] min-w-0 overflow-hidden md:h-auto md:self-stretch [&>div]:absolute [&>div]:inset-0">
+      <Link to={`/post/${post.id}`} aria-label={`Read ${post.title}`} className="relative z-10 block aspect-[16/9] min-w-0 overflow-hidden md:aspect-auto md:self-stretch [&>div]:absolute [&>div]:inset-0">
         <ImageBox src={post.image} alt="" height="100%" radius="0" />
       </Link>
       <div className="flex min-w-0 flex-col gap-5 p-5 md:px-7 md:pb-7 md:pt-0">

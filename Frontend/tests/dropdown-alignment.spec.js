@@ -104,7 +104,7 @@ for (const width of [320, 1280]) {
   test(`short depth link is retained in publication at ${width}px`, async ({ page }) => {
     await setup(page, width)
     const { writes } = await fixture(page)
-    await page.goto('/write?draft=short-draft')
+    await page.goto('/studio?draft=short-draft')
     await page.getByText('Publishing options', { exact: true }).click()
     await checkDropdown(page, 'Deeper article (optional)', article.title)
     await page.getByRole('button', { name: 'Publish', exact: true }).click()

@@ -194,7 +194,7 @@ for (const surface of ['article', 'short']) {
 test(`${surface} opens the same save picker and restores focus`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 844 })
     const state = await mockApi(page, { short: surface === 'short' })
-    await page.goto(surface === 'writing' ? '/writing' : `/post/${post.id}`)
+    await page.goto(surface === 'writing' ? '/studio' : `/post/${post.id}`)
     const opener = page.getByRole('button', { name: surface === 'short' ? 'Save this short read' : 'Save this article' })
     const trigger = opener
     await trigger.click()

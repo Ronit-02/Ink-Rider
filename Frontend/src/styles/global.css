@@ -272,22 +272,60 @@ textarea.outline-none.editor-writing-field:focus-visible {
 }
 
 .card-grid--short {
-  --card-grid-min-width: 250px;
-  --card-grid-max-width: 250px;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--card-grid-max-width)), var(--card-grid-max-width)));
-  align-items: start;
-  justify-content: start;
+  --card-grid-min-width: 0px;
+  --card-grid-max-width: none;
 }
 
-@media (max-width: 639px) {
-  .card-grid--short {
-    justify-content: center;
+.card-grid--short,
+.home-short-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+}
+
+@media (min-width: 376px) and (max-width: 391px) {
+  .card-grid--short,
+  .home-short-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+@media (max-width: 375px) {
+  .card-grid--short,
+  .home-short-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card-grid--short > *,
+  .home-short-grid > * {
+    max-width: 250px;
+    justify-self: center;
   }
 }
 
 .card-grid--collection {
-  --card-grid-min-width: 360px;
-  --card-grid-max-width: 520px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.card-grid--collection > * {
+  min-width: 0;
+  max-width: none;
+}
+
+@media (min-width: 600px) {
+  .card-grid--collection {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .card-grid--collection {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .card-grid--collection-home {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .card-grid--post {
@@ -296,7 +334,24 @@ textarea.outline-none.editor-writing-field:focus-visible {
 }
 
 .competition-entry-grid {
-  grid-template-columns: repeat(auto-fill, min(100%, var(--card-grid-max-width)));
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.competition-entry-grid > * {
+  min-width: 0;
+  max-width: none;
+}
+
+@media (min-width: 540px) {
+  .competition-entry-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .competition-entry-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 /* ─── Animation utilities ─────────────────────────────────────────────────── */

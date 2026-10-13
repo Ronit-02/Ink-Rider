@@ -98,10 +98,10 @@ Status meanings:
 | Public writer profile | `/author/:handle` | Connected | Durable writer identity, Published work with Posts/Shorts/Collections pills, writing sorting, and paginated public collections, follow state, creator support, and labelled direct-request controls; `/author` provides a writer-search recovery path |
 | Collections | `/collections` | Connected | Browse, save, create, and manage curated reading sets; add any public post/short from its card or reader to an owned collection or create one in place |
 | Collection detail | `/collections/:id` | Connected | Read, save, share, and manage a collection |
-| Library | `/saved` | Connected | Saved Stories/Shorts, History, and Collections top tabs; Collections lists owned and saved sets with URL-backed visibility/sort filters |
-| Writer/editor | `/write` and later `/write/:draftId` | Partial | Draft list and Post/Short chooser; immediate signed-in typed draft creation, stacked editor fields, phone active-block toolbar/bottom sheet, guest local composition with Publish sign-in, autosave, validation, scheduling, and publication |
+| Library | `/saved` | Connected | Saved, Collections, and History top tabs; Collections switches between My and Saved sets with URL-backed pill selection, visibility, and sort filters |
+| Writer/editor | `/studio?draft=`, `?edit=`, `?new=`, or `?question=` | Partial | Shared studio Post/Short chooser creates a typed draft; existing editor retains stacked fields, phone active-block toolbar/bottom sheet, guest local composition via direct `?new=`, autosave, validation, scheduling, and publication |
 | Personal profile | `/profile` | Connected | Centered guest sign-in prompt; mobile account sheet links to the profile; signed-in public identity, biography, editing, follower/following counts, direct-request preference, and Your published writing with Posts/Shorts pills, sorting Filters, and Edit in Writing studio |
-| Writing studio | `/writing` | Connected | Private Posts, Drafts, and Analytics tabs; status filtering for published, scheduled, and unpublished posts |
+| Writing studio | `/studio` | Connected | Private Stories, Shorts, Drafts, and Analytics tabs; Write a post opens the Post/Short chooser; status filtering for published, scheduled, and unpublished posts; legacy `/write` and `/writing` redirect here |
 | Edit profile | `/profile/edit` | Connected | Guarded standalone editing page reusing display-name/biography fields and the existing profile API; Save/Cancel return to Profile |
 | Onboarding | `/onboarding` | Connected | Persist interests, initial follows, goals, and consent preferences |
 | Authentication | `/login`, `/signup` | Connected | Account creation, verification, recovery, and session management |
@@ -130,7 +130,7 @@ Status meanings:
 - Notifications
 - Profile menu
 
-Desktop may use a compact side rail plus a global top bar. Mobile uses a consistent bottom bar for Home, Explore, Shorts, Collections, and an Account sheet button for guests and members across application pages. Write is available in the Account sheet for guests and members, and in desktop navigation. Global search remains in the top bar; Account opens an animated bottom sheet with guest authentication or signed-in Profile, Library, Writing studio, and public Write links, Settings, Help, and temporary social homepage links. At 768 px and above, Help opens `/help` directly above Settings in the bottom sidebar group; Settings includes appearance controls.
+Desktop may use a compact side rail plus a global top bar. Mobile uses a consistent bottom bar for Home, Explore, Shorts, Collections, and an Account sheet button for guests and members across application pages. Writing studio is available in the desktop sidebar and signed-in mobile Account sheet. Global search remains in the top bar; Account opens an animated bottom sheet with guest authentication or signed-in Profile, Library, and Writing studio links, Settings, Help, and temporary social homepage links. At 768 px and above, Help opens `/help` directly above Settings in the bottom sidebar group; Settings includes appearance controls.
 
 Every detail page must provide a stable parent path or back destination. Navigation must never depend solely on browser history.
 

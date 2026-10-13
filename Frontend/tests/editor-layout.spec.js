@@ -31,7 +31,7 @@ for (const size of [{ width: 320, height: 735 }, { width: 390, height: 844 }, { 
     await page.setViewportSize(size)
     await page.addInitScript(theme => localStorage.setItem('ink-theme', theme), size.width < 640 ? 'light' : 'dark')
     const { saves, publications } = await mockEditor(page)
-    await page.goto('/write?new=article')
+    await page.goto('/studio?new=article')
     const title = page.getByRole('textbox', { name: 'Article title', exact: true })
     const body = page.getByRole('textbox', { name: 'Paragraph block', exact: true })
     const cover = page.getByRole('button', { name: '+ Add cover image', exact: true })
@@ -87,7 +87,7 @@ for (const size of [{ width: 320, height: 735 }, { width: 390, height: 844 }, { 
 test('phone block sheet stays usable on a short viewport and restores focus', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 320, height: 360 })
   await mockEditor(page)
-  await page.goto('/write?new=short')
+  await page.goto('/studio?new=short')
   const body = page.getByRole('textbox', { name: 'Paragraph block', exact: true })
   await body.fill('Keep this idea while choosing a block.')
   const trigger = page.getByRole('button', { name: 'Block type', exact: true })
@@ -107,7 +107,7 @@ test('phone block sheet stays usable on a short viewport and restores focus', as
 test('desktop block controls reveal for keyboard navigation', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await mockEditor(page)
-  await page.goto('/write?new=short')
+  await page.goto('/studio?new=short')
   await page.mouse.move(0, 0)
   await page.getByRole('textbox', { name: 'Paragraph block', exact: true }).focus()
   await page.keyboard.press('Tab')
@@ -125,7 +125,7 @@ test('member release settings remain available without writing assistance', asyn
   page.on('request', request => { if (request.url().includes('/writing-assistant')) assistantRequests.push(request.url()) })
   await page.setViewportSize({ width: 320, height: 568 })
   await mockEditor(page, { capabilities: ['early_access', 'ai_writing_assistant'] })
-  await page.goto('/write?new=article')
+  await page.goto('/studio?new=article')
   await page.getByRole('textbox', { name: 'Paragraph block', exact: true }).fill('Your writing stays in the editor.')
   await page.locator('details summary').click()
   await expect(page.getByLabel('Public release')).toBeVisible()
@@ -138,7 +138,7 @@ test('member release settings remain available without writing assistance', asyn
 test('cover removal restores article requirements', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await mockEditor(page)
-  await page.goto('/write?new=article')
+  await page.goto('/studio?new=article')
   await page.getByRole('textbox', { name: 'Article title', exact: true }).fill('An article')
   await page.getByRole('textbox', { name: 'Paragraph block', exact: true }).fill('Article body.')
   await page.getByLabel('Add a tag', { exact: true }).fill('writing')
@@ -153,7 +153,7 @@ test('cover removal restores article requirements', async ({ page }) => {
 test('draft load and save failures keep visible recovery feedback', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 735 })
   await mockEditor(page, { saveStatus: 409 })
-  await page.goto('/write?draft=draft-layout')
+  await page.goto('/studio?draft=draft-layout')
   await expect(page.getByRole('textbox', { name: 'Short title', exact: true })).toHaveValue('Existing draft')
   await expect(page.getByRole('textbox', { name: 'Paragraph block', exact: true })).toHaveValue('Existing draft content.')
   await page.getByRole('textbox', { name: 'Short title', exact: true }).fill('Edited draft')
@@ -165,7 +165,7 @@ for (const width of [320, 1280]) {
   test(`guest writing survives Publish authentication without anonymous saves at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 735 })
     const { saves, publications, privateRequests } = await mockEditor(page, { guest: true })
-    const origin = '/write?question=reader-question&new=short#draft'
+    const origin = '/studio?question=reader-question&new=short#draft'
     await page.goto(origin)
     const publish = page.getByRole('button', { name: 'Publish', exact: true })
     const dialog = page.getByRole('dialog', { name: 'Sign in to Ink Rider' })
@@ -213,7 +213,7 @@ for (const width of [320, 1280]) {
     await expect(page.locator('input[type=file]')).toHaveCount(0)
     await expect.poll(() => saves.some(save => save.title === 'Guest writing stays here' && save.tags.includes('writing'))).toBe(true)
     expect(publications).toEqual([])
-    await expect(page).toHaveURL(/\/write\?question=reader-question&new=short&draft=draft-layout#draft$/)
+    await expect(page).toHaveURL(/\/studio\?question=reader-question&new=short&draft=draft-layout#draft$/)
     await publish.click()
     await expect(page.locator('#main-content').getByRole('alert').filter({ hasText: 'Publication test: draft preserved.' })).toBeVisible()
     expect(publications).toHaveLength(1)

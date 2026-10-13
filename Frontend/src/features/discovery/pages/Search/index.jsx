@@ -156,7 +156,7 @@ export default function SearchPage() {
             ? items.map(writer => <WriterResult key={writer.id} writer={writer} />)
             : activeTab === 'questions'
               ? items.map(question => <QuestionCard key={question.id} question={question} />)
-              : items.map(post => <ShortCard key={post.id} post={post} onOpen={short => setShortReadId(short.id)} />)}
+              : items.map(post => <ShortCard key={post.id} post={post} fluid onOpen={short => setShortReadId(short.id)} />)}
       </section>}
       </div>
       {shortReadId && <ShortReadModal postId={shortReadId} onClose={() => setShortReadId(null)} />}

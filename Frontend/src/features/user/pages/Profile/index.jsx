@@ -1,5 +1,6 @@
 import retainRetryView from '@/shared/utils/retainRetryView'
 /* eslint-disable jsx-a11y/no-noninteractive-element-to-interactive-role -- The tab container owns tab semantics. */
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
@@ -14,6 +15,8 @@ import { openBillingPortal, startMembershipCheckout } from '@/features/membershi
 import { fetchMyPosts, fetchMyProfile, fetchWriterAnalytics, updateMyProfile } from '../../api/profile'
 import { fetchDrafts } from '@/features/editor/api/drafts'
 import DeleteDraftButton from '@/features/editor/components/DeleteDraftButton'
+import FormatChooser from '@/features/editor/components/FormatChooser'
+import { PenIcon } from '@/shared/icons'
 import PageHeader from '@/shared/components/ui/PageHeader'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import useToast from '@/shared/hooks/useToast'
@@ -64,8 +67,8 @@ export default function ProfilePage() {
   const legacyTab = params.get('profileTab')
   const legacyParams = new URLSearchParams(params)
   legacyParams.delete('profileTab')
-  const legacyPath = WRITING_TABS.some(item => item.id === legacyTab) ? '/writing' : ['bookmarks', 'history'].includes(legacyTab) ? '/saved' : null
-  if (legacyPath === '/writing') legacyParams.set('writingTab', legacyTab)
+  const legacyPath = WRITING_TABS.some(item => item.id === legacyTab) ? '/studio' : ['bookmarks', 'history'].includes(legacyTab) ? '/saved' : null
+  if (legacyPath === '/studio') legacyParams.set('writingTab', legacyTab)
   if (legacyTab === 'history') legacyParams.set('libraryTab', 'history')
   const legacyDestination = legacyPath ? `${legacyPath}${legacyParams.size ? `?${legacyParams}` : ''}${location.hash}` : null
   const isReady = useSelector(state => state.auth.isReady)
@@ -74,7 +77,7 @@ export default function ProfilePage() {
   const accountActions = <section aria-label="Account" className={`mb-8 border-b border-[var(--color-border)] pb-6 ${auth.loggedIn ? 'md:hidden' : ''}`}>
     <h2 className="mb-3 text-[15px] font-semibold">Account</h2>
     <div className="flex flex-wrap gap-2">
-        {[{ to: '/saved', label: 'Library' }, { to: '/writing', label: 'Writing studio' }, { to: '/settings', label: 'Settings' }, { to: '/notifications', label: 'Notifications' }].map(link => <Link key={link.to} to={link.to} className="inline-flex min-h-11 items-center rounded-full border border-[var(--color-border)] px-4 text-[13px]">{link.label}</Link>)}
+        {[{ to: '/saved', label: 'Library' }, { to: '/studio', label: 'Writing studio' }, { to: '/settings', label: 'Settings' }, { to: '/notifications', label: 'Notifications' }].map(link => <Link key={link.to} to={link.to} className="inline-flex min-h-11 items-center rounded-full border border-[var(--color-border)] px-4 text-[13px]">{link.label}</Link>)}
         <Button variant="secondary" disabled={auth.isSigningOut} aria-busy={auth.isSigningOut} onClick={auth.signOut}>Sign Out</Button>
         <Button variant="secondary" disabled={auth.isSigningOut} aria-busy={auth.isSigningOut} onClick={auth.signOutAllDevices}>Sign Out all Devices</Button>
     </div>
@@ -87,6 +90,7 @@ export default function ProfilePage() {
 }
 
 export function MemberProfile({ accountActions = null, writing = false }) {
+  const [choosingFormat, setChoosingFormat] = useState(false)
   const location = useLocation()
   const TABS = writing ? WRITING_TABS : []
   const navigate = useNavigate()
@@ -159,7 +163,7 @@ export function MemberProfile({ accountActions = null, writing = false }) {
 
   return (
     <PageFrame>
-      {writing && <PageHeader eyebrow="Publishing" title="Writing studio" description="Manage published posts, continue drafts, and view writing analytics." actions={<Link to="/write" className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)] px-[18px] py-2 text-[13px] font-medium whitespace-nowrap transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0"><span className="text-[var(--color-text-inverted)]">Write a post</span></Link>} />}
+      {writing && <PageHeader eyebrow="Publishing" title="Writing studio" description="Manage published posts, continue drafts, and view writing analytics." actions={<button type="button" onClick={() => setChoosingFormat(true)} className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)] px-[18px] py-2 text-[13px] font-medium whitespace-nowrap text-[var(--color-text-inverted)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Write a post</button>} />}
       {!writing && <header className="flex gap-5 mb-8 items-start flex-wrap">
         <Avatar src={me.avatarUrl} name={me.displayName} size={80} />
         <div className="flex-1 min-w-[240px]">
@@ -188,12 +192,12 @@ export function MemberProfile({ accountActions = null, writing = false }) {
       <div id={writing ? "writing-tabpanel" : undefined} role={writing ? "tabpanel" : undefined} aria-label={`${TABS.find(item => item.id === tab)?.label || 'Overview'} content`}>
       {!writing && <div className="flex flex-col gap-8"><div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))' }}><StatCard label="Published posts" value={me.postCount} /><StatCard label="Followers" value={me.followersCount} /><StatCard label="Following" value={me.followingCount} /><StatCard label="Account type" value={me.writerStatus === 'writer' ? 'Writer' : 'Reader'} /></div>{me.writerStatus === 'writer' && <section className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-5 flex items-center justify-between gap-4"><div><h2 className="text-[14px] font-semibold text-[var(--color-text)]">Direct member requests</h2><p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">Choose whether members can send you up to three private requests per month.</p></div><Button variant={me.directRequestsEnabled ? 'primary' : 'secondary'} disabled={updateProfile.isPending} onClick={() => updateProfile.mutate({ directRequestsEnabled: !me.directRequestsEnabled })} aria-busy={updateProfile.isPending}>{me.directRequestsEnabled ? 'Accepting requests' : 'Requests off'}</Button></section>}</div>}
       {!writing && <section className="pt-10" aria-labelledby="profile-posts-heading">
-        <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="mb-1 text-[12px] text-[var(--color-text-muted)]">Published by {me.displayName}</p><h2 id="profile-posts-heading" className="text-[24px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>Your published writing</h2></div><ButtonLink to="/writing" variant="secondary">Edit in Writing studio</ButtonLink></div>
+        <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="mb-1 text-[12px] text-[var(--color-text-muted)]">Published by {me.displayName}</p><h2 id="profile-posts-heading" className="text-[24px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>Your published writing</h2></div><ButtonLink to="/studio" variant="secondary">Edit in Writing studio</ButtonLink></div>
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4"><PublishedWritingTabs value={publishedFormat} onChange={value => setPublishedFilter('profileFormat', value, 'article')} controlsId="profile-writing-panel" /><FilterBar label="Published writing" options={[]} sortOptions={[{ id: 'latest', label: 'Newest' }, { id: 'oldest', label: 'Oldest' }, { id: 'popular', label: 'Most appreciated' }]} sortValue={publishedSort} onSortChange={value => setPublishedFilter('profileSort', value, 'latest')} onReset={() => setPublishedFilter('profileSort', 'latest', 'latest')} /></div>
         <div id="profile-writing-panel" role="tabpanel" aria-label={`${publishedFormat === 'short' ? 'Shorts' : 'Posts'} content`}>
         {publishedWriting.isLoading ? <ListSkeleton label="Loading published writing" />
           : publishedWriting.isError ? <ProfileDataError message="Published writing could not be loaded." onRetry={() => publishedWriting.refetch()} />
-          : visiblePublishedPosts.length ? <div className={`card-grid ${publishedFormat === 'short' ? 'card-grid--short' : 'card-grid--post'} gap-x-6 gap-y-10`}>{visiblePublishedPosts.map(post => <DiscoveryPostCard key={post.id} post={post} variant="grid" />)}</div>
+          : visiblePublishedPosts.length ? <div className={`${publishedFormat === 'short' ? 'card-grid card-grid--short' : 'grid grid-cols-1 min-[540px]:grid-cols-2 lg:grid-cols-3'} gap-x-6 gap-y-10`}>{visiblePublishedPosts.map(post => <DiscoveryPostCard key={post.id} post={post} variant="grid" />)}</div>
           : <div className="border-y border-[var(--color-border)] py-14"><p className="text-[15px] text-[var(--color-text-secondary)]">{publishedFormat === 'short' ? 'No published shorts yet.' : 'No published posts yet.'}</p></div>}
         </div>
       </section>}
@@ -201,12 +205,13 @@ export function MemberProfile({ accountActions = null, writing = false }) {
         {[{ value: 'all', label: 'All' }, { value: 'published', label: 'Published' }, { value: 'scheduled', label: 'Scheduled' }, { value: 'unpublished', label: 'Unpublished' }].map(item => <Pill key={item.value} label={item.label} active={status === item.value} onClick={() => { const next = new URLSearchParams(params); if (item.value === 'all') next.delete('postStatus'); else next.set('postStatus', item.value); setParams(next) }} />)}
       </div>}
       {['posts', 'shorts'].includes(tab) && (posts.isError ? <ProfileDataError message="Published posts could not be loaded." onRetry={() => posts.refetch()} /> : <PostRows posts={(posts.data || []).filter(post => (post.format || 'article') === (tab === 'shorts' ? 'short' : 'article') && (status === 'all' || postStatus(post) === status))} manage gridShorts={tab === 'shorts'} emptyMessage={status === 'all' ? `You haven’t published any ${tab === 'shorts' ? 'shorts' : 'stories'} yet.` : `No ${status} ${tab === 'shorts' ? 'shorts' : 'stories'}.`} />)}
-      {tab === 'drafts' && (drafts.isLoading ? <div role="status" aria-label="Loading drafts"><ListSkeleton count={4} role={undefined} /></div> : drafts.isError ? <ProfileDataError message="Drafts could not be loaded." onRetry={() => drafts.refetch()} /> : drafts.data?.length ? <div>{drafts.data.map(draft => <div key={draft._id} className="flex flex-col items-start gap-4 py-7 border-b border-[var(--color-border)] sm:flex-row sm:items-center sm:gap-5 sm:py-8"><Link to={`/write?draft=${draft._id}`} className="flex min-w-0 w-full flex-1 flex-col items-start justify-between gap-4 sm:flex-row sm:items-center sm:gap-5"><div className="min-w-0"><p className="font-semibold text-[16px] leading-[1.4] text-[var(--color-text)] [overflow-wrap:anywhere] sm:text-[18px]">{draft.title || 'Untitled draft'}</p><p className="mt-2 text-[12px] leading-5 text-[var(--color-text-muted)]">{draft.format === 'short' ? 'Short' : 'Article'} · Saved {new Date(draft.updatedAt).toLocaleString()}</p></div><span className="shrink-0 text-[12px] font-semibold text-[var(--color-accent)]">Continue writing →</span></Link><DeleteDraftButton draft={draft} /></div>)}</div> : <p className="py-10 text-center text-[13px] text-[var(--color-text-muted)]">Your autosaved drafts will appear here.</p>)}
+      {tab === 'drafts' && (drafts.isLoading ? <div role="status" aria-label="Loading drafts"><ListSkeleton count={4} role={undefined} /></div> : drafts.isError ? <ProfileDataError message="Drafts could not be loaded." onRetry={() => drafts.refetch()} /> : drafts.data?.length ? <div>{drafts.data.map(draft => <div key={draft._id} className="flex min-w-0 items-center gap-3 border-b border-[var(--color-border)] py-7 sm:gap-5 sm:py-8"><div className="min-w-0 flex-1"><p className="font-semibold text-[16px] leading-[1.4] text-[var(--color-text)] [overflow-wrap:anywhere] sm:text-[18px]">{draft.title || 'Untitled draft'}</p><p className="mt-2 text-[12px] leading-5 text-[var(--color-text-muted)]">{draft.format === 'short' ? 'Short' : 'Article'} · Saved {new Date(draft.updatedAt).toLocaleString()}</p></div><div className="flex shrink-0 items-center gap-1 sm:gap-2"><Link to={`/studio?draft=${draft._id}`} aria-label={`Continue writing: ${draft.title || 'Untitled draft'}`} title="Continue writing" className="flex h-11 w-11 items-center justify-center rounded-[10px] text-[var(--color-accent)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"><PenIcon /></Link><DeleteDraftButton draft={draft} /></div></div>)}</div> : <p className="py-10 text-center text-[13px] text-[var(--color-text-muted)]">Your autosaved drafts will appear here.</p>)}
       {tab === 'analytics' && (entitlements.isPending ? <p role="status">Checking analytics access...</p> : entitlements.isError ? <ProfileDataError message="Analytics access could not be loaded." onRetry={() => entitlements.refetch()} /> : null)}
       {tab === 'analytics' && !entitlements.isPending && !entitlements.isError && !canViewAnalytics && <section className="rounded-[18px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-7 text-center"><h2 className="font-semibold text-[16px] text-[var(--color-text)]">Advanced writer analytics</h2><p className="mt-2 text-[13px] text-[var(--color-text-secondary)]">See opens, completions, engagement, and completion rate with membership.</p><Button className="mt-5" disabled={billing.isPending} onClick={() => billing.mutate()} aria-busy={billing.isPending}>{'Become a member'}</Button></section>}
       {tab === 'analytics' && canViewAnalytics && (analytics.isLoading ? <div role="status" aria-label="Loading writer analytics"><ListSkeleton count={5} role={undefined} /></div> : analytics.isError ? <ProfileDataError message="Analytics could not be loaded." onRetry={() => analytics.refetch()} /> : analytics.data && <div className="flex flex-col gap-7"><div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))' }}><StatCard label="Article opens" value={analytics.data.totalViews} /><StatCard label="Completed reads" value={analytics.data.totalCompletions} /><StatCard label="Completion rate" value={`${analytics.data.completionRate}%`} /><StatCard label="Published posts" value={analytics.data.totalPosts} /></div><section><h2 className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-text-muted)] mb-3">Post performance</h2>{analytics.data.posts.map(post => <div key={post.id} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-4 py-3 border-b border-[var(--color-border)] text-[12px]"><Link to={`/post/${post.id}`} className="font-semibold text-[var(--color-text)] truncate">{post.title}</Link><span className="text-[var(--color-text-muted)]">{post.opens} opens</span><span className="text-[var(--color-text-muted)]">{post.completions} completed</span><span className="text-[var(--color-text-muted)]">{post.likes} likes</span></div>)}</section></div>)}
       </div>
       {writing && billing.isError && <p role="alert" className="mt-4 text-[12px] text-[var(--color-danger)]">Billing is temporarily unavailable.</p>}
+      {writing && choosingFormat && <FormatChooser loggedIn={Boolean(viewer)} onClose={() => setChoosingFormat(false)} />}
     </PageFrame>
   )
 }

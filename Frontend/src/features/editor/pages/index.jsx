@@ -6,7 +6,6 @@ import { v4 as uuid } from 'uuid'
 import Button from '@/shared/components/ui/Button'
 import SlashMenu from '../components/SlashMenu'
 import TagPicker from '../components/TagPicker'
-import WriteDrafts from '../components/WriteDrafts'
 import MobileBlockMenu from '../components/MobileBlockMenu'
 import createPost from '../api/createPost'
 import fetchDepthOptions from '../api/fetchDepthOptions'
@@ -41,14 +40,13 @@ function newBlock(type = 'text') {
   }
 }
 
-// Write Page
+// Editor for studio draft, edit, and question routes.
 export default function WritePage() {
   const isReady = useSelector(state => state.auth.isReady)
   const user = useSelector(state => state.auth.user)
   const [params] = useSearchParams()
   if (!isReady) return <PageFrame><p role="status">Restoring your session…</p></PageFrame>
   if (!user && (params.get('draft') || params.get('edit'))) return <PageFrame className="flex min-h-full flex-col !py-6"><SignInPrompt message="Sign in to access your saved story." /></PageFrame>
-  if (!params.get('draft') && !params.get('edit') && !params.get('new') && !params.get('question')) return <WriteDrafts loggedIn={Boolean(user)} />
   return <MemberEditor />
 }
 
@@ -448,7 +446,7 @@ function MemberEditor() {
 
       <div className="ml-auto flex items-center gap-3">
         <span className="text-[13px] text-[var(--color-text-secondary)]">{format === 'short' ? 'Short' : 'Post'}</span>
-        {loggedIn && <Button variant="secondary" className="!min-h-11" title={coverURL ? 'Publish or remove the selected cover before leaving; covers upload at publication.' : undefined} disabled={['waiting', 'saving', 'error', 'conflict'].includes(autosaveStatus) || Boolean(coverURL)} onClick={() => navigate('/write')}>Drafts</Button>}
+        {loggedIn && <Button variant="secondary" className="!min-h-11" title={coverURL ? 'Publish or remove the selected cover before leaving; covers upload at publication.' : undefined} disabled={['waiting', 'saving', 'error', 'conflict'].includes(autosaveStatus) || Boolean(coverURL)} onClick={() => navigate('/studio?writingTab=drafts')}>Drafts</Button>}
           <Button
             variant="primary"
             className="!min-h-11"

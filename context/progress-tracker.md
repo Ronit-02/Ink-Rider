@@ -1,5 +1,75 @@
 # Ink-Rider progress tracker
 
+## Library tab order and collection categories — 2026-10-13
+
+Library top tabs now appear Saved, Collections, History. Within Collections, shared Pill tabs switch between My collections (default) and Saved collections (`collectionSection=saved`), showing one list at a time with keyboard selection and reload persistence. Existing cards, visibility and sort filters, cursor Load more, APIs, and schemas remain. Updated the focused account-group checks for tab order, collection selection, pagination, and URL retention. Focused lint, frontend production build, and scoped whitespace checks passed on 2026-10-13. Browser checks could not execute: the managed API server could not connect to MongoDB, and the frontend-only run found no local Playwright Chromium executable.
+
+## Shared filter panel sizing — 2026-10-13
+
+The shared FilterPopover used across discovery, Search, Collections, Library, Shorts, Profile, and Author is capped at 360 px (90vw on narrow screens) with 16 px padding and tighter header, group, and footer spacing. Existing controls retain 44 px targets, labels, colors, placement, focus handling, and URL behavior. Frontend lint, production build, and scoped whitespace checks passed on 2026-10-13. The focused browser run could not start because the API server could not connect to MongoDB, so visual geometry across screen sizes remains unverified.
+
+## Home article-card phone spacing — 2026-10-13
+
+The image-bearing Home feed article card keeps its existing cover, metadata, title, topic, action, and divider structure. Below 540 px, comfortable feed cards use 16 px vertical insets, 16 px below the cover, and 8 px before the footer to tighten spacing between stories and rebalance the content below the image. Other discovery-card surfaces and widths are unchanged. Focused DiscoveryPostCard lint, frontend production build, and scoped whitespace checks passed on 2026-10-13. Browser layout remains unverified locally because the Playwright API server cannot connect to MongoDB.
+
+## Shared ShortCard grid responsiveness — 2026-10-13
+
+Short-card grids on Shorts, Search, Author, Profile, Writing studio, collection detail, Saved, and short-format History now use the same responsive tracks and compact ShortCard presentation as Home. Columns repeat at a 170 px minimum, use two cards from 376 to 391 px, and fall back to one centered card capped at 250 px below 376 px. Fluid cards have 16 px side padding through 1023 px, with 12 px in the 376–391 px two-column band. Single cards in series, questions, competitions, and mixed article layouts keep their existing placement. Existing card actions, readers, APIs, routes, and stored data are unchanged. Frontend lint, production build, and scoped whitespace checks passed on 2026-10-13. The side-padding follow-up passed focused ShortCard lint and a production build on 2026-10-13. Browser layout verification remains unavailable locally because the Playwright API server cannot connect to MongoDB.
+
+## Home discovery layout — 2026-10-13
+
+At every width, Home Writer's picks and Browse categories use the existing grid discovery card in touch-scrollable, snapping carousels; category choices also scroll horizontally. Home feed and section item dividers remain visible. Short reads use the existing ShortCard in responsive grids of at most four, placed after story six and then every eight stories when further shorts are available. Home short cards fill columns that repeat whenever another 170 px track fits; from 376 to 391 px they use two compact columns with 270 px minimum height; below 376 px they use one centered card capped at 250 px, because the two-column layout makes names and titles unreadable at 270 px. A visible one- or two-line description and 44 px actions remain; the shared short-grid follow-up below applies this behavior to other card grids. The change uses existing feed and shorts APIs without backend, route, or schema changes. Focused frontend lint and production build passed on 2026-10-13 after the below-392 px correction. The focused Playwright run could not start because its API web server could not connect to MongoDB; browser and physical touch verification remain outstanding.
+
+## Unified Writing studio — 2026-10-13
+
+Writing management and the Post/Short chooser now live at `/studio`. Write a post opens the chooser and creates a typed draft at `/studio?draft=<id>`; existing draft/edit/question editor targets also use `/studio`. Old `/write` and `/writing` URLs redirect with query and hash preserved. Desktop sidebar and signed-in mobile Account link to Writing studio; the separate Write entry and draft-list page were removed. Draft rows keep title/saved details on the left and place accessible icon-only Continue writing and Delete draft actions on the right at all widths. Frontend lint, build, and focused Playwright test discovery passed on 2026-10-13. Browser navigation was denied by the local sandbox (`ERR_NETWORK_ACCESS_DENIED`), so layout and focus behavior remain unverified. See [write page audit](write-page-audit.md#unified-writing-studio--2026-10-13).
+
+## Mobile notification entry — 2026-10-13
+
+Signed-in mobile users now open Notifications from the navbar immediately right of search, with the existing unread badge and inbox modal. The Notifications row was removed from the mobile Account sheet. Desktop placement, notification route/API, theme, and search behavior remain unchanged. Frontend lint and production build passed. The focused browser check could not run because the configured backend could not connect to MongoDB and local Playwright Chromium was missing; mobile placement and focus return remain browser-unverified. See [notifications audit](notifications-audit.md).
+
+## Responsive competition entries — 2026-10-13
+
+Competition detail Entries now fills one column below 540 px, two from 540 px, and three from 1024 px. Article cards fill their tracks with the existing 16:9 cover; compact short cards keep their 250 px maximum and are centered in their tracks. Voting, winner/rank labels, links, unavailable entries, APIs, and schemas are unchanged. Frontend lint and production build passed on 2026-10-13; browser geometry and physical devices remain unverified.
+
+## Responsive Top authors — 2026-10-13
+
+Home Top authors now uses one ranked profile-link column below 540 px, two from 540 px, and four from 1024 px. Rows keep the existing Avatar, ranking, typography, colors, and destination while containing long names and featured-story counts. Feed-derived ranking, routes, APIs, and schemas are unchanged. Frontend lint and production build passed on 2026-10-13; browser geometry and physical devices remain unverified.
+
+## Responsive collection grids — 2026-10-13
+
+CollectionCard grids in Home Browse collections, Collections, Library, and public Author now fill their available columns rather than capping each card at 520 px. They use one column below 600 px, two from 600 px, and three from 1024 px; Home remains two columns at wider sizes for its two featured items. Loading placeholders follow the same grid. The CollectionCard surface, 120 px inset cover, typography, colors, actions, routes, APIs, and schemas remain unchanged. Frontend lint and build passed on 2026-10-13; browser geometry and physical devices remain unverified.
+
+## Shared discovery article grid placement — 2026-10-13
+
+Browse categories, public Author, personal Profile, and Member Hub early releases now follow Writer's picks article-card breakpoints: one column below 540 px, two from 540 px, and three from 1024 px. Author/Profile ShortCard grids retain their existing fixed 250 px tracks; Member Hub short cards retain their own width. The shared DiscoveryPostCard, its 16:9 cover, card actions, typography, colors, routes, APIs, and schemas are unchanged. Frontend lint and production build passed on 2026-10-13; browser geometry and physical devices remain unverified.
+
+## Writer's picks responsive grid — 2026-10-13
+
+Home Writer's picks now uses one full-width card column below 540 px, two from 540 px, and three from 1024 px, keeping cards from growing excessively around tablet and desktop widths. This removes the shared grid's 360 px card cap from this section. Article covers continue using the existing 16:9 DiscoveryPostCard presentation, with text determining card height. Other grids, card actions, routes, APIs, and schemas are unchanged. Frontend lint and production build passed on 2026-10-13. Browser geometry and physical devices remain unverified.
+
+## Narrow feed-card spacing — 2026-10-13
+
+Comfortable discovery list cards now use 24 px vertical insets below 540 px. Image-bearing cards center the author in a compact menu row and place the title 8 px below it, while the menu retains its 44 px touch target. The change is limited to `DiscoveryPostCard` and `PostCardMenu`; larger layouts and card behavior remain as before. Focused lint and production build passed on 2026-10-13. Browser geometry remains unverified: the configured API server could not connect to MongoDB, and the frontend-only attempt found no local Playwright Chromium executable. See [post components audit](post-components-audit.md).
+
+The compact author name now matches the date and reading-time muted text color below 540 px through `AuthorMeta`. Wider-screen name color remains unchanged.
+
+## Responsive post-card covers — 2026-10-13
+
+Active post covers in discovery grid/narrow list, short, featured, and competition cards now scale at 16:9 with available width; studio row thumbnails retain their 5:4 shape. `ImageBox` exposes an optional aspect ratio for reusable media. Desktop discovery list and featured row composition remain at their existing sizing rules. Frontend lint and production build passed on 2026-10-13. The normal focused browser run could not start because its configured MongoDB service was unavailable; a frontend-only run was blocked from local loopback navigation by the sandbox. Browser geometry, physical devices, and other engines were not checked. See [post components audit](post-components-audit.md) and [UI rules](ui-rules.md).
+
+## Covered discovery cards at middle widths — 2026-10-13
+
+Below 540 px, list-style DiscoveryPostCard hides its description and places abbreviated publication date and reading time immediately after writer identity on the left, separated by dots. Image-bearing cards retain the visual order of cover, combined writer/metadata row, then a two-line title with an 8 px gap after the row; their full-width stacked cover uses a 16:9 ratio. From 540 px, image-bearing cards use the side-by-side composition with a 200 px cover and 24 px gap until 1024 px; the prior 240 px cover and 32 px gap remain from 1024 px. Text-only cards retain their existing responsive layout, while grid and short cards remain unchanged. The shared card change applies on Home, Trending, Search, and other list surfaces without route, API, schema, or stored-data changes. Updated DiscoveryPostCard, AuthorMeta, the browser regression spec, and UI rules. Focused lint and production build passed. Mocked-API Chrome checks passed for visual order, shortened metadata with dot separators and left alignment, tight title gap, hidden description, title cap, cover placement, and overflow at 320, 390, 539, 540, 600, 639, 640, 768, 900, and 1024 px; six card-link destination checks passed at 320, 390, and 1280 px with and without covers. Physical devices, live data, and other browser engines were not checked.
+
+## Home small-screen scrolling and section layout — 2026-10-13
+
+Home section heading/action rows now wrap on narrow screens. The feed tabs and Short reads shelf retain native horizontal touch scrolling with proximity snap points and contained horizontal overscroll; a trailing tab fade appears only when more choices remain off-screen. No route, API, schema, typography, color, card, or navigation changes were made. Updated the Home page components, the home-sections browser fixture for the existing shorts request, frontend README, and UI rules. Frontend lint and production build passed. Both focused home-sections Chrome checks passed. A mocked-API mobile Chrome probe at 320 and 390 px confirmed touch drag on the Short reads shelf, touch drag on overflowed tabs at 320 px, and no page-wide horizontal overflow. Physical devices, assistive technology, live data, and other browser engines were not checked.
+
+## Notification trigger spacing — 2026-10-13
+
+The desktop navbar notification trigger's visible square was reduced from 44 px to 36 px, with a 44 px pointer target retained. The inbox and unread badge behavior are unchanged. Targeted frontend lint and production build passed; browser appearance was not checked.
+
 ## Save dialog checkbox styling — 2026-10-13
 
 The Save dialog's Library and collection checkboxes now use theme border, surface, accent, and focus colors in place of browser-default blue controls. Native checkbox inputs, label activation, keyboard toggling, checked defaults, and pending-write disabling remain. Only the dialog component, its focused browser spec, and the owning UI rule changed. Frontend lint and production build passed. Two mocked-API Chrome checks passed for Light/Dark color and keyboard behavior; both screenshots were reviewed. Live persistence and other browser engines were not exercised.

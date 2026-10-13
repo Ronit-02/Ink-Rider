@@ -58,7 +58,7 @@ async function mockPosts(page, { missingAuthor = false, format = 'short' } = {})
 const surfaces = [
   ['profile', '/profile'],
   ['public writer', '/author/maya-sen'],
-  ['writing', '/writing'],
+  ['writing', '/studio'],
   ['question', `/explore/questions/${containerId}`],
   ['history', '/history'],
   ['series', `/shorts/series/${containerId}`],
@@ -111,13 +111,13 @@ for (const [name, path] of surfaces) {
   })
 }
 
-for (const path of ['/writing', `/explore/questions/${containerId}`]) {
+for (const path of ['/studio', `/explore/questions/${containerId}`]) {
   test(`sparse short author data remains readable at ${path}`, async ({ page }) => {
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
     await mockPosts(page, { missingAuthor: true })
     await page.goto(path)
-    if (path === '/writing') await page.getByRole('tab', { name: 'Shorts', exact: true }).click()
+    if (path === '/studio') await page.getByRole('tab', { name: 'Shorts', exact: true }).click()
     const card = page.locator('[data-story-format="short"]')
     await expect(card).toBeVisible()
     await expect(card.getByText('Unknown writer', { exact: true })).toBeVisible()

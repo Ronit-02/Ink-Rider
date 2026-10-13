@@ -267,7 +267,7 @@ export default function AuthorPage() {
         </> : <>
 
         {visiblePosts.length > 0 ? (
-          <div className={`card-grid ${format === 'short' ? 'card-grid--short' : 'card-grid--post'} gap-x-6 gap-y-10`}>
+          <div className={`${format === 'short' ? 'card-grid card-grid--short' : 'grid grid-cols-1 min-[540px]:grid-cols-2 lg:grid-cols-3'} gap-x-6 gap-y-10`}>
             {visiblePosts.map(post => <DiscoveryPostCard key={post.id} post={post} variant="grid" />)}
           </div>
         ) : (

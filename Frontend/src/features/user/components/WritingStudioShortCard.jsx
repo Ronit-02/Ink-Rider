@@ -10,7 +10,7 @@ export default function WritingStudioShortCard({ post }) {
 
   return (
     <div className="min-w-0">
-      <ShortCard post={cardPost} menuOverride={<WritingPostMenu post={post} />} />
+      <ShortCard post={cardPost} fluid menuOverride={<WritingPostMenu post={post} />} />
       <p className="mt-3 text-[12px] text-[var(--color-text-muted)]">{label}</p>
     </div>
   )

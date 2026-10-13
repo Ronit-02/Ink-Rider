@@ -13,7 +13,7 @@ const shellRoutes = [
   '/settings',
   '/members',
   '/opportunities',
-  '/write',
+  '/studio',
   '/onboarding',
   '/login',
   '/signup',
@@ -41,7 +41,7 @@ const fullScreenRoutes = new Set([
   '/settings',
   '/members',
   '/opportunities',
-  '/write',
+  '/studio',
   '/staff',
 ])
 
