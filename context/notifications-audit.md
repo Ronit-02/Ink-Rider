@@ -2,6 +2,10 @@
 
 Audited: 2026-10-09.
 
+## Phone inbox placement — 2026-10-15
+
+The signed-in phone inbox remains a native modal, but its panel now opens 8 px below and right-aligned with the mobile navbar notification button instead of being centered in the viewport. The existing 16 px side/bottom bounds, viewport-aware height, internal scrolling, focus containment/restoration, route background, typography, theme, rows, actions, notification APIs, and schemas remain unchanged. The change is limited to the existing mobile trigger identifier, responsive inbox placement, focused browser geometry coverage, and owning documentation.
+
 ## Mobile navbar entry — 2026-10-13
 
 The signed-in mobile notification trigger now sits immediately right of navbar search and carries the same unread count, route background state, and dialog label as the desktop trigger. Its Account-sheet row was removed. The existing centered mobile inbox modal, desktop anchored popover, search interaction, page layout, themes, notification API, and schemas remain unchanged. Source changes are limited to `Navbar.jsx` and `MobileProfileSheet.tsx`; the mobile browser assertion in `notifications-modal.spec.js` now checks placement and opener focus. Frontend README, UI rules/registry, and progress tracker describe the new entry. Frontend lint and production build passed on 2026-10-13. The focused browser check could not run: the configured backend could not connect to MongoDB, and a frontend-only run found no local Playwright Chromium executable. Physical placement and focus behavior remain browser-unverified. No optional refactor or approval decision remains.

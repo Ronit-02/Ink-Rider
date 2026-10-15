@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { useSelector } from 'react-redux'
-import { matchPath, Outlet, useLocation } from 'react-router-dom'
+import { matchPath, Outlet, useLocation, useNavigationType } from 'react-router-dom'
 import Navbar from './Navbar'
 import Sidebar from './Sidebar'
 import BottomBar from './BottomBar'
@@ -12,29 +12,111 @@ import { useServerUnavailable } from '@/app/serverAvailability'
 // Back belongs to detail and drill-down pages, never primary destinations.
 const BACK_ROUTES = [
   '/post/:id', '/author/:handle', '/explore/questions/:id',
-  '/explore/competitions/:id', '/collections/:id', '/shorts/series/:id',
+  '/explore/competitions/:id', '/collections/:id', '/shorts/series/:id', '/series/:id',
   '/search', '/membership', '/history', '/profile/edit', '/opportunities',
 ]
 
+const SCROLL_STORAGE_KEY = 'ink-rider:scroll-positions'
+const MAX_SCROLL_ENTRIES = 50
+
+function readScrollPositions() {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(SCROLL_STORAGE_KEY) || '[]')
+    return Array.isArray(stored) ? new Map(stored) : new Map()
+  } catch {
+    return new Map()
+  }
+}
+
+function saveScrollPosition(positions, key, top) {
+  positions.delete(key)
+  positions.set(key, top)
+  while (positions.size > MAX_SCROLL_ENTRIES) positions.delete(positions.keys().next().value)
+  try {
+    sessionStorage.setItem(SCROLL_STORAGE_KEY, JSON.stringify([...positions]))
+  } catch {
+    // Navigation still works when storage is unavailable.
+  }
+}
+
 export default function AppLayout() {
   const location = useLocation()
+  const navigationType = useNavigationType()
   const loggedIn = useSelector(state => Boolean(state.auth.user))
   const { dark, toggle: toggleTheme, themePreference, setTheme } = useTheme()
   const isServerUnavailable = useServerUnavailable()
-  const previousPathname = useRef(location.pathname)
+  const scrollPositions = useRef(null)
 
-  useEffect(() => {
-    if (previousPathname.current === location.pathname) return
-    previousPathname.current = location.pathname
+  useLayoutEffect(() => {
+    const mainContent = document.getElementById('main-content')
+    if (!mainContent) return undefined
+    const positions = scrollPositions.current ||= readScrollPositions()
+    const key = location.key
+    const savedTop = positions.get(key)
+    const targetTop = navigationType === 'POP' && Number.isFinite(savedTop) ? savedTop : 0
 
-    const frame = requestAnimationFrame(() => {
-      const mainContent = document.getElementById('main-content')
-      mainContent?.focus({ preventScroll: true })
-      mainContent?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-    })
+    let restoring = targetTop > 0
+    let resizeObserver
+    let mutationObserver
+    let restoreTimeout
+    let observedContent
+    const stopRestoring = () => {
+      restoring = false
+      resizeObserver?.disconnect()
+      mutationObserver?.disconnect()
+      clearTimeout(restoreTimeout)
+    }
+    const restoreScroll = () => {
+      if (!restoring) return
+      mainContent.scrollTo({ top: targetTop, left: 0, behavior: 'auto' })
+      if (mainContent.scrollTop >= targetTop) stopRestoring()
+    }
+    const observeContent = () => {
+      const content = mainContent.lastElementChild
+      if (content === observedContent) return
+      resizeObserver?.disconnect()
+      observedContent = content
+      if (content) resizeObserver?.observe(content)
+      restoreScroll()
+    }
 
-    return () => cancelAnimationFrame(frame)
-  }, [location.pathname])
+    mainContent.focus({ preventScroll: true })
+    mainContent.scrollTo({ top: targetTop, left: 0, behavior: 'auto' })
+    if (restoring && mainContent.scrollTop < targetTop) {
+      resizeObserver = new ResizeObserver(restoreScroll)
+      mutationObserver = new MutationObserver(observeContent)
+      mutationObserver.observe(mainContent, { childList: true })
+      restoreTimeout = setTimeout(stopRestoring, 10000)
+      observeContent()
+    } else {
+      restoring = false
+    }
+
+    const handleScroll = () => {
+      if (!restoring) saveScrollPosition(positions, key, mainContent.scrollTop)
+    }
+    const handleUserScroll = () => {
+      if (restoring) {
+        stopRestoring()
+      }
+      saveScrollPosition(positions, key, mainContent.scrollTop)
+    }
+    const handlePageHide = () => saveScrollPosition(positions, key, mainContent.scrollTop)
+    mainContent.addEventListener('scroll', handleScroll, { passive: true })
+    for (const event of ['wheel', 'touchstart', 'pointerdown', 'keydown']) {
+      mainContent.addEventListener(event, handleUserScroll, { passive: true })
+    }
+    window.addEventListener('pagehide', handlePageHide)
+
+    return () => {
+      stopRestoring()
+      mainContent.removeEventListener('scroll', handleScroll)
+      for (const event of ['wheel', 'touchstart', 'pointerdown', 'keydown']) {
+        mainContent.removeEventListener(event, handleUserScroll)
+      }
+      window.removeEventListener('pagehide', handlePageHide)
+    }
+  }, [location.key, navigationType])
 
   const handleSkipToContent = event => {
     event.preventDefault()

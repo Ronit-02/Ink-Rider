@@ -2,9 +2,9 @@ import { useLayoutEffect, useRef, type DialogHTMLAttributes, type RefObject } fr
 import { createPortal } from 'react-dom'
 import useOverlayViewport from '@/shared/hooks/useOverlayViewport'
 
-type Props = DialogHTMLAttributes<HTMLDialogElement> & { onDismiss: () => void; returnFocusRef?: RefObject<HTMLElement> }
+type Props = DialogHTMLAttributes<HTMLDialogElement> & { onDismiss: () => void; returnFocusRef?: RefObject<HTMLElement>; dismissOnBackdrop?: boolean }
 
-export default function ModalLayer({ children, onDismiss, returnFocusRef, className = '', ...props }: Props) {
+export default function ModalLayer({ children, onDismiss, returnFocusRef, dismissOnBackdrop = true, className = '', ...props }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
   const returnFocus = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null)
   const viewportStyle = useOverlayViewport()
@@ -18,7 +18,7 @@ export default function ModalLayer({ children, onDismiss, returnFocusRef, classN
   }, [returnFocusRef])
   return createPortal(<dialog {...props} ref={ref} tabIndex={-1}
     onCancel={event => { event.preventDefault(); onDismiss() }}
-    onMouseDown={event => { if (event.target === event.currentTarget) onDismiss() }}
+    onMouseDown={event => { if (dismissOnBackdrop && event.target === event.currentTarget) onDismiss() }}
     style={viewportStyle}
     className={`fixed m-0 max-h-none max-w-none overflow-hidden border-0 bg-transparent text-[var(--color-text)] backdrop:bg-black/45 [&>section]:max-h-[calc(var(--overlay-height)-2rem)] [&>section]:min-w-0 ${className}`}>
     {children}

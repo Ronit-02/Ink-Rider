@@ -1,0 +1,263 @@
+import { test, expect } from '@playwright/test'
+
+const id = '507f1f77bcf86cd799439040'
+const seriesCover = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="320" height="200"%3E%3Crect width="320" height="200" fill="%236b705c"/%3E%3C/svg%3E'
+const stories = ['507f1f77bcf86cd799439041', '507f1f77bcf86cd799439042', '507f1f77bcf86cd799439043'].map((postId, index) => ({ id: postId, title: `Story ${index + 1}`, format: 'article', image: index === 0 ? seriesCover : null, isOwner: true, canAddToSeries: true, author: { username: 'Maya Sen', handle: 'maya-sen' } }))
+const shorts = ['507f1f77bcf86cd799439045', '507f1f77bcf86cd799439046'].map((postId, index) => ({ id: postId, title: `Short ${index + 1}`, format: 'short', isOwner: true, canAddToSeries: true, author: { username: 'Maya Sen', handle: 'maya-sen' } }))
+const shortSeries = { id: '507f1f77bcf86cd799439044', title: 'Short steps', description: 'Two quick reads', type: 'short', entriesCount: 2, author: { username: 'Maya Sen' }, isOwner: true, visibility: 'public', entries: shorts }
+const storySeries = { id, title: 'A longer path', description: 'Read in order', type: 'article', entriesCount: 2, coverImage: seriesCover, createdAt: '2026-10-01T12:00:00.000Z', author: { username: 'Maya Sen' }, isOwner: true, visibility: 'public', entries: stories.slice(0, 2) }
+const looseArticle = { _id: '507f1f77bcf86cd799439047', id: '507f1f77bcf86cd799439047', title: 'A story without a series', format: 'article', isOwner: true, canAddToSeries: true, body: JSON.stringify([{ id: 'body-1', type: 'text', content: 'A published story.' }]), likesCount: 0, commentsCount: 0, author: { _id: '507f1f77bcf86cd799439049', username: 'Maya Sen', handle: 'maya-sen' } }
+const looseShort = { ...looseArticle, _id: '507f1f77bcf86cd799439048', id: '507f1f77bcf86cd799439048', title: 'A short without a series', format: 'short' }
+
+async function mockSeries(page, owner = false, listCount = 1) {
+  const writes = []
+  let eligibleReads = 0
+  writes.eligibleReads = () => eligibleReads
+  await page.route(url => url.pathname.startsWith('/api/'), route => {
+    const url = new URL(route.request().url())
+    const path = url.pathname
+    if (path === '/api/auth/refresh-token') return route.fulfill(owner ? { json: { accessToken: 'series-fixture', user: 'Maya Sen', email: 'writer@example.test', role: 'writer' } } : { status: 401, json: { message: 'Signed out' } })
+    if (path === '/api/series') {
+      const item = url.searchParams.get('type') === 'short' ? shortSeries : storySeries
+      const postId = url.searchParams.get('postId')
+      const containsPost = item.entries?.some(entry => entry.id === postId) || false
+      const data = Array.from({ length: listCount }, (_, index) => ({ ...item, isOwner: owner, id: index === 0 ? item.id : `${item.id.slice(0, -1)}${index}`, title: index === 0 ? item.title : `${item.title} ${index + 1}`, coverImage: index % 2 === 0 ? item.coverImage : null, containsPost }))
+      return route.fulfill({ json: { data, meta: { nextCursor: null } } })
+    }
+    if (path === `/api/short-series/${id}`) return route.fulfill({ json: { data: { ...storySeries, isOwner: owner } } })
+    if (path === `/api/short-series/${shortSeries.id}`) return route.fulfill({ json: { data: { ...shortSeries, isOwner: owner } } })
+    if (path === '/api/short-series/eligible-posts') {
+      eligibleReads += 1
+      return route.fulfill({ json: { data: url.searchParams.get('type') === 'short' ? shorts : stories } })
+    }
+    if (path === `/api/post/${looseArticle.id}`) return route.fulfill({ json: { postData: looseArticle } })
+    if (path === `/api/post/${looseShort.id}`) return route.fulfill({ json: { postData: looseShort } })
+    if (shorts.some(short => path === `/api/post/${short.id}`)) {
+      const index = shorts.findIndex(short => path === `/api/post/${short.id}`)
+      return route.fulfill({ json: { postData: { ...looseShort, _id: shorts[index].id, id: shorts[index].id, title: shorts[index].title, seriesContext: { id: shortSeries.id, title: shortSeries.title, position: index, total: shorts.length, previous: index > 0 ? { id: shorts[index - 1].id, title: shorts[index - 1].title } : null, next: shorts[index + 1] ? { id: shorts[index + 1].id, title: shorts[index + 1].title } : null } } } })
+    }
+    if (path.endsWith('/comments')) return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+    if (path === '/api/v1/events') return route.fulfill({ status: 202, json: { data: null } })
+    if (path.match(/^\/api\/series\/[^/]+\/items$/) && route.request().method() === 'POST') {
+      writes.push(route.request().postDataJSON())
+      return route.fulfill({ json: { data: { added: true, alreadyPresent: false } } })
+    }
+    if (path === `/api/series/${id}` && route.request().method() === 'PUT') {
+      writes.push(route.request().postDataJSON())
+      return route.fulfill({ json: { data: { updated: true } } })
+    }
+    return route.fulfill({ json: { data: [], meta: { nextCursor: null, unreadCount: 0 } } })
+  })
+  return writes
+}
+
+test('series page separates stories and shorts and Shorts links to its series', async ({ page }) => {
+  await mockSeries(page)
+  await page.goto('/series')
+  await expect(page.getByRole('heading', { name: 'A longer path' })).toBeVisible()
+  await page.getByRole('button', { name: `More options for ${storySeries.title}` }).click()
+  await expect(page.getByRole('menuitem', { name: 'Edit series' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('heading', { name: 'Short steps' })).toHaveCount(0)
+  await page.getByRole('tab', { name: 'Shorts' }).click()
+  await expect(page).toHaveURL('/series?type=short')
+  await expect(page.getByRole('heading', { name: 'Short steps' })).toBeVisible()
+  await page.goto('/shorts')
+  await page.getByRole('link', { name: 'Browse series' }).click()
+  await expect(page).toHaveURL('/series?type=short')
+})
+
+test('owner series card menu opens its edit modal', async ({ page }) => {
+  await mockSeries(page, true)
+  await page.goto('/series')
+  await page.getByRole('button', { name: `More options for ${storySeries.title}` }).click()
+  const menu = page.getByRole('menu', { name: `Options for ${storySeries.title}` })
+  await expect(menu.getByRole('menuitem', { name: 'Delete series' })).toBeVisible()
+  await menu.getByRole('menuitem', { name: 'Edit series' }).click()
+  await expect(page).toHaveURL(`/series/${id}`)
+  await expect(page.getByRole('dialog', { name: 'Edit series' })).toBeVisible()
+})
+
+test('short series reader names the next short and scrolls through the ordered list', async ({ page }) => {
+  await mockSeries(page)
+  await page.setViewportSize({ width: 320, height: 760 })
+  await page.goto(`/series/${shortSeries.id}`)
+  await page.getByRole('link', { name: 'Short 1' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('navigation', { name: 'Series progression' })).toContainText('Next · Part 2 of 2')
+  await dialog.locator('[data-series-next-title]').evaluate(node => { node.textContent = 'A long next short title that must remain on one line within the compact navigation strip '.repeat(3) })
+  const shortLayout = await dialog.getByRole('navigation', { name: 'Series progression' }).evaluate(nav => {
+    const title = nav.querySelector('[data-series-next-title]')
+    const action = nav.querySelector('[data-series-next-action]')
+    return { titleHeight: title.getBoundingClientRect().height, lineHeight: Number.parseFloat(getComputedStyle(title).lineHeight), clipped: title.scrollWidth > title.clientWidth, titleBottom: title.getBoundingClientRect().bottom, actionTop: action.getBoundingClientRect().top }
+  })
+  expect(shortLayout.titleHeight).toBeLessThan(shortLayout.lineHeight * 1.5)
+  expect(shortLayout.clipped).toBe(true)
+  expect(shortLayout.actionTop).toBeGreaterThan(shortLayout.titleBottom)
+  const seriesStrip = dialog.getByRole('navigation', { name: 'Series progression' })
+  const footer = dialog.locator('footer')
+  expect((await seriesStrip.boundingBox()).y + (await seriesStrip.boundingBox()).height).toBeLessThanOrEqual((await footer.boundingBox()).y + 1)
+  await dialog.getByRole('button', { name: 'Next short in the series: Short 2' }).click()
+  await expect(dialog.getByRole('heading', { name: 'Short 2' })).toBeVisible()
+  await expect(dialog.getByRole('navigation', { name: 'Series progression' }).getByRole('link', { name: 'View the series' })).toHaveAttribute('href', `/series/${shortSeries.id}`)
+  await dialog.getByRole('button', { name: 'Previous short' }).click()
+  await expect(dialog.getByRole('heading', { name: 'Short 1' })).toBeVisible()
+})
+
+test('a final short opened outside its series has no completion strip', async ({ page }) => {
+  await mockSeries(page)
+  await page.goto(`/post/${shorts[1].id}`)
+  await expect(page.getByRole('dialog', { name: shorts[1].title })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Series progression' })).toHaveCount(0)
+})
+
+test('series cards fill responsive columns while retaining a fixed aspect ratio', async ({ page }) => {
+  await mockSeries(page, false, 4)
+
+  for (const viewport of [{ width: 390, height: 844 }, { width: 633, height: 700 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize(viewport)
+    await page.goto('/series')
+    const grid = page.locator('.card-grid--series')
+    const cards = grid.locator(':scope > a')
+    await expect(cards).toHaveCount(4)
+
+    const gridBox = await grid.boundingBox()
+    const boxes = await cards.evaluateAll(elements => elements.map(element => {
+      const box = element.getBoundingClientRect()
+      return { x: box.x, width: box.width, height: box.height }
+    }))
+
+    const expectedRatio = viewport.width < 600 ? 2 : 2.5
+    expect(Math.abs(boxes[0].width / boxes[0].height - expectedRatio)).toBeLessThan(0.03)
+    await expect(cards.first().getByText('Story series · Oct 2026')).toBeVisible()
+    await expect(cards.first().getByText('2 parts')).toBeVisible()
+    await expect(cards.first().getByText('by Maya Sen')).toBeVisible()
+    await expect(cards.first().getByText('View →')).toBeVisible()
+    await expect(cards.first().locator('img')).toHaveCount(1)
+    await expect(cards.nth(1).getByText('IR')).toBeVisible()
+    if (viewport.width < 800) {
+      expect(new Set(boxes.map(box => Math.round(box.x))).size).toBe(1)
+      expect(Math.abs(boxes[0].width - gridBox.width)).toBeLessThan(2)
+    } else {
+      expect(new Set(boxes.map(box => Math.round(box.x))).size).toBe(2)
+      expect(boxes[0].width).toBeGreaterThan(420)
+    }
+  }
+})
+
+test('create series asks for Posts or Shorts before loading eligible writing', async ({ page }) => {
+  const requests = await mockSeries(page, true)
+  await page.goto('/series')
+  await page.getByRole('button', { name: 'Create a series' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Create a series' })
+  await expect(dialog.getByText('What do you want to create a series for?')).toBeVisible()
+  expect(requests.eligibleReads()).toBe(0)
+
+  await dialog.getByRole('button', { name: /Shorts Create an ordered series/ }).click()
+  const shortDialog = page.getByRole('dialog', { name: 'Create a short series' })
+  await expect(shortDialog).toBeVisible()
+  await expect(shortDialog.locator('input[type="checkbox"]')).toHaveCount(0)
+  const shortPicker = shortDialog.getByRole('combobox', { name: 'Choose published shorts' })
+  await shortPicker.click()
+  const shortOptions = page.getByRole('listbox', { name: 'Published shorts' })
+  await expect(page.getByRole('option', { name: 'Short 1' })).toBeVisible()
+  const menuBeforeSelection = await shortOptions.boundingBox()
+  await page.getByRole('option', { name: 'Short 1' }).click()
+  const menuAfterSelection = await shortOptions.boundingBox()
+  expect(Math.abs(menuAfterSelection.y - menuBeforeSelection.y)).toBeLessThan(2)
+  await page.getByRole('button', { name: 'Select all' }).click()
+  const menuAfterSelectAll = await shortOptions.boundingBox()
+  expect(Math.abs(menuAfterSelectAll.y - menuBeforeSelection.y)).toBeLessThan(2)
+  await expect(shortPicker).toContainText('2 shorts selected')
+  expect(requests.eligibleReads()).toBe(1)
+
+  await page.keyboard.press('Escape')
+  await expect(shortDialog.getByRole('list', { name: 'Selected shorts in reading order' })).toContainText('Short 1')
+  await expect(shortDialog.getByRole('list', { name: 'Selected shorts in reading order' })).toContainText('Short 2')
+  await shortDialog.getByRole('button', { name: 'Back' }).click()
+  await expect(dialog.getByRole('button', { name: /Posts Create an ordered series/ })).toBeVisible()
+  await dialog.getByRole('button', { name: /Posts Create an ordered series/ }).click()
+  const postDialog = page.getByRole('dialog', { name: 'Create a post series' })
+  await expect(postDialog).toBeVisible()
+  await expect(postDialog.locator('input[type="checkbox"]')).toHaveCount(0)
+  await postDialog.getByRole('combobox', { name: 'Choose published posts' }).click()
+  await expect(page.getByRole('option', { name: 'Story 1' })).toBeVisible()
+  expect(requests.eligibleReads()).toBe(2)
+})
+
+test('series owner can add an existing story and save its reading order', async ({ page }) => {
+  const writes = await mockSeries(page, true)
+  await page.goto(`/series/${id}`)
+  await expect(page.getByRole('heading', { name: 'A longer path' })).toBeVisible()
+  await page.getByRole('button', { name: 'Edit series' }).click()
+  await expect(page.getByRole('dialog', { name: 'Edit series' })).toBeVisible()
+  await page.getByRole('combobox', { name: 'Choose a story to add' }).click()
+  await expect(page.getByRole('option', { name: 'Story 1' })).toHaveCount(0)
+  await expect(page.getByRole('option', { name: 'Story 2' })).toHaveCount(0)
+  await page.getByRole('option', { name: 'Story 3' }).click()
+  await expect(page.getByRole('combobox', { name: 'Choose a story to add' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Move Story 3 earlier' }).click()
+  await page.getByRole('button', { name: 'Save series' }).click()
+  expect(writes).toHaveLength(1)
+  expect(writes[0].type).toBe('article')
+  expect(writes[0].postIds).toEqual([stories[0].id, stories[2].id, stories[1].id])
+})
+
+test('delete from Edit series opens a separate confirmation dialog', async ({ page }) => {
+  await mockSeries(page, true)
+  await page.goto(`/series/${id}`)
+  await page.getByRole('button', { name: 'Edit series' }).click()
+  const edit = page.getByRole('dialog', { name: 'Edit series' })
+  await edit.getByRole('button', { name: 'Delete series' }).click()
+  const confirmation = page.getByRole('dialog', { name: 'Delete series?' })
+  await expect(confirmation).toBeVisible()
+  await expect(confirmation.getByText(/Posts in the series are not deleted/)).toBeVisible()
+  await confirmation.getByRole('button', { name: 'Close delete series' }).click()
+  await expect(confirmation).toHaveCount(0)
+  await expect(edit).toBeVisible()
+})
+
+test('owner list cards expose Add to series for article and short variants', async ({ page }) => {
+  await mockSeries(page, true)
+  for (const [seriesId, entry] of [[id, stories[0]], [shortSeries.id, shorts[0]]]) {
+    await page.goto(`/series/${seriesId}`)
+    await page.getByRole('button', { name: `More options for ${entry.title}` }).click()
+    await page.getByRole('menuitem', { name: 'Add to series' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Add to series' })
+    await expect(dialog).toContainText(`already in ${seriesId === id ? storySeries.title : shortSeries.title}`)
+    await dialog.getByRole('button', { name: 'Close add to series' }).click()
+  }
+})
+
+test('series items stay compact and readable on narrow and wide screens', async ({ page }) => {
+  await mockSeries(page, true)
+  for (const [seriesId, firstTitle] of [[shortSeries.id, 'Short 1'], [id, 'Story 1']]) {
+    for (const width of [320, 390, 1280]) {
+      await page.setViewportSize({ width, height: 760 })
+      await page.goto(`/series/${seriesId}`)
+      const row = page.locator('ol > li').first()
+      await expect(row.getByRole('link', { name: firstTitle })).toBeVisible()
+      await expect(row.getByRole('button', { name: `More options for ${firstTitle}` })).toBeVisible()
+      const bounds = await row.boundingBox()
+      expect(bounds.height).toBeLessThan(seriesId === id ? 300 : 180)
+      await expect(row.locator('img')).toHaveCount(seriesId === id ? 1 : 0)
+      if (seriesId === id) await expect(page.locator('ol > li').nth(1).locator('img')).toHaveCount(0)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    }
+  }
+})
+
+test('article detail action appends to a matching series while short reader omits the series action', async ({ page }) => {
+  const writes = await mockSeries(page, true)
+  await page.goto(`/post/${looseArticle.id}`)
+  await page.getByRole('button', { name: 'Add this article to a series' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Add to series' })
+  await dialog.getByRole('combobox', { name: 'Choose one of your story series' }).click()
+  await page.getByRole('option', { name: /A longer path/ }).click()
+  await dialog.getByRole('button', { name: 'Add to series', exact: true }).click()
+
+  await page.goto(`/post/${looseShort.id}`)
+  await expect(page.getByRole('button', { name: 'Add this short read to a series' })).toHaveCount(0)
+
+  expect(writes.filter(write => write.postId)).toEqual([{ postId: looseArticle.id }])
+})

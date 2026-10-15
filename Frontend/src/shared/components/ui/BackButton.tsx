@@ -13,6 +13,7 @@ function parentPath(pathname: string) {
   if (pathname.startsWith('/explore/competitions/')) return '/explore/competitions'
   if (pathname.startsWith('/collections/')) return '/collections'
   if (pathname.startsWith('/shorts/series/')) return '/shorts'
+  if (pathname.startsWith('/series/')) return '/series'
   if (['/settings', '/history', '/profile/edit', '/opportunities'].includes(pathname)) return '/profile'
   return '/'
 }

@@ -12,16 +12,9 @@ export default function TopQuestionsSection() {
 
   return (
     <div className="fade-in fade-in-3 mb-13">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div>
-          <SectionHeading>
-            Hot Questions
-          </SectionHeading>
-          <p className="text-[13px] text-(--color-text-secondary) mt-1">
-            What the writing community is curious about right now
-          </p>
-        </div>
-        <Link to="/explore/questions" className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-[18px] py-2 text-[13px] font-medium text-[var(--color-text)] transition-all duration-150 hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">
+      <div className="mb-6 grid grid-cols-1 items-center gap-x-2 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-y-1">
+        <div className="min-w-0"><SectionHeading className="min-w-0">Hot Questions</SectionHeading><p className="text-[13px] text-(--color-text-secondary)">What the writing community is curious about right now</p></div>
+        <Link to="/explore/questions" className="button-target inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-[18px] py-2 text-[13px] font-medium text-[var(--color-text)] transition-all duration-150 hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">
           See all →
         </Link>
       </div>

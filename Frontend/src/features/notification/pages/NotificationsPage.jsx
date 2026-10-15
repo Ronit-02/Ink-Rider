@@ -94,5 +94,5 @@ export default function NotificationsPage() {
     </section>
   if (anchor === undefined) return null
   return anchor ? <ViewportPopover anchorRef={anchorRef} preferredSide="bottom" onAnchorHidden={onClose} role="dialog" aria-labelledby={titleId} className="w-[360px] rounded-[14px]" style={{ maxHeight: 480 }}>{content}</ViewportPopover>
-    : <ModalLayer aria-labelledby={titleId} onDismiss={onClose} className="flex items-center justify-center p-4">{content}</ModalLayer>
+    : <ModalLayer aria-labelledby={titleId} onDismiss={onClose} className="flex items-start justify-end px-4 pb-4 pt-[54px]">{content}</ModalLayer>
 }

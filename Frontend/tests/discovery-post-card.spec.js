@@ -25,6 +25,166 @@ async function mockApi(page, { signedIn = true, failLike = false, article = post
   })
 }
 
+test('Shorts reader follows the current filtered page list inside the modal', async ({ page }) => {
+  const items = [
+    { ...post, id: '507f1f77bcf86cd799439041', title: 'First science short', tags: ['science'], image: null },
+    { ...post, id: '507f1f77bcf86cd799439042', title: 'Other topic short', tags: ['wellness'], image: null },
+    { ...post, id: '507f1f77bcf86cd799439043', title: 'Second science short', tags: ['science'], image: null },
+  ]
+  await page.setViewportSize({ width: 320, height: 760 })
+  await page.route(url => url.pathname.startsWith('/api/'), route => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/api/auth/refresh-token') return route.fulfill({ status: 401, json: { message: 'Signed out' } })
+    if (path === '/api/post/shorts') return route.fulfill({ json: { data: items, meta: { nextCursor: null } } })
+    const item = items.find(short => path === `/api/post/${short.id}`)
+    if (item) return route.fulfill({ json: { postData: { ...item, _id: item.id, body: JSON.stringify(Array.from({ length: item.id === items[0].id ? 20 : 1 }, (_, index) => ({ id: `text-${index}`, type: 'text', content: item.excerpt }))) } } })
+    return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+  })
+  await page.goto('/shorts?shortTopic=science')
+  const cards = page.getByRole('article')
+  await expect(cards).toHaveCount(2)
+  const opener = cards.first().getByRole('link', { name: items[0].title })
+  await opener.click()
+  let reader = page.getByRole('dialog', { name: items[0].title })
+  await expect(reader.getByRole('group', { name: 'Browse short reads' })).toBeHidden()
+  await expect(reader).not.toContainText('1 of 2')
+  const pane = reader.locator('[data-short-scroll]')
+  await pane.hover()
+  await page.mouse.wheel(0, 180)
+  await expect(reader).toBeVisible()
+  expect(await pane.evaluate(node => node.scrollTop)).toBeGreaterThan(0)
+  await pane.evaluate(node => { node.scrollTop = node.scrollHeight })
+  await pane.hover()
+  await page.mouse.wheel(0, 180)
+  reader = page.getByRole('dialog', { name: items[2].title })
+  await expect(reader).toBeVisible()
+  await expect(reader).not.toContainText('2 of 2')
+  await expect(page).toHaveURL('/shorts?shortTopic=science')
+  await page.waitForTimeout(950)
+  await reader.locator('[data-short-scroll]').evaluate(node => {
+    node.scrollTop = 0
+    const start = new Touch({ identifier: 1, target: node, clientX: 160, clientY: 230 })
+    const end = new Touch({ identifier: 1, target: node, clientX: 158, clientY: 340 })
+    node.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: [start] }))
+    node.dispatchEvent(new TouchEvent('touchend', { bubbles: true, changedTouches: [end] }))
+  })
+  reader = page.getByRole('dialog', { name: items[0].title })
+  await expect(reader).toBeVisible()
+  await reader.getByRole('button', { name: 'Close short read' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(opener).toBeFocused()
+  await opener.click()
+  reader = page.getByRole('dialog', { name: items[0].title })
+  await reader.locator('[data-short-scroll]').evaluate(node => {
+    node.scrollTop = node.scrollHeight
+    const start = new Touch({ identifier: 1, target: node, clientX: 160, clientY: 340 })
+    const end = new Touch({ identifier: 1, target: node, clientX: 158, clientY: 230 })
+    node.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: [start] }))
+    node.dispatchEvent(new TouchEvent('touchend', { bubbles: true, changedTouches: [end] }))
+  })
+  await expect(page.getByRole('dialog', { name: items[2].title })).toBeVisible()
+})
+
+test('short reader keeps stable dimensions and uses external desktop navigation', async ({ page }) => {
+  const items = [
+    { ...post, id: '507f1f77bcf86cd799439051', title: 'Long desktop short', image: null },
+    { ...post, id: '507f1f77bcf86cd799439052', title: 'Brief desktop short', image: null },
+  ]
+  await page.setViewportSize({ width: 1280, height: 844 })
+  await page.route(url => url.pathname.startsWith('/api/'), route => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/api/auth/refresh-token') return route.fulfill({ status: 401, json: { message: 'Signed out' } })
+    if (path === '/api/post/shorts') return route.fulfill({ json: { data: items, meta: { nextCursor: null } } })
+    const item = items.find(short => path === `/api/post/${short.id}`)
+    if (item) return route.fulfill({ json: { postData: { ...item, _id: item.id, body: JSON.stringify([{ id: 'text', type: 'text', content: item.id === items[0].id ? item.excerpt : 'Brief content.' }]) } } })
+    return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+  })
+  await page.goto('/shorts')
+  await page.getByRole('article').first().getByRole('link', { name: items[0].title }).click()
+  let reader = page.getByRole('dialog', { name: items[0].title })
+  const readerFrame = reader.locator(':scope > div > section')
+  const initialBox = await readerFrame.boundingBox()
+  const initialComments = reader.locator('#short-read-comments')
+  const initialLayout = await initialComments.evaluate(element => {
+    const footer = element.closest('footer')
+    const frame = element.closest('section')
+    return { commentsBottom: element.getBoundingClientRect().bottom, footerBottom: footer.getBoundingClientRect().bottom, frameBottom: frame.getBoundingClientRect().bottom }
+  })
+  expect(initialLayout.commentsBottom).toBeLessThanOrEqual(initialLayout.footerBottom)
+  expect(Math.abs(initialLayout.footerBottom - initialLayout.frameBottom)).toBeLessThanOrEqual(2)
+  const browse = reader.getByRole('group', { name: 'Browse short reads' })
+  await expect(browse).toBeVisible()
+  await expect(browse.getByRole('button', { name: 'Previous short' })).toBeDisabled()
+  await browse.getByRole('button', { name: 'Next short' }).click()
+  reader = page.getByRole('dialog', { name: items[1].title })
+  await expect(reader).toBeVisible()
+  const nextBox = await reader.locator(':scope > div > section').boundingBox()
+  expect(nextBox.height).toBeCloseTo(initialBox.height, 1)
+  expect(nextBox.width).toBeCloseTo(initialBox.width, 1)
+  await expect(reader.getByRole('button', { name: 'Previous short' })).toBeEnabled()
+  await expect(reader).not.toContainText(/\d+ of \d+/)
+})
+
+test('wheel navigation outside the short modal changes the active short', async ({ page }) => {
+  const items = [
+    { ...post, id: '507f1f77bcf86cd799439061', title: 'Overlay first short', image: null },
+    { ...post, id: '507f1f77bcf86cd799439062', title: 'Overlay next short', image: null },
+  ]
+  await page.setViewportSize({ width: 1280, height: 844 })
+  await page.route(url => url.pathname.startsWith('/api/'), route => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/api/auth/refresh-token') return route.fulfill({ status: 401, json: { message: 'Signed out' } })
+    if (path === '/api/post/shorts') return route.fulfill({ json: { data: items, meta: { nextCursor: null } } })
+    const item = items.find(short => path === `/api/post/${short.id}`)
+    if (item) return route.fulfill({ json: { postData: { ...item, _id: item.id, body: JSON.stringify([{ type: 'text', content: 'Overlay navigation content.' }]) } } })
+    return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+  })
+  await page.goto('/shorts')
+  await page.getByRole('article').first().getByRole('link', { name: items[0].title }).click()
+  await expect(page.getByRole('dialog', { name: items[0].title })).toBeVisible()
+  await page.mouse.move(12, 420)
+  await page.mouse.wheel(0, 180)
+  await expect(page.getByRole('dialog', { name: items[1].title })).toBeVisible()
+})
+
+test('scrolling expanded short comments does not navigate to another short', async ({ page }) => {
+  const items = [
+    { ...post, id: '507f1f77bcf86cd799439071', title: 'Commented first short', image: null, commentsCount: 12 },
+    { ...post, id: '507f1f77bcf86cd799439072', title: 'Commented next short', image: null, commentsCount: 0 },
+  ]
+  const comments = Array.from({ length: 12 }, (_, index) => ({
+    id: `comment-${index}`,
+    content: `Scrollable comment ${index + 1}. This stays inside the discussion pane.`,
+    createdAt: '2026-10-06T00:00:00Z',
+    author: { name: `Reader ${index + 1}` },
+    likesCount: 0,
+    isLiked: false,
+    repliesCount: 0,
+  }))
+  await page.setViewportSize({ width: 320, height: 760 })
+  await page.route(url => url.pathname.startsWith('/api/'), route => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/api/auth/refresh-token') return route.fulfill({ status: 401, json: { message: 'Signed out' } })
+    if (path === '/api/post/shorts') return route.fulfill({ json: { data: items, meta: { nextCursor: null } } })
+    if (path === `/api/post/${items[0].id}/comments`) return route.fulfill({ json: { data: comments, meta: { nextCursor: null, totalCount: comments.length } } })
+    const item = items.find(short => path === `/api/post/${short.id}`)
+    if (item) return route.fulfill({ json: { postData: { ...item, _id: item.id, body: JSON.stringify([{ id: 'text', type: 'text', content: item.excerpt }]) } } })
+    return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+  })
+  await page.goto('/shorts')
+  await page.getByRole('article').first().getByRole('link', { name: items[0].title }).click()
+  const reader = page.getByRole('dialog', { name: items[0].title })
+  await reader.getByRole('button', { name: 'Comments (12)' }).click()
+  await expect(reader.getByText('Scrollable comment 12. This stays inside the discussion pane.')).toBeVisible()
+  const commentsPane = reader.locator('[data-short-comments-scroll]')
+  await expect.poll(() => commentsPane.evaluate(node => node.scrollHeight > node.clientHeight)).toBe(true)
+  await commentsPane.hover()
+  await page.mouse.wheel(0, 220)
+  await expect.poll(() => commentsPane.evaluate(node => node.scrollTop)).toBeGreaterThan(0)
+  await expect(reader).toBeVisible()
+  await expect(page.getByRole('dialog', { name: items[1].title })).toHaveCount(0)
+})
+
 for (const width of [320, 1280]) {
   test(`short detail author and share options work at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 844 })
@@ -41,7 +201,7 @@ for (const width of [320, 1280]) {
     await openShort()
     const reader = page.getByRole('dialog', { name: post.title, exact: true })
     await expect(reader.getByRole('button', { name: /^View .* comments$/ })).toHaveCount(0)
-    await expect(reader.getByRole('heading', { name: 'Comments (0)' })).toBeVisible()
+    await expect(reader.getByRole('button', { name: 'Comments (0)' })).toBeVisible()
     await reader.getByText(post.readTime, { exact: true }).click()
     await expect(page).toHaveURL('/shorts')
     await expect(reader).toBeVisible()
@@ -365,6 +525,33 @@ for (const width of [320, 350, 390, 767, 768, 1280]) {
     await expect(trigger).toBeFocused()
   })
 }
+
+test('article categories show only complete pills beside engagement controls as width changes', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 844 })
+  await mockApi(page)
+  await page.goto('/search?q=mornings')
+  const card = page.getByRole('article').filter({ has: page.getByRole('heading', { name: post.title, exact: true }) }).first()
+  const categoryLinks = card.locator('a[href^="/search?q="]')
+  const comments = card.getByRole('button', { name: `Comments on ${post.title}` })
+  await expect.poll(() => categoryLinks.count()).toBeLessThan(3)
+  await expect(categoryLinks.first()).toBeVisible()
+  const assertFits = async () => {
+    const controls = await comments.boundingBox()
+    for (const category of await categoryLinks.all()) {
+      const box = await category.boundingBox()
+      expect(box.x + box.width).toBeLessThanOrEqual(controls.x - 8)
+    }
+    const positions = await categoryLinks.evaluateAll(links => links.map(link => link.getBoundingClientRect().top))
+    expect(new Set(positions.map(Math.round)).size).toBeLessThanOrEqual(1)
+  }
+  await assertFits()
+  await page.setViewportSize({ width: 1280, height: 844 })
+  await expect(categoryLinks).toHaveCount(3)
+  await assertFits()
+  await page.setViewportSize({ width: 320, height: 844 })
+  await expect.poll(() => categoryLinks.count()).toBeLessThan(3)
+  await assertFits()
+})
 
 test('failed appreciation restores count and pressed state', async ({ page }) => {
   await mockApi(page, { failLike: true })

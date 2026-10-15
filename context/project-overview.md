@@ -16,6 +16,8 @@ Ink-Rider is not intended to be a generic blogging CMS or a clone of any single 
 
 The current product priority is a calm, editorial reading experience with moderate community depth. Ink-Rider should feel like more than a place to read, but it must not become a generic social feed or an unfocused collection of every possible creator feature.
 
+Writers can add their released stories and shorts to an existing matching-format series from shared list cards, Writing studio management rows/cards, the article reader, or the short reader. The action preserves writer ownership, ordered membership, the one-series-per-post rule, and the existing series size bound.
+
 ## Problems the product solves
 
 ### Writers do not know what to write
@@ -32,7 +34,7 @@ The feed should balance relevance, freshness, quality, diversity, exploration, a
 
 ### Readers cannot quickly judge whether an article is useful
 
-Articles can expose a short abstract, reading time, table of contents, and optional generated summary. Short-form series provide a separate fast-learning format without replacing the full article.
+Articles can expose a short abstract, reading time, table of contents, and optional generated summary. Writers can organize either full stories or short reads into separate ordered series without mixing their formats.
 
 ### Engagement signals can reward low-quality or toxic content
 
@@ -69,7 +71,7 @@ Wants trustworthy discovery across topics, strong search, saved reading, concise
 
 ### Time-constrained learner
 
-Wants summaries, short series, audio, collections, and a path from quick understanding to deeper reading.
+Wants summaries, story and short series, audio, collections, and a path from quick understanding to deeper reading.
 
 ### Community participant
 
@@ -100,8 +102,8 @@ Status meanings:
 | Collection detail | `/collections/:id` | Connected | Read, save, share, and manage a collection |
 | Library | `/saved` | Connected | Saved, Collections, and History top tabs; Collections switches between My and Saved sets with URL-backed pill selection, visibility, and sort filters |
 | Writer/editor | `/studio?draft=`, `?edit=`, `?new=`, or `?question=` | Partial | Shared studio Post/Short chooser creates a typed draft; existing editor retains stacked fields, phone active-block toolbar/bottom sheet, guest local composition via direct `?new=`, autosave, validation, scheduling, and publication |
-| Personal profile | `/profile` | Connected | Centered guest sign-in prompt; mobile account sheet links to the profile; signed-in public identity, biography, editing, follower/following counts, direct-request preference, and Your published writing with Posts/Shorts pills, sorting Filters, and Edit in Writing studio |
-| Writing studio | `/studio` | Connected | Private Published (Stories/Shorts), Drafts (Stories/Shorts), and Analytics tabs; Write a post opens the Post/Short chooser; status filtering for published, scheduled, and unpublished posts; legacy `/write` and `/writing` redirect here |
+| Personal profile | `/profile` | Connected | Centered guest sign-in prompt; mobile Account sheet links to the profile and supplies account navigation; signed-in public identity, biography, icon-only editing action, follower/following counts, direct-request preference, and Your published writing with Posts/Shorts pills, sorting Filters, and Edit in Writing studio |
+| Writing studio | `/studio` | Connected | Private Analytics, Published (Stories/Shorts), Drafts (Stories/Shorts), and Ideas tabs; Analytics opens by default with basic released-post counts while detailed performance remains member-only; Ideas shows ranked reader questions and the full reader-demand link; Write a post opens the Post/Short chooser; legacy `/write` and `/writing` redirect here |
 | Edit profile | `/profile/edit` | Connected | Guarded standalone editing page reusing display-name/biography fields and the existing profile API; Save/Cancel return to Profile |
 | Onboarding | `/onboarding` | Connected | Persist interests, initial follows, goals, and consent preferences |
 | Authentication | `/login`, `/signup` | Connected | Account creation, verification, recovery, and session management |
@@ -214,7 +216,7 @@ See [architecture.md](architecture.md) for system boundaries, schemas, data flow
 - Explainable personalized recommendations
 - Competitions and reader-choice voting
 - Collections and collaborative collections
-- Short-form posts and learning series
+- Short-form posts and separate story or short learning series
 - Notifications
 - Platform membership and creator support
 - Early access, workshops, behind-the-scenes content, and direct requests

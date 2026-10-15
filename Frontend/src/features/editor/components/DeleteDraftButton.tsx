@@ -22,7 +22,7 @@ function DeleteDraftDialog({ draft, trigger, onClose }: { draft: Draft; trigger:
   const id = useId()
   const queryClient = useQueryClient()
   const { notify } = useToast()
-  const cancelRef = useRef<HTMLButtonElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
   const pendingRef = useRef(false)
   const deletedRef = useRef(false)
   const container = useRef(trigger?.closest('[role="tabpanel"], section'))
@@ -48,7 +48,7 @@ function DeleteDraftDialog({ draft, trigger, onClose }: { draft: Draft; trigger:
     },
   })
   const dismiss = () => { if (!pendingRef.current) onClose() }
-  const dialogRef = useDialogFocus(dismiss, cancelRef)
+  const dialogRef = useDialogFocus(dismiss, closeRef)
   const confirm = async () => {
     if (pendingRef.current) return
     pendingRef.current = true
@@ -57,12 +57,11 @@ function DeleteDraftDialog({ draft, trigger, onClose }: { draft: Draft; trigger:
   }
   return <ModalLayer onDismiss={dismiss} aria-labelledby={`${id}-title`} className="flex items-center justify-center p-4">
     <section ref={dialogRef} tabIndex={-1} className="w-full max-w-[420px] overflow-y-auto rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-menu)]">
-      <ModalHeader title="Delete draft?" titleId={`${id}-title`} closeLabel="Close draft deletion" onClose={dismiss} />
+      <ModalHeader title="Delete draft?" titleId={`${id}-title`} closeLabel="Close draft deletion" closeRef={closeRef} onClose={dismiss} />
       <div className="p-4 sm:p-6">
         <p className="break-words text-[13px] leading-5 text-[var(--color-text-secondary)]">Permanently delete “{draft.title || 'Untitled draft'}”? This cannot be undone.</p>
         {remove.isError && <p role="alert" className="mt-3 text-[13px] text-[var(--color-danger)]">The draft could not be deleted. Please try again.</p>}
         <div className="mt-6 flex flex-wrap justify-end gap-2">
-          <Button ref={cancelRef} variant="secondary" disabled={remove.isPending} onClick={dismiss}>Cancel</Button>
           <Button variant="danger" disabled={remove.isPending} aria-busy={remove.isPending} onClick={confirm}>Delete draft</Button>
         </div>
       </div>

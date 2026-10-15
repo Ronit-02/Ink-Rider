@@ -1,5 +1,13 @@
 # Modal and overlay audit
 
+## Dismiss controls — 2026-10-16
+
+Active modals with a header Close icon no longer repeat a dismiss-only Cancel button in the footer. This covers collection and series creation/edit/deletion, question creation, competition entry, publishing, comment editing/deletion, draft/post deletion, and reporting. The header Close icon remains the dismissal control, with existing Escape/backdrop behavior and pending-write guards. Series creation keeps Back because it changes the modal step. Inline comment editor and page-level Edit profile retain Cancel because those controls do not dismiss a modal. Focused tests now target header Close; frontend lint and build passed, while browser interaction remains unverified.
+
+## Ask-question tags — 2026-10-15
+
+The Ask the community modal replaces its comma-separated tag field with the existing publishing TagPicker. It shows public suggestions and selected chips, supports explicit custom creation and removal, and applies the question API's optional five-tag/30-character limits. The modal's question, context, target-writer, submit, and dismissal flows are unchanged. The existing public tag lookup and question create endpoints need no backend or schema change; current behavior is recorded in UI rules and dated verification in the progress tracker.
+
 ## Outside-click dismissal consistency — 2026-10-13
 
 All modal implementations with an exposed backdrop now close when the user clicks outside the panel. `ModalLayer` already provides this behavior by default; component-level opt-outs and dirty-form conditions were removed. Native Comments already dismissed this way, and the mobile Account sheet already closes from its backdrop. Full-screen mobile Search has no outside backdrop area. Existing pending-write guards still prevent dismissal during an active mutation, and focus restoration/Escape behavior remain unchanged. Outside dismissal discards local unsubmitted values, consistent with each modal's close behavior.
@@ -8,7 +16,7 @@ Changed implementation files: `Frontend/src/shared/components/ui/ModalLayer.tsx`
 
 ## Comment action modals — 2026-10-12
 
-Owner Edit comment and Delete comment now use CommentActionDialog above article, compact Comments, and short-reader surfaces. Both reuse ModalLayer, ModalHeader, Button, and dialog focus, with Close/Cancel/Escape, viewport-bounded internal scrolling, backdrop retention, pending dismissal/repeat guards, error/retry, and focus restoration. Edit preserves failed text; Delete retains only placeholders that connect to surviving replies. Behavior, exact changed files, and completed verification are owned by [comment actions audit](comment-actions-audit.md). These two purposes extend the dated shared-header inventory below.
+Owner Edit comment and Delete comment now use CommentActionDialog above article, compact Comments, and short-reader surfaces. Both reuse ModalLayer, ModalHeader, Button, and dialog focus, with Close/Escape, viewport-bounded internal scrolling, backdrop retention, pending dismissal/repeat guards, error/retry, and focus restoration. Edit preserves failed text; Delete retains only placeholders that connect to surviving replies. Behavior, exact changed files, and completed verification are owned by [comment actions audit](comment-actions-audit.md). These two purposes extend the dated shared-header inventory below.
 
 ## Shared modal/header inventory — 2026-10-10
 
@@ -76,7 +84,7 @@ A follow-up can reuse the existing secondary-text token in the affected essentia
 
 Priority: P2. Create collection and Create series Close buttons measured approximately 9.34×28.5 CSS px. Delete's Cancel delete control measured approximately 28.86×22 px. These fall below the repository's 40 px minimum for icon-only controls and 44 px preferred target. Ask, Submit article, and Short read use 40×40 close controls; Comments, Account, and mobile search use 44×44.
 
-Desktop form Cancel buttons and delete actions measured 37.5 px tall, another repository target gap. A bounded follow-up should enlarge hit areas using existing control styles while preserving panel composition. Files relevant to a fix: collection `pages/index.jsx`, Search `ShortsTab.jsx`, `CollectionCard.jsx`; audit shared `Button.jsx` consumers before considering a global size change.
+An earlier audit found desktop form Cancel buttons and delete actions measuring 37.5 px. Dismissing Cancel buttons were removed from modal footers on 2026-10-16; remaining action targets follow their existing Button styles.
 
 ### 4. Failed eligible-story reads provide no recovery control
 

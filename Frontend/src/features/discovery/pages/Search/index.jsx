@@ -28,6 +28,11 @@ const TOPICS = [
   { id: 'lifestyle', label: 'Lifestyle' },
   { id: 'career', label: 'Career Education' },
 ]
+const TOPIC_TAGS = {
+  travel: ['travel'], ai: ['ai', 'artificial-intelligence', 'technology'], science: ['science'],
+  entrepreneurship: ['entrepreneurship', 'business', 'finance'], lifestyle: ['lifestyle', 'wellness', 'food'],
+  career: ['career', 'education', 'essays'],
+}
 
 const TIME_RANGES = [
   { id: 'any', label: 'Any time' },
@@ -77,9 +82,16 @@ export default function SearchPage() {
   const [shortReadId, setShortReadId] = useState(null)
   const requestedTab = params.get('type')
   const activeTab = TABS.some(tab => tab.id === requestedTab) ? requestedTab : 'posts'
-  const topic = params.get('topic') || 'all'
-  const time = params.get('time') || 'any'
-  const sort = params.get('sort') || 'relevance'
+  const baseline = retainRetryView(useDiscoverySearch(query, activeTab))
+  const availableItems = baseline.data?.data?.[activeTab] || []
+  const availableTags = new Set(availableItems.flatMap(item => item.tags || []).map(tag => tag.toLowerCase()))
+  const topicOptions = activeTab === 'writers' || availableItems.length < 2 ? [] : TOPICS.filter(option => option.id === 'all' || (TOPIC_TAGS[option.id]?.some(tag => availableTags.has(tag)) && availableItems.some(item => !(item.tags || []).some(tag => TOPIC_TAGS[option.id].includes(tag.toLowerCase())))))
+  const topic = topicOptions.some(option => option.id === params.get('topic')) ? params.get('topic') : 'all'
+  const dates = availableItems.map(item => new Date(item.createdAt).getTime()).filter(Number.isFinite)
+  const timeOptions = activeTab === 'writers' || dates.length < 2 ? [] : TIME_RANGES.filter(option => option.id === 'any' || (dates.some(date => date >= Date.now() - ({ day: 1, week: 7, month: 30, year: 365 }[option.id] * 86400000)) && dates.some(date => date < Date.now() - ({ day: 1, week: 7, month: 30, year: 365 }[option.id] * 86400000))))
+  const time = timeOptions.some(option => option.id === params.get('time')) ? params.get('time') : 'any'
+  const sortOptions = activeTab !== 'writers' && availableItems.length > 1 ? SORT_OPTIONS : []
+  const sort = sortOptions.some(option => option.id === params.get('sort')) ? params.get('sort') : 'relevance'
   const result = retainRetryView(useDiscoverySearch(query, activeTab, { topic, time, sort }))
   const items = result.data?.data?.[activeTab] || []
 
@@ -123,15 +135,15 @@ export default function SearchPage() {
   return (
     <PageFrame>
       <header className="mb-7">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+          <div className="min-w-0">
             <h1 className="text-[21px] font-semibold tracking-[-0.025em] text-[var(--color-text)]">Search results</h1>
             {query.length >= 1 && <p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">Matching “{query}” across Ink Rider</p>}
           </div>
-          <FilterPopover activeFilterCount={activeFilterCount} title="Refine results" description="Narrow the search without leaving the page." onClear={clearFilters}>
-            <div className="mt-4"><p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Topic</p><div className="flex flex-wrap gap-2">{TOPICS.map(option => <button key={option.id} type="button" aria-pressed={topic === option.id} onClick={() => updateFilter('topic', option.id, 'all')} className={`button-target min-h-11 rounded-full border px-3 py-2 text-[11px] transition-colors sm:min-h-0 ${topic === option.id ? 'border-[var(--color-text)] bg-[var(--color-text)] text-[var(--color-text-inverted)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-secondary)]'}`}>{option.label}</button>)}</div></div>
-            <div className="mt-4 grid grid-cols-2 gap-3"><Select id="search-time" label="Time" value={time} options={TIME_RANGES.map(option => ({ value: option.id, label: option.label }))} onChange={value => updateFilter('time', value, 'any')} className="max-w-none" /><Select id="search-sort" label="Sort" value={sort} options={SORT_OPTIONS.map(option => ({ value: option.id, label: option.label }))} onChange={value => updateFilter('sort', value, 'relevance')} className="max-w-none" /></div>
-          </FilterPopover>
+          {(topicOptions.length > 1 || timeOptions.length > 1 || sortOptions.length > 1) && <FilterPopover activeFilterCount={activeFilterCount} title="Refine results" description="Narrow the search without leaving the page." onClear={clearFilters}>
+            {topicOptions.length > 1 && <div className="mt-4"><p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Topic</p><div className="flex flex-wrap gap-2">{topicOptions.map(option => <button key={option.id} type="button" aria-pressed={topic === option.id} onClick={() => updateFilter('topic', option.id, 'all')} className={`button-target min-h-11 rounded-full border px-3 py-2 text-[11px] transition-colors sm:min-h-0 ${topic === option.id ? 'border-[var(--color-text)] bg-[var(--color-text)] text-[var(--color-text-inverted)]' : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-text-secondary)]'}`}>{option.label}</button>)}</div></div>}
+            {(timeOptions.length > 1 || sortOptions.length > 1) && <div className="mt-4 grid grid-cols-2 gap-3">{timeOptions.length > 1 && <Select id="search-time" label="Time" value={time} options={timeOptions.map(option => ({ value: option.id, label: option.label }))} onChange={value => updateFilter('time', value, 'any')} className="max-w-none" />}{sortOptions.length > 1 && <Select id="search-sort" label="Sort" value={sort} options={sortOptions.map(option => ({ value: option.id, label: option.label }))} onChange={value => updateFilter('sort', value, 'relevance')} className="max-w-none" />}</div>}
+          </FilterPopover>}
         </div>
       </header>
 

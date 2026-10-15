@@ -23,6 +23,29 @@ const detailRoutes = ['/search?q=memory', `/post/${postId}`, '/author/maya-sen',
 const primaryRoutes = ['/', '/explore/trending', '/explore/questions', '/explore/competitions', '/author', '/collections', '/saved', '/shorts', '/members', '/notifications', '/staff', '/studio', '/profile', '/settings', '/help', '/unknown-page']
 
 for (const width of [320, 1280]) {
+  test(`Back and Forward restore the main scroll position at ${width}px`, async ({ page }) => {
+    await mockApi(page)
+    await page.setViewportSize({ width, height: 600 })
+    await page.goto('/search?q=memory')
+    await page.addStyleTag({ content: '#main-content > :last-child { min-height: 2400px; }' })
+    const main = page.locator('#main-content')
+    await main.evaluate(element => { element.scrollTop = 640 })
+    await expect.poll(() => main.evaluate(element => element.scrollTop)).toBe(640)
+
+    await page.getByRole('link', { name: "View Maya Sen's profile" }).click()
+    await expect(page).toHaveURL('/author/maya-sen')
+    await expect.poll(() => main.evaluate(element => element.scrollTop)).toBe(0)
+    await main.evaluate(element => { element.scrollTop = 320 })
+
+    await page.getByRole('button', { name: 'Back', exact: true }).click()
+    await expect(page).toHaveURL('/search?q=memory')
+    await expect.poll(() => main.evaluate(element => element.scrollTop)).toBe(640)
+
+    await page.goForward()
+    await expect(page).toHaveURL('/author/maya-sen')
+    await expect.poll(() => main.evaluate(element => element.scrollTop)).toBe(320)
+  })
+
   test(`only detail and drill-down pages have a consistent Back control at ${width}px`, async ({ page }) => {
     test.setTimeout(90_000)
     await mockApi(page)

@@ -1,6 +1,6 @@
 import retainRetryView from '@/shared/utils/retainRetryView'
 /* eslint-disable jsx-a11y/no-noninteractive-element-to-interactive-role -- The tab container owns tab semantics. */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
@@ -26,13 +26,38 @@ import useWriter from '../../hooks/useWriter'
 import SignInPrompt from '@/shared/components/ui/SignInPrompt'
 import WritingStudioShortCard from '../../components/WritingStudioShortCard'
 import WritingPostRow from '../../components/WritingPostRow'
+import { useQuestionOpportunities } from '@/features/question/hooks/useQuestions'
+import ModalLayer from '@/shared/components/ui/ModalLayer'
+import ModalHeader from '@/shared/components/ui/ModalHeader'
+import useDialogFocus from '@/shared/hooks/useDialogFocus'
 
 const WRITING_TABS = [
+  { id: 'analytics', label: 'Analytics' },
   { id: 'published', label: 'Published' },
   { id: 'drafts', label: 'Drafts' },
-  { id: 'analytics', label: 'Analytics' },
+  { id: 'ideas', label: 'Ideas' },
 ]
 
+function AdvancedAnalyticsModal({ onClose, onJoin, joining }) {
+  const closeRef = useRef(null)
+  const dialogRef = useDialogFocus(onClose, closeRef)
+  return <ModalLayer onDismiss={onClose} aria-labelledby="advanced-analytics-title" className="flex items-center justify-center p-4">
+    <section ref={dialogRef} tabIndex={-1} className="w-full max-w-[420px] overflow-y-auto rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-menu)]">
+      <ModalHeader title="Advanced analytics" titleId="advanced-analytics-title" closeLabel="Close advanced analytics" closeRef={closeRef} onClose={onClose} />
+      <div className="p-5 sm:p-6"><p className="text-[13px] leading-6 text-[var(--color-text-secondary)]">Become a member to see article opens, completed reads, completion rate, and performance for each post.</p><Button className="mt-5" disabled={joining} aria-busy={joining} onClick={onJoin}>Become a member</Button></div>
+    </section>
+  </ModalLayer>
+}
+
+
+function ReaderSuggestions() {
+  const opportunities = retainRetryView(useQuestionOpportunities())
+  const questions = opportunities.data?.data?.slice(0, 3) || []
+  return <section aria-label="Reader ideas">
+    <p className="text-[13px] text-[var(--color-text-secondary)]">Questions ranked by topic fit and reader interest.</p>
+    {opportunities.isPending ? <div className="mt-6" role="status" aria-label="Finding reader questions"><ListSkeleton count={3} role={undefined} /></div> : opportunities.isError ? <div role="alert" className="mt-6"><p className="text-[13px] text-[var(--color-text-muted)]">Reader questions could not be loaded.</p><Button className="mt-3" variant="secondary" onClick={() => opportunities.refetch()}>Try again</Button></div> : questions.length ? <div className="mt-5">{questions.map(question => <article key={question.id} className="border-b border-[var(--color-border)] py-5"><p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-info)]">{question.reason || 'Open question from readers'}</p><h3 className="mt-2 text-[17px] font-bold leading-[1.4] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}><Link to={`/explore/questions/${question.id}`} className="rounded-[4px] hover:text-[var(--color-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">{question.text}</Link></h3>{question.context && <p className="mt-2 line-clamp-2 text-[13px] leading-6 text-[var(--color-text-secondary)]">{question.context}</p>}<p className="mt-3 text-[12px] text-[var(--color-text-muted)]">{question.upvotesCount || 0} {question.upvotesCount === 1 ? 'upvote' : 'upvotes'} · {question.followersCount || 0} following</p></article>)}</div> : <p className="mt-6 py-8 text-[13px] text-[var(--color-text-muted)]">No open reader questions right now.</p>}
+  </section>
+}
 
 function StatCard({ label, value, sub }) {
   return (
@@ -71,23 +96,17 @@ export default function ProfilePage() {
   const isReady = useSelector(state => state.auth.isReady)
   const auth = useAuth()
   if (!isReady) return <PageFrame><p role="status" className="text-[13px] text-[var(--color-text-muted)]">Restoring your session…</p></PageFrame>
-  const accountActions = <section aria-label="Account" className={`mb-8 border-b border-[var(--color-border)] pb-6 ${auth.loggedIn ? 'md:hidden' : ''}`}>
-    <h2 className="mb-3 text-[15px] font-semibold">Account</h2>
-    <div className="flex flex-wrap gap-2">
-        {[{ to: '/saved', label: 'Library' }, { to: '/studio', label: 'Writing studio' }, { to: '/settings', label: 'Settings' }, { to: '/notifications', label: 'Notifications' }].map(link => <Link key={link.to} to={link.to} className="inline-flex min-h-11 items-center rounded-full border border-[var(--color-border)] px-4 text-[13px]">{link.label}</Link>)}
-        <Button variant="secondary" disabled={auth.isSigningOut} aria-busy={auth.isSigningOut} onClick={auth.signOut}>Sign Out</Button>
-        <Button variant="secondary" disabled={auth.isSigningOut} aria-busy={auth.isSigningOut} onClick={auth.signOutAllDevices}>Sign Out all Devices</Button>
-    </div>
-  </section>
   if (!auth.loggedIn) return <PageFrame className="flex min-h-full flex-col !py-6">
     <SignInPrompt message="Sign in to view your profile." />
   </PageFrame>
   if (legacyDestination) return <Navigate to={legacyDestination} replace />
-  return <MemberProfile accountActions={accountActions} />
+  return <MemberProfile />
 }
 
-export function MemberProfile({ accountActions = null, writing = false }) {
+export function MemberProfile({ writing = false }) {
   const [choosingFormat, setChoosingFormat] = useState(false)
+  const [showAdvancedAnalytics, setShowAdvancedAnalytics] = useState(false)
+  const [analyticsAsOf] = useState(() => Date.now())
   const location = useLocation()
   const TABS = writing ? WRITING_TABS : []
   const navigate = useNavigate()
@@ -95,7 +114,7 @@ export function MemberProfile({ accountActions = null, writing = false }) {
   const { notify } = useToast()
   const [params, setParams] = useSearchParams()
   const requestedTab = params.get('writingTab')
-  const tab = writing ? (TABS.some(item => item.id === requestedTab) ? requestedTab : 'published') : 'overview'
+  const tab = writing ? (TABS.some(item => item.id === requestedTab) ? requestedTab : ['posts', 'shorts'].includes(requestedTab) ? 'published' : 'analytics') : 'overview'
   const writingFormat = params.get('writingFormat') === 'short' || (requestedTab === 'shorts' && !params.has('writingFormat')) ? 'short' : 'article'
   const draftFormat = params.get('draftFormat') === 'short' ? 'short' : 'article'
   const viewer = useSelector(state => state.auth.user)
@@ -119,6 +138,7 @@ export function MemberProfile({ accountActions = null, writing = false }) {
   const entitlements = useEntitlements(writing && tab === 'analytics')
   const canViewAnalytics = entitlements.data?.capabilities?.includes('writer_analytics')
   const analytics = retainRetryView(useQuery({ queryKey: ['me', 'analytics'], queryFn: fetchWriterAnalytics, enabled: tab === 'analytics' && canViewAnalytics }))
+  const publishedPosts = (posts.data || []).filter(post => (post.publicationStatus === 'published' || post.status === 'published') && (!post.publicAt || new Date(post.publicAt).getTime() <= analyticsAsOf))
   const updateProfile = useMutation({
     mutationFn: updateMyProfile,
     onSuccess: () => {
@@ -136,7 +156,7 @@ export function MemberProfile({ accountActions = null, writing = false }) {
   const setTab = nextTab => {
     const next = new URLSearchParams(params)
     if (requestedTab === 'shorts' && !next.has('writingFormat')) next.set('writingFormat', 'short')
-    if (nextTab === 'published') next.delete('writingTab')
+    if (nextTab === 'analytics') next.delete('writingTab')
     else next.set('writingTab', nextTab)
     setParams(next, { replace: true })
   }
@@ -163,13 +183,13 @@ export function MemberProfile({ accountActions = null, writing = false }) {
 
 
   if (writing && posts.isLoading) return <PageFrame><PageHeader eyebrow="Publishing" title="Writing studio" /><div role="status" aria-label="Loading posts"><ListSkeleton count={4} role={undefined} /></div></PageFrame>
-  if (!writing && profile.isLoading) return <PageFrame>{accountActions}<div role="status" aria-label="Loading profile"><div className="flex items-start gap-5"><Skeleton className="h-20 w-20 shrink-0 rounded-full" /><div className="flex-1"><Skeleton className="h-7 w-48" /><Skeleton className="mt-3 h-3 w-72" /><Skeleton className="mt-2 h-3 w-full max-w-xl" /></div></div><div className="mt-10 grid gap-[14px] sm:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-[14px] border border-[var(--color-border)] p-5"><Skeleton className="h-7 w-16" /><Skeleton className="mt-2 h-3 w-24" /></div>)}</div><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
-  if (!writing && profile.isError) return <PageFrame>{accountActions}<div><p role="alert" className="text-[13px] text-[var(--color-danger)]">We couldn’t load your profile.</p><Button variant="secondary" className="mt-4" onClick={() => profile.refetch()} aria-busy={profile.isFetching} disabled={profile.isFetching}>Try again</Button></div></PageFrame>
+  if (!writing && profile.isLoading) return <PageFrame><div role="status" aria-label="Loading profile"><div className="flex items-start gap-5"><Skeleton className="h-20 w-20 shrink-0 rounded-full" /><div className="flex-1"><Skeleton className="h-7 w-48" /><Skeleton className="mt-3 h-3 w-72" /><Skeleton className="mt-2 h-3 w-full max-w-xl" /></div></div><div className="mt-10 grid gap-[14px] sm:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-[14px] border border-[var(--color-border)] p-5"><Skeleton className="h-7 w-16" /><Skeleton className="mt-2 h-3 w-24" /></div>)}</div><div className="mt-10"><ListSkeleton count={4} role={undefined} /></div></div></PageFrame>
+  if (!writing && profile.isError) return <PageFrame><div><p role="alert" className="text-[13px] text-[var(--color-danger)]">We couldn’t load your profile.</p><Button variant="secondary" className="mt-4" onClick={() => profile.refetch()} aria-busy={profile.isFetching} disabled={profile.isFetching}>Try again</Button></div></PageFrame>
   const me = profile.data || {}
 
   return (
     <PageFrame>
-      {writing && <PageHeader eyebrow="Publishing" title="Writing studio" description="Manage published posts, continue drafts, and view writing analytics." actions={<button type="button" onClick={() => setChoosingFormat(true)} className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)] px-[18px] py-2 text-[13px] font-medium whitespace-nowrap text-[var(--color-text-inverted)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Write a post</button>} />}
+      {writing && <PageHeader eyebrow="Publishing" title="Writing studio" description="Manage published posts, continue drafts, and view writing analytics." actions={<div className="flex w-full flex-col gap-2 min-[380px]:w-auto min-[380px]:flex-row min-[380px]:flex-wrap sm:justify-end"><ButtonLink to="/opportunities" variant="secondary" className="justify-center whitespace-nowrap">Find reader demand</ButtonLink><button type="button" onClick={() => setChoosingFormat(true)} className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)] px-[18px] py-2 text-[13px] font-medium whitespace-nowrap text-[var(--color-text-inverted)] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Write a post</button></div>} />}
       {!writing && <header className="flex gap-5 mb-8 items-start flex-wrap">
         <Avatar src={me.avatarUrl} name={me.displayName} size={80} />
         <div className="flex-1 min-w-[240px]">
@@ -181,12 +201,10 @@ export function MemberProfile({ accountActions = null, writing = false }) {
           </>
         </div>
         <div className="flex flex-wrap gap-2">
-          {me.writerStatus === 'writer' && <Link to="/opportunities" className="button-target inline-flex min-h-10 items-center rounded-full border border-[var(--color-border)] px-4 py-2 text-[12px] font-semibold text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Find reader demand</Link>}
         {['moderator', 'admin'].includes(me.role) && <Link to="/staff" className="button-target ml-auto inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-full border border-[var(--color-border)] px-4 py-2 text-[12px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Open staff console</Link>}
-          <Button variant="secondary" onClick={() => navigate(`/profile/edit${params.size ? `?${params}` : ''}`)}>Edit profile</Button>
+          <Button variant="secondary" className="h-11 w-11 !p-0" aria-label="Edit profile" title="Edit profile" onClick={() => navigate(`/profile/edit${params.size ? `?${params}` : ''}`)}><PenIcon /></Button>
         </div>
       </header>}
-      {accountActions}
 
       {updateProfile.isError && <p role="alert" className="mb-5 text-[12px] text-[var(--color-danger)]">{updateProfile.error?.response?.data?.message || 'Profile update failed.'}</p>}
 
@@ -196,10 +214,10 @@ export function MemberProfile({ accountActions = null, writing = false }) {
       </nav>}
 
       <div id={writing ? "writing-tabpanel" : undefined} role={writing ? "tabpanel" : undefined} aria-label={`${TABS.find(item => item.id === tab)?.label || 'Overview'} content`}>
-      {!writing && <div className="flex flex-col gap-8"><div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))' }}><StatCard label="Published posts" value={me.postCount} /><StatCard label="Followers" value={me.followersCount} /><StatCard label="Following" value={me.followingCount} /><StatCard label="Account type" value={me.writerStatus === 'writer' ? 'Writer' : 'Reader'} /></div>{me.writerStatus === 'writer' && <section className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-5 flex items-center justify-between gap-4"><div><h2 className="text-[14px] font-semibold text-[var(--color-text)]">Direct member requests</h2><p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">Choose whether members can send you up to three private requests per month.</p></div><Button variant={me.directRequestsEnabled ? 'primary' : 'secondary'} disabled={updateProfile.isPending} onClick={() => updateProfile.mutate({ directRequestsEnabled: !me.directRequestsEnabled })} aria-busy={updateProfile.isPending}>{me.directRequestsEnabled ? 'Accepting requests' : 'Requests off'}</Button></section>}</div>}
+      {!writing && <div className="flex flex-col gap-8"><div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px,1fr))' }}><StatCard label="Published posts" value={me.postCount} /><StatCard label="Followers" value={me.followersCount} /><StatCard label="Following" value={me.followingCount} /><StatCard label="Account type" value={me.writerStatus === 'writer' ? 'Writer' : 'Reader'} /></div>{me.writerStatus === 'writer' && <section className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-5 flex items-center justify-between gap-4"><div><h2 className="text-[14px] font-semibold text-[var(--color-text)]">Direct member requests</h2><p className="mt-1 text-[12px] text-[var(--color-text-secondary)]">Choose whether members can send you up to three private requests per month.</p></div><Button variant={me.directRequestsEnabled ? 'primary' : 'secondary'} disabled={updateProfile.isPending} onClick={() => updateProfile.mutate({ directRequestsEnabled: !me.directRequestsEnabled })} aria-busy={updateProfile.isPending}>{me.directRequestsEnabled ? 'Accepting requests' : 'Requests off'}</Button></section>}</div>}
       {!writing && <section className="pt-10" aria-labelledby="profile-posts-heading">
-        <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="mb-1 text-[12px] text-[var(--color-text-muted)]">Published by {me.displayName}</p><h2 id="profile-posts-heading" className="text-[24px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>Your published writing</h2></div><ButtonLink to="/studio" variant="secondary">Edit in Writing studio</ButtonLink></div>
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4"><PublishedWritingTabs value={publishedFormat} onChange={value => setPublishedFilter('profileFormat', value, 'article')} controlsId="profile-writing-panel" /><FilterBar label="Published writing" options={[]} sortOptions={[{ id: 'latest', label: 'Newest' }, { id: 'oldest', label: 'Oldest' }, { id: 'popular', label: 'Most appreciated' }]} sortValue={publishedSort} onSortChange={value => setPublishedFilter('profileSort', value, 'latest')} onReset={() => setPublishedFilter('profileSort', 'latest', 'latest')} /></div>
+        <div className="mb-7 grid grid-cols-1 items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto]"><div className="min-w-0"><p className="mb-1 text-[12px] text-[var(--color-text-muted)]">Published by {me.displayName}</p><h2 id="profile-posts-heading" className="text-[24px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>Your published writing</h2></div><div className="shrink-0 sm:justify-self-end"><ButtonLink to="/studio" variant="secondary">Edit in Writing studio</ButtonLink></div></div>
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4"><PublishedWritingTabs value={publishedFormat} onChange={value => setPublishedFilter('profileFormat', value, 'article')} controlsId="profile-writing-panel" />{visiblePublishedPosts.length > 0 && <FilterBar label="Published writing" options={[]} sortOptions={[{ id: 'latest', label: 'Newest' }, { id: 'oldest', label: 'Oldest' }, { id: 'popular', label: 'Most appreciated' }]} sortValue={publishedSort} onSortChange={value => setPublishedFilter('profileSort', value, 'latest')} onReset={() => setPublishedFilter('profileSort', 'latest', 'latest')} />}</div>
         <div id="profile-writing-panel" role="tabpanel" aria-label={`${publishedFormat === 'short' ? 'Shorts' : 'Posts'} content`}>
         {publishedWriting.isLoading ? <ListSkeleton label="Loading published writing" />
           : publishedWriting.isError ? <ProfileDataError message="Published writing could not be loaded." onRetry={() => publishedWriting.refetch()} />
@@ -212,12 +230,16 @@ export function MemberProfile({ accountActions = null, writing = false }) {
       {posts.isError ? <ProfileDataError message="Published posts could not be loaded." onRetry={() => posts.refetch()} /> : <PostRows posts={(posts.data || []).filter(post => (post.format || 'article') === writingFormat)} manage gridShorts={writingFormat === 'short'} emptyMessage={`You haven’t published any ${writingFormat === 'short' ? 'shorts' : 'stories'} yet.`} />}</div>}
       {writing && tab === 'drafts' && <div className="mb-6"><PublishedWritingTabs value={draftFormat} onChange={value => setWritingFormat('draftFormat', value)} controlsId="studio-drafts-panel" firstLabel="Stories" ariaLabel="Draft categories" /></div>}
       {tab === 'drafts' && <div id={writing ? 'studio-drafts-panel' : undefined} role={writing ? 'tabpanel' : undefined} aria-label={writing ? `${draftFormat === 'short' ? 'Shorts' : 'Stories'} drafts` : undefined}>{drafts.isLoading ? <div role="status" aria-label="Loading drafts"><ListSkeleton count={4} role={undefined} /></div> : drafts.isError ? <ProfileDataError message="Drafts could not be loaded." onRetry={() => drafts.refetch()} /> : (writing ? drafts.data?.filter(draft => (draft.format || 'article') === draftFormat) : drafts.data)?.length ? <div>{(writing ? drafts.data.filter(draft => (draft.format || 'article') === draftFormat) : drafts.data).map(draft => <div key={draft._id} className="flex min-w-0 items-center gap-3 border-b border-[var(--color-border)] py-7 sm:gap-5 sm:py-8"><div className="min-w-0 flex-1"><p className="font-semibold text-[16px] leading-[1.4] text-[var(--color-text)] [overflow-wrap:anywhere] sm:text-[18px]">{draft.title || 'Untitled draft'}</p><p className="mt-2 text-[12px] leading-5 text-[var(--color-text-muted)]">{draft.format === 'short' ? 'Short' : 'Article'} · Saved {new Date(draft.updatedAt).toLocaleString()}</p></div><div className="flex shrink-0 items-center gap-1 sm:gap-2"><Link to={`/studio?draft=${draft._id}`} aria-label={`Continue writing: ${draft.title || 'Untitled draft'}`} title="Continue writing" className="flex h-11 w-11 items-center justify-center rounded-[10px] text-[var(--color-accent)] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus:ring-[var(--color-focus)]"><PenIcon /></Link><DeleteDraftButton draft={draft} /></div></div>)}</div> : <p className="py-10 text-center text-[13px] text-[var(--color-text-muted)]">{writing ? `No ${draftFormat === 'short' ? 'short' : 'story'} drafts yet.` : 'Your autosaved drafts will appear here.'}</p>}</div>}
-      {tab === 'analytics' && (entitlements.isPending ? <p role="status">Checking analytics access...</p> : entitlements.isError ? <ProfileDataError message="Analytics access could not be loaded." onRetry={() => entitlements.refetch()} /> : null)}
-      {tab === 'analytics' && !entitlements.isPending && !entitlements.isError && !canViewAnalytics && <section className="rounded-[18px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] p-7 text-center"><h2 className="font-semibold text-[16px] text-[var(--color-text)]">Advanced writer analytics</h2><p className="mt-2 text-[13px] text-[var(--color-text-secondary)]">See opens, completions, engagement, and completion rate with membership.</p><Button className="mt-5" disabled={billing.isPending} onClick={() => billing.mutate()} aria-busy={billing.isPending}>{'Become a member'}</Button></section>}
-      {tab === 'analytics' && canViewAnalytics && (analytics.isLoading ? <div role="status" aria-label="Loading writer analytics"><ListSkeleton count={5} role={undefined} /></div> : analytics.isError ? <ProfileDataError message="Analytics could not be loaded." onRetry={() => analytics.refetch()} /> : analytics.data && <div className="flex flex-col gap-7"><div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))' }}><StatCard label="Article opens" value={analytics.data.totalViews} /><StatCard label="Completed reads" value={analytics.data.totalCompletions} /><StatCard label="Completion rate" value={`${analytics.data.completionRate}%`} /><StatCard label="Published posts" value={analytics.data.totalPosts} /></div><section><h2 className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-text-muted)] mb-3">Post performance</h2>{analytics.data.posts.map(post => <div key={post.id} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-4 py-3 border-b border-[var(--color-border)] text-[12px]"><Link to={`/post/${post.id}`} className="font-semibold text-[var(--color-text)] truncate">{post.title}</Link><span className="text-[var(--color-text-muted)]">{post.opens} opens</span><span className="text-[var(--color-text-muted)]">{post.completions} completed</span><span className="text-[var(--color-text-muted)]">{post.likes} likes</span></div>)}</section></div>)}
+      {tab === 'analytics' && <div>{posts.isError ? <ProfileDataError message="Basic analytics could not be loaded." onRetry={() => posts.refetch()} /> : <div className="grid gap-[14px]" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px,1fr))' }}><StatCard label="Published posts" value={publishedPosts.length} /><StatCard label="Reader appreciations" value={publishedPosts.reduce((sum, post) => sum + (post.likesCount || 0), 0)} /><StatCard label="Comments" value={publishedPosts.reduce((sum, post) => sum + (post.commentsCount || 0), 0)} /></div>}
+        {!canViewAnalytics && !entitlements.isPending && <div className="mt-6"><Button variant="secondary" onClick={() => setShowAdvancedAnalytics(true)}>View more analytics</Button></div>}
+        {entitlements.isError && <div className="mt-4"><ProfileDataError message="Analytics access could not be loaded." onRetry={() => entitlements.refetch()} /></div>}
+        {canViewAnalytics && (analytics.isLoading ? <div role="status" aria-label="Loading writer analytics" className="mt-7"><ListSkeleton count={5} role={undefined} /></div> : analytics.isError ? <div className="mt-7"><ProfileDataError message="Analytics could not be loaded." onRetry={() => analytics.refetch()} /></div> : analytics.data && <section className="mt-7"><h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-text-muted)]">Post performance</h2>{analytics.data.posts.map(post => <div key={post.id} className="grid grid-cols-1 gap-4 border-b border-[var(--color-border)] py-3 text-[12px] sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]"><Link to={`/post/${post.id}`} className="truncate font-semibold text-[var(--color-text)]">{post.title}</Link><span className="text-[var(--color-text-muted)]">{post.opens} opens</span><span className="text-[var(--color-text-muted)]">{post.completions} completed</span><span className="text-[var(--color-text-muted)]">{post.likes} likes</span></div>)}</section>)}
+      </div>}
       </div>
+      {writing && tab === 'ideas' && <ReaderSuggestions />}
       {writing && billing.isError && <p role="alert" className="mt-4 text-[12px] text-[var(--color-danger)]">Billing is temporarily unavailable.</p>}
       {writing && choosingFormat && <FormatChooser loggedIn={Boolean(viewer)} onClose={() => setChoosingFormat(false)} />}
+      {writing && showAdvancedAnalytics && <AdvancedAnalyticsModal onClose={() => setShowAdvancedAnalytics(false)} onJoin={() => billing.mutate()} joining={billing.isPending} />}
     </PageFrame>
   )
 }

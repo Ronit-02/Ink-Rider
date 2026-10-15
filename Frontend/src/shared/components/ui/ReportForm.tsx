@@ -63,7 +63,6 @@ export default function ReportForm({ subject, mutation, onClose }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-4 mt-3">
         <span className="text-[11px] text-(--color-text-muted)">{details.length}/1000</span>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose} disabled={mutation.isPending} aria-busy={mutation.isPending}>Cancel</Button>
           <Button variant="primary" onClick={handleSubmit} disabled={!reason || mutation.isPending} aria-busy={mutation.isPending}>
             {'Submit report'}
           </Button>

@@ -258,7 +258,7 @@ export default function AuthorPage() {
         </div>
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <PublishedWritingTabs value={format} onChange={value => updateFilter('authorFormat', value, 'article')} controlsId="author-writing-panel" includeCollections />
-          <FilterBar label={format === 'collections' ? 'Collections' : 'Published writing'} options={[]} sortOptions={format === 'collections' ? [{ id: 'latest', label: 'Newest' }, { id: 'popular', label: 'Most saved' }] : [{ id: 'latest', label: 'Newest' }, { id: 'oldest', label: 'Oldest' }, { id: 'popular', label: 'Most appreciated' }]} sortValue={format === 'collections' ? collectionsSort : sort} onSortChange={value => updateFilter(format === 'collections' ? 'authorCollectionSort' : 'authorSort', value, 'latest')} onReset={resetFilters} />
+          {(format === 'collections' ? publicCollections.length : visiblePosts.length) > 0 && <FilterBar label={format === 'collections' ? 'Collections' : 'Published writing'} options={[]} sortOptions={format === 'collections' ? [{ id: 'latest', label: 'Newest' }, { id: 'popular', label: 'Most saved' }] : [{ id: 'latest', label: 'Newest' }, { id: 'oldest', label: 'Oldest' }, { id: 'popular', label: 'Most appreciated' }]} sortValue={format === 'collections' ? collectionsSort : sort} onSortChange={value => updateFilter(format === 'collections' ? 'authorCollectionSort' : 'authorSort', value, 'latest')} onReset={resetFilters} />}
         </div>
         <div id="author-writing-panel" role="tabpanel" aria-label={`${format === 'collections' ? 'Collections' : format === 'short' ? 'Shorts' : 'Posts'} content`}>
         {format === 'collections' ? <>

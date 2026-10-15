@@ -154,14 +154,10 @@ const createPost = async (req, res) => {
         // Check for required files
         if(!['article', 'short'].includes(format))
             return res.status(400).json({success: false, message: 'Invalid post format'})
-        if(format === 'article' && !req.file)
-            return res.status(400).json({success: false, message: 'Cover Image is required for articles'})
         if(!title)
             return res.status(400).json({success: false, message: 'Title is required'})
         if(!body)
             return res.status(400).json({success: false, message: 'Content is required'})
-        if(!tags)
-            return res.status(400).json({success: false, message: 'Tags are required'})
 
         const normalizedTitle = title.trim();
         if(!normalizedTitle || normalizedTitle.length > (format === 'short' ? 120 : 180))
@@ -176,12 +172,10 @@ const createPost = async (req, res) => {
         if(format === 'short' && wordCount > 500)
             return res.status(400).json({success: false, message: 'Short posts cannot exceed 500 words'})
 
-        const decodedTags = tags
+        const decodedTags = String(tags || '')
             .split(',')
             .map(tag => tag.trim().toLowerCase())
             .filter(Boolean);
-        if(decodedTags.length === 0)
-            return res.status(400).json({success: false, message: 'At least one tag is required'})
 
         // Picking user id from token
         const author = req.auth.userId;
@@ -328,31 +322,35 @@ const getPost = async (req, res) => {
         postData.isEarlyAccess = isEarlyAccess;
         postData.isBookmarked = isBookmarked;
         postData.isLiked = isLiked;
+        postData.isOwner = Boolean(req.auth?.userId && req.auth.userId === post.author?._id?.toString());
+        postData.canAddToSeries = Boolean(postData.isOwner && post.publicationStatus !== 'unpublished' && (!post.publicAt || post.publicAt <= new Date()));
         if (post.author?._id) {
             const authorProfile = await Profile.findOne({ userId: post.author._id }).select('handle displayName avatarUrl bio');
             applyAuthorProfile(postData.author, authorProfile);
         }
+        const visibilityFilter = req.auth
+            ? { $or: [{ visibility: { $in: ['public', 'unlisted'] } }, { author: req.auth.userId }] }
+            : { visibility: { $in: ['public', 'unlisted'] } };
+        const series = await ShortSeries.findOne({ 'items.post': post._id, ...visibilityFilter })
+            .select('title items author')
+            .populate({ path: 'items.post', select: 'title publicationStatus publicAt' });
+        if (series) {
+            const owner = req.auth?.userId === series.author?.toString();
+            const now = new Date();
+            const entries = [...series.items]
+                .sort((left, right) => left.position - right.position)
+                .filter(item => item.post && (owner || (item.post.publicationStatus !== 'unpublished' && (!item.post.publicAt || item.post.publicAt <= now))));
+            const position = entries.findIndex(item => item.post._id.toString() === post._id.toString());
+            postData.seriesContext = {
+                id: series._id,
+                title: series.title,
+                position,
+                total: entries.length,
+                previous: position > 0 ? { id: entries[position - 1].post._id, title: entries[position - 1].post.title } : null,
+                next: position >= 0 && position < entries.length - 1 ? { id: entries[position + 1].post._id, title: entries[position + 1].post.title } : null,
+            };
+        }
         if (post.format === 'short') {
-            const visibilityFilter = req.auth
-                ? { $or: [{ visibility: { $in: ['public', 'unlisted'] } }, { author: req.auth.userId }] }
-                : { visibility: { $in: ['public', 'unlisted'] } };
-            const series = await ShortSeries.findOne({ 'items.post': post._id, ...visibilityFilter })
-                .select('title items')
-                .populate({ path: 'items.post', select: 'title' });
-            if (series) {
-                const entries = [...series.items]
-                    .sort((left, right) => left.position - right.position)
-                    .filter(item => item.post);
-                const position = entries.findIndex(item => item.post._id.toString() === post._id.toString());
-                postData.seriesContext = {
-                    id: series._id,
-                    title: series.title,
-                    position,
-                    total: entries.length,
-                    previous: position > 0 ? { id: entries[position - 1].post._id, title: entries[position - 1].post.title } : null,
-                    next: position >= 0 && position < entries.length - 1 ? { id: entries[position + 1].post._id, title: entries[position + 1].post.title } : null,
-                };
-            }
             if (post.depthParent) {
                 const deeper = await Post.findById(post.depthParent).select('title');
                 if (deeper) postData.depthContext = { deeper: { id: deeper._id, title: deeper.title } };
@@ -643,7 +641,7 @@ const updatePost = async (req, res) => {
         const parsedBody = parsePostBody(req.body.body);
         const tags = Array.isArray(req.body.tags) ? req.body.tags : String(req.body.tags || '').split(',');
         const normalizedTags = [...new Set(tags.map(tag => String(tag).trim().toLowerCase()).filter(Boolean))].slice(0, 20);
-        if (!title || title.length > (current.format === 'short' ? 120 : 180) || !parsedBody || !normalizedTags.length) return res.status(400).json({ message: 'Invalid post update' });
+        if (!title || title.length > (current.format === 'short' ? 120 : 180) || !parsedBody) return res.status(400).json({ message: 'Invalid post update' });
         let publicAt = current.publicAt;
         if (req.body.publicAt) {
             publicAt = new Date(req.body.publicAt);

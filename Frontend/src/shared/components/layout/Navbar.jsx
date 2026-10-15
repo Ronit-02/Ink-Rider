@@ -11,6 +11,8 @@ import { useClickOutside } from '../../hooks/useClickOutside'
 import { useQuery } from '@tanstack/react-query'
 import { fetchNotifications } from '@/features/notification/api/notifications'
 import { searchDiscovery } from '@/features/discovery/api/search'
+import { fetchDiscoveryFeed } from '@/features/discovery/api/feed'
+import { getTrendingSearches, suggestedSearchTopics } from '@/features/discovery/searchPrompts'
 import MobileSearchDialog from '@/features/discovery/components/MobileSearchDialog'
 
 
@@ -36,13 +38,23 @@ export default function Navbar() {
     closingMobileSearchRef.current = true
     setMobileSearchOrigin(null)
     setSearchOpen(false)
-    requestAnimationFrame(() => searchInputRef.current?.focus({ preventScroll: true }))
+    requestAnimationFrame(() => {
+      searchInputRef.current?.blur()
+      closingMobileSearchRef.current = false
+    })
   }, [])
   const searchSuggestions = useQuery({
     queryKey: ['search-suggestions', 'content-v1', suggestionQuery],
     queryFn: () => searchDiscovery({ query: suggestionQuery, type: 'all', suggestions: true, limit: 5 }),
     enabled: searchOpen && suggestionQuery.length >= 1 && suggestionQuery === searchValue.trim(),
     staleTime: 30_000,
+    retry: false,
+  })
+  const popularSearches = useQuery({
+    queryKey: ['search-popular-stories'],
+    queryFn: () => fetchDiscoveryFeed({ mode: 'popular', sort: 'popular', cursor: null }),
+    enabled: searchOpen && !searchValue.trim() && !mobileSearchOrigin,
+    staleTime: 60_000,
     retry: false,
   })
   useEffect(() => {
@@ -85,9 +97,12 @@ export default function Navbar() {
   const waiting = suggestionQuery !== searchValue.trim()
   const searchItems = waiting || searchSuggestions.isError ? [] : (searchSuggestions.data?.data?.suggestions || []).slice(0, 5).map(item => ({ kind: 'search', item }))
   const writerItems = waiting || searchSuggestions.isError ? [] : (searchSuggestions.data?.data?.writers || []).slice(0, 5).map(item => ({ kind: 'writer', item }))
-  const suggestionItems = [...searchItems, ...writerItems]
+  const trendingItems = getTrendingSearches(popularSearches.data?.data).map(title => ({ kind: 'search', item: { text: title.slice(0, 100), label: title } }))
+  const topicItems = suggestedSearchTopics.map(topic => ({ kind: 'search', item: { text: topic } }))
+  const hasSearchText = searchValue.trim().length > 0
+  const suggestionItems = hasSearchText ? [...searchItems, ...writerItems] : [...trendingItems, ...topicItems]
 
-  const suggestionsVisible = searchOpen && searchValue.trim().length >= 1
+  const suggestionsVisible = searchOpen && !mobileSearchOrigin
 
   useEffect(() => {
     setActiveSuggestionIndex(current => current < suggestionItems.length ? current : -1)
@@ -184,7 +199,7 @@ export default function Navbar() {
           {searchValue && <button type="button" aria-label="Clear search" onClick={() => {
             setSearchValue('')
             setSuggestionQuery('')
-            setSearchOpen(false)
+            setSearchOpen(true)
             setActiveSuggestionIndex(-1)
             closingMobileSearchRef.current = true
             searchInputRef.current?.focus({ preventScroll: true })
@@ -192,7 +207,7 @@ export default function Navbar() {
           }} className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-transparent text-[24px] text-[var(--color-text-secondary)] before:absolute before:-inset-[6px] hover:bg-[var(--color-bg-alt)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">×</button>}
         </div>
         {suggestionsVisible && <ViewportPopover ref={suggestionsRef} anchorRef={searchRef} matchAnchorWidth id="search-suggestions" role="listbox" aria-label="Search suggestions" className="absolute left-0 right-0 top-[calc(100%+8px)] z-[200] overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_16px_40px_rgba(0,0,0,0.18)]">
-          <div role="status" aria-live="polite">
+          {hasSearchText ? <><div role="status" aria-live="polite">
             {waiting || searchSuggestions.isPending ? <p className="px-4 py-5 text-[12px] text-[var(--color-text-muted)]">Searching…</p>
               : searchSuggestions.isError ? <p className="px-4 py-5 text-[12px] text-[var(--color-danger)]">Suggestions are unavailable. Press Enter to search.</p>
                 : suggestionItems.length === 0 ? <p className="px-4 py-5 text-[12px] text-[var(--color-text-muted)]">No matching searches or authors yet.</p>
@@ -207,10 +222,23 @@ export default function Navbar() {
               {kind === 'writer' && <span className="mt-0.5 block break-words text-[11px] text-[var(--color-text-muted)]">@{item.handle}</span>}
             </span>
           </button> })}</div>)}
+          </> : <>
+            <div role="group" aria-label="Trending searches" className="pb-2">
+              <h2 className="px-4 pt-3 text-[12px] font-semibold text-[var(--color-text-secondary)]">Trending searches</h2>
+              {popularSearches.isPending ? <p role="status" className="px-4 py-3 text-[12px] text-[var(--color-text-muted)]">Loading suggestions…</p>
+                : popularSearches.isError ? <div className="px-4 py-3 text-[12px] text-[var(--color-text-muted)]"><p>Trending suggestions are unavailable.</p><button type="button" onClick={() => popularSearches.refetch()} className="min-h-11 underline underline-offset-2" aria-busy={popularSearches.isFetching} disabled={popularSearches.isFetching}>Try again</button></div>
+                  : !trendingItems.length ? <p className="px-4 py-3 text-[12px] text-[var(--color-text-muted)]">Explore a topic below while popular stories build up.</p>
+                    : trendingItems.map(({ kind, item }, index) => <button id={`search-suggestion-${index}`} key={item.label} type="button" role="option" tabIndex={-1} aria-selected={activeSuggestionIndex === index} onMouseDown={event => event.preventDefault()} onMouseEnter={() => setActiveSuggestionIndex(index)} onClick={() => openSuggestion(kind, item)} className={`flex min-h-11 w-full items-center gap-3 border-b border-[var(--color-border-light)] px-4 py-3 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] ${activeSuggestionIndex === index ? 'bg-[var(--color-surface-hover)]' : ''}`}><SearchIcon /><span className="min-w-0 break-words">{item.label}</span></button>)}
+            </div>
+            <div role="group" aria-label="Suggested topics" className="border-t border-[var(--color-border-light)]">
+              <h2 className="px-4 pt-3 text-[12px] font-semibold text-[var(--color-text-secondary)]">What are you curious about?</h2>
+              {topicItems.map(({ kind, item }, topicIndex) => { const index = trendingItems.length + topicIndex; return <button id={`search-suggestion-${index}`} key={item.text} type="button" role="option" tabIndex={-1} aria-selected={activeSuggestionIndex === index} onMouseDown={event => event.preventDefault()} onMouseEnter={() => setActiveSuggestionIndex(index)} onClick={() => openSuggestion(kind, item)} className={`flex min-h-11 w-full items-center gap-3 border-b border-[var(--color-border-light)] px-4 py-3 text-left text-[13px] text-[var(--color-text)] last:border-b-0 hover:bg-[var(--color-surface-hover)] ${activeSuggestionIndex === index ? 'bg-[var(--color-surface-hover)]' : ''}`}><span aria-hidden="true" className="shrink-0 text-[var(--color-text-secondary)]"><SearchIcon /></span><span>{item.text}</span></button> })}
+            </div>
+          </>}
         </ViewportPopover>}
       </form>
 
-      {loggedIn && <Link to="/notifications" state={{ notificationBackground: location }} aria-haspopup="dialog" aria-label={`${notifications.data?.meta.unreadCount || 0} unread notifications`} className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-text-secondary)] before:absolute before:-inset-1 md:hidden"><span aria-hidden="true">♢</span>{notifications.data?.meta.unreadCount > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-accent)] px-1 text-[9px] text-[var(--color-text-inverted)]">{Math.min(99, notifications.data.meta.unreadCount)}</span>}</Link>}
+      {loggedIn && <Link id="notification-trigger-mobile" to="/notifications" state={{ notificationBackground: location }} aria-haspopup="dialog" aria-label={`${notifications.data?.meta.unreadCount || 0} unread notifications`} className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-alt)] text-[var(--color-text-secondary)] before:absolute before:-inset-1 md:hidden"><span aria-hidden="true">♢</span>{notifications.data?.meta.unreadCount > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-accent)] px-1 text-[9px] text-[var(--color-text-inverted)]">{Math.min(99, notifications.data.meta.unreadCount)}</span>}</Link>}
 
       <div className="hidden md:flex items-center gap-2 shrink-0 ml-auto">
         <Link to="/membership" style={{ color: 'var(--color-text-inverted)' }} className="inline-flex min-h-9 items-center justify-center rounded-full bg-[var(--color-accent)] px-[18px] text-[13px] font-medium whitespace-nowrap">Join</Link>

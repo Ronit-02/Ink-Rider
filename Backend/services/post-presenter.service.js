@@ -38,6 +38,7 @@ const presentDiscoveryPosts = async (posts, viewerId = null) => {
       ? profilesByUser.get(post.author._id.toString())
       : null;
 
+    const isOwner = Boolean(viewerId && post.author?._id?.toString() === viewerId.toString());
     return {
       id: post._id,
       title: post.title,
@@ -49,6 +50,8 @@ const presentDiscoveryPosts = async (posts, viewerId = null) => {
       commentsCount: post.commentsCount || 0,
       isLiked: likedPostIds.has(post._id.toString()),
       isBookmarked: savedPostIds.has(post._id.toString()),
+      isOwner,
+      canAddToSeries: Boolean(isOwner && post.publicationStatus !== 'unpublished' && (!post.publicAt || post.publicAt <= new Date())),
       createdAt: post.createdAt,
       readTime: `${Math.max(1, Math.ceil(words / 200))} min read`,
       author: {

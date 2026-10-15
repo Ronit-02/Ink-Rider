@@ -9,10 +9,11 @@ type Props = HTMLAttributes<HTMLDivElement> & {
   anchorGap?: number
   preferredSide?: 'auto' | 'bottom'
   onAnchorHidden?: () => void
+  overflowY?: 'auto' | 'visible'
 }
 
 // Keep the caller's semantics, actions, and focus behavior; own only placement.
-const ViewportPopover = forwardRef<HTMLDivElement, Props>(function ViewportPopover({ anchorRef, pinOnMobile = false, matchAnchorWidth = false, align = 'end', anchorGap = 8, preferredSide = 'auto', onAnchorHidden, style, children, ...props }, forwardedRef) {
+const ViewportPopover = forwardRef<HTMLDivElement, Props>(function ViewportPopover({ anchorRef, pinOnMobile = false, matchAnchorWidth = false, align = 'end', anchorGap = 8, preferredSide = 'auto', onAnchorHidden, overflowY = 'auto', style, children, ...props }, forwardedRef) {
   const panelRef = useRef<HTMLDivElement | null>(null)
   const closeRef = useRef(onAnchorHidden)
   closeRef.current = onAnchorHidden
@@ -85,7 +86,7 @@ const ViewportPopover = forwardRef<HTMLDivElement, Props>(function ViewportPopov
     panelRef.current = element
     if (typeof forwardedRef === 'function') forwardedRef(element)
     else if (forwardedRef) forwardedRef.current = element
-  }} style={{ ...style, position: 'fixed', inset: 'auto', margin: 0, zIndex: 200, overflowY: 'auto', overscrollBehavior: 'contain' }}>{children}</div>, anchorRef.current?.closest('dialog[open], [role="dialog"]') || document.body)
+  }} style={{ ...style, position: 'fixed', inset: 'auto', margin: 0, zIndex: 200, overflowY, overscrollBehavior: 'contain' }}>{children}</div>, anchorRef.current?.closest('dialog[open], [role="dialog"]') || document.body)
 })
 
 export default ViewportPopover

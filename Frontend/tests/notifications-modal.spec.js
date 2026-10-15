@@ -96,6 +96,9 @@ for (const width of [320, 1280]) {
       await page.keyboard.press('Shift+Tab')
       expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true)
       if (width < 768) {
+        const trigger = await page.locator('#notification-trigger-mobile').boundingBox()
+        expect(bounds.y).toBeCloseTo(trigger.y + trigger.height + 8, 0)
+        expect(bounds.right).toBeCloseTo(trigger.x + trigger.width, 0)
         await page.locator('#main-content').evaluate(element => element.focus())
         expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true)
       } else {
@@ -154,6 +157,9 @@ test('mobile navbar opens notifications and closing restores trigger focus', asy
   const dialog = page.getByRole('dialog', { name: 'Inbox', exact: true })
   await expect(dialog).toBeVisible()
   await expectModalHeader(dialog)
+  const inboxBounds = await dialog.locator('section').boundingBox()
+  expect(inboxBounds.y).toBeCloseTo(openerBounds.y + openerBounds.height + 8, 0)
+  expect(inboxBounds.x + inboxBounds.width).toBeCloseTo(openerBounds.x + openerBounds.width, 0)
   await page.screenshot({ path: 'node_modules/.cache/notifications-audit/mobile-inbox.png' })
   await dialog.getByRole('button', { name: 'Close notifications' }).click()
   await expect(page).toHaveURL(/\/settings\?from=mobile$/)

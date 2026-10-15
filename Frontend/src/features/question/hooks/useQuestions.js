@@ -54,11 +54,12 @@ export function useCreateQuestion() {
 
 export function useQuestionUpvote(sort) {
   const queryClient = useQueryClient()
+  const user = useSelector(state => state.auth.user)
   const { notify } = useToast()
   return useMutation({
     mutationFn: updateQuestionUpvote,
     onMutate: async ({ questionId, isUpvoted }) => {
-      const key = ['questions', sort]
+      const key = ['questions', sort, user || 'anonymous']
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData(key)
       queryClient.setQueryData(key, old => old ? {

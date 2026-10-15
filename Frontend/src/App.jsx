@@ -29,6 +29,7 @@ const ProfilePage = lazy(() => import('@/features/user/pages/Profile'))
 const WritingPage = lazy(() => import('@/features/user/pages/WritingPage'))
 const SettingsPage = lazy(() => import('@/features/user/pages/Settings'))
 const ShortsPage = lazy(() => import('@/features/discovery/pages/Search/ShortsTab'))
+const SeriesPage = lazy(() => import('@/features/discovery/pages/SeriesPage'))
 const ShortSeriesDetail = lazy(() => import('@/features/discovery/pages/ShortSeriesDetail'))
 const ReadingHistoryPage = lazy(() => import('@/features/discovery/pages/ReadingHistory'))
 const MemberHub = lazy(() => import('@/features/membership/pages/MemberHub'))
@@ -80,6 +81,8 @@ export default function App() {
         <Route path="/saved"            element={<PrivateRoute message="Sign in to view your saved stories."><SavedPage /></PrivateRoute>} />
         <Route path="/collections/:id" element={<CollectionDetail />} />
         <Route path="/shorts"           element={<ShortsPage />} />
+        <Route path="/series"           element={<SeriesPage />} />
+        <Route path="/series/:id"       element={<ShortSeriesDetail />} />
         <Route path="/shorts/series/:id" element={<ShortSeriesDetail />} />
         <Route path="/history"          element={<PrivateRoute message="Sign in to view your reading history."><ReadingHistoryPage /></PrivateRoute>} />
         <Route path="/members"          element={<PrivateRoute message="Sign in to access members page."><MemberHub /></PrivateRoute>} />

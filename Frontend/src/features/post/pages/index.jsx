@@ -31,6 +31,7 @@ import ShortReadModal from '@/features/discovery/components/ShortReadModal'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import ImageBox from '@/shared/components/ui/ImageBox'
 import { useEscapeKey } from '@/shared/hooks/useEscapeKey'
+import AddToSeriesDialog, { SeriesActionIcon } from '@/features/discovery/components/AddToSeriesDialog'
 
 const FlagIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -72,6 +73,7 @@ function ArticlePage() {
   const [readAloud,   setReadAloud]   = useState(false)
   const [showShare,   setShowShare]   = useState(false)
   const [showSave, setShowSave] = useState(false)
+  const [showSeries, setShowSeries] = useState(false)
   const [showReport,  setShowReport]  = useState(false)
   const [shortReadId, setShortReadId] = useState(null)
   const [isWideScreen, setIsWideScreen] = useState(() => window.matchMedia('(min-width: 1280px)').matches)
@@ -86,6 +88,7 @@ function ArticlePage() {
   const readingEndRef = useRef(null)
   const shareTriggerRef = useRef(null)
   const saveTriggerRef = useRef(null)
+  const seriesTriggerRef = useRef(null)
   const progress = useReadingProgress(pageRef, readingEndRef)
   usePersistReadingProgress(postId, progress, loggedIn)
   const recordedPostId = useRef(null)
@@ -196,6 +199,8 @@ function ArticlePage() {
   if (!postBlocks) return <PostErrorState onRetry={() => navigate('/')} invalidContent />
   const capabilities = new Set(entitlements.data?.capabilities || [])
   const moreFromAuthor = (authorPostsQuery.data?.posts || []).filter(post => String(post.id) !== String(postId)).slice(0, 5)
+  const morePosts = moreFromAuthor.filter(post => post.format !== 'short')
+  const moreShorts = moreFromAuthor.filter(post => post.format === 'short')
   const articleText = [postData.title, ...postBlocks.filter(block => !['image', 'divider'].includes(block.type)).map(block => String(block.content || '').replace(/<[^>]*>/g, ' '))]
     .join('. ').replace(/\s+/g, ' ').trim()
 
@@ -273,6 +278,8 @@ function ArticlePage() {
                 <BookmarkIcon filled={postData.isBookmarked} />
                 <span>{postData.isBookmarked ? 'Saved' : 'Save'}</span>
               </button>
+
+              {postData.canAddToSeries && <button ref={seriesTriggerRef} data-button-style="action" type="button" onClick={() => setShowSeries(true)} aria-label="Add this article to a series" aria-haspopup="dialog" className="min-h-11 rounded-full border border-(--color-border) px-3 flex items-center justify-center gap-2 text-[13px] font-medium text-(--color-text-secondary) transition-all duration-150 hover:opacity-80"><SeriesActionIcon /><span>Series</span></button>}
               
               {/* Share */}
               <div className="relative">
@@ -309,8 +316,6 @@ function ArticlePage() {
 
           <Divider className="mb-6" />
 
-          {postData.seriesContext && <nav aria-label="Short series progression" className="mb-7 rounded-[14px] border border-(--color-border) bg-(--color-bg-alt) p-4"><div className="flex flex-wrap items-center justify-between gap-4"><div className="min-w-0"><Link to={`/shorts/series/${postData.seriesContext.id}`} className="rounded-[4px] text-[12px] font-semibold text-(--color-accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2">{postData.seriesContext.title}</Link><p className="mt-1 text-[11px] text-(--color-text-muted)">Part {postData.seriesContext.position + 1} of {postData.seriesContext.total}</p></div><div className="flex flex-wrap gap-2">{postData.seriesContext.previous && <Link to={`/post/${postData.seriesContext.previous.id}`} className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-(--color-border) bg-(--color-surface) px-[18px] py-2 text-[13px] font-medium whitespace-nowrap text-(--color-text) transition-all duration-150 hover:bg-(--color-bg-alt) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">← Previous</Link>}{postData.seriesContext.next && <Link to={`/post/${postData.seriesContext.next.id}`} style={{ color: 'var(--color-text-inverted)' }} className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-(--color-accent) bg-(--color-accent) px-[18px] py-2 text-[13px] font-medium whitespace-nowrap text-(--color-text-inverted) transition-all duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Next →</Link>}</div></div></nav>}
-
           {postData.depthContext && <aside className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-[14px] border border-(--color-border) bg-(--color-bg-alt) p-4"><div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-(--color-text-muted)">{postData.depthContext.deeper ? 'Go deeper' : 'Need the quick version?'}</p><p className="mt-1 text-[13px] font-semibold text-(--color-text)">{postData.depthContext.deeper?.title || postData.depthContext.quick?.title}</p></div>{postData.depthContext.deeper ? <Link to={`/post/${postData.depthContext.deeper.id}`} className="button-target inline-flex min-h-10 items-center justify-center rounded-full border border-(--color-border) bg-(--color-surface) px-[18px] py-2 text-[13px] font-medium whitespace-nowrap text-(--color-text) transition-all duration-150 hover:bg-(--color-bg-alt) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0">Read full article →</Link> : <Button className="min-h-10 sm:min-h-0" variant="secondary" onClick={() => setShortReadId(postData.depthContext.quick.id)}>Read short →</Button>}</aside>}
 
           {likeMutation.isError && (
@@ -326,9 +331,18 @@ function ArticlePage() {
           )}
 
           {/* Body */}
-          <article aria-label="Article body" className="max-w-[44rem]">
+          <article aria-label="Article body" className="w-full min-w-0">
             <PostBody body={postBlocks} />
           </article>
+
+          {postData.seriesContext && <nav aria-label="Story series progression" className="mt-8 w-full min-w-0">
+            {postData.seriesContext.next
+              ? <Link to={`/post/${postData.seriesContext.next.id}`} aria-label={`Next post in the series: ${postData.seriesContext.next.title}`} className="group button-target flex min-h-24 min-w-0 flex-col items-start justify-center gap-2 rounded-[14px] border border-(--color-border) bg-(--color-bg-alt) px-5 py-4 text-(--color-text) transition-colors hover:border-(--color-accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <span className="block w-full min-w-0 sm:flex-1"><span className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-(--color-text-muted)">Up next in this series{Number.isInteger(postData.seriesContext.position) && Number.isInteger(postData.seriesContext.total) ? ` · Part ${postData.seriesContext.position + 2} of ${postData.seriesContext.total}` : ''}</span><span data-series-next-title className="mt-1 block truncate text-[18px] font-semibold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>{postData.seriesContext.next.title}</span></span>
+                <span data-series-next-action aria-hidden="true" className="shrink-0 whitespace-nowrap text-[13px] font-semibold text-(--color-accent)">Read next →</span>
+              </Link>
+              : <Link to={`/series/${postData.seriesContext.id}`} aria-label="View the series" className="group button-target flex min-h-24 min-w-0 flex-col items-start justify-center gap-2 rounded-[14px] border border-(--color-border) bg-(--color-bg-alt) px-5 py-4 text-(--color-text) transition-colors hover:border-(--color-accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"><span className="block w-full min-w-0 sm:flex-1"><span className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-(--color-text-muted)">Series complete</span><span className="mt-1 block truncate text-[18px] font-semibold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>Explore the full series</span></span><span aria-hidden="true" className="shrink-0 whitespace-nowrap text-[13px] font-semibold text-(--color-accent)">View series →</span></Link>}
+          </nav>}
 
           <Divider className="my-10" />
 
@@ -337,13 +351,22 @@ function ArticlePage() {
           {/* Comments (renamed from Responses) */}
           <CommentsSection postId={postId} initialCount={postData.commentsCount || 0} />
 
-          {moreFromAuthor.length > 0 && <section className="mt-14 w-full max-w-none" aria-labelledby="more-from-author-heading">
+          {morePosts.length > 0 && <section className="mt-14 w-full max-w-none" aria-labelledby="more-from-author-heading">
             <div className="mb-6">
               <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">More to read</p>
               <h2 id="more-from-author-heading" className="text-[24px] font-bold tracking-[-0.03em] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>More from {postData.author?.username || 'this writer'}</h2>
             </div>
             <div className="grid w-full grid-cols-1 min-[540px]:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
-              {moreFromAuthor.map(post => <DiscoveryPostCard key={post.id} post={post} variant="grid" />)}
+              {morePosts.map(post => <DiscoveryPostCard key={post.id} post={post} variant="grid" />)}
+            </div>
+          </section>}
+          {moreShorts.length > 0 && <section className="mt-14 w-full max-w-none" aria-labelledby="more-shorts-from-author-heading">
+            <div className="mb-6">
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Short reads</p>
+              <h2 id="more-shorts-from-author-heading" className="text-[24px] font-bold tracking-[-0.03em] text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>Shorts from {postData.author?.username || 'this writer'}</h2>
+            </div>
+            <div className="card-grid card-grid--short gap-4">
+              {moreShorts.map(post => <DiscoveryPostCard key={post.id} post={post} variant="grid" />)}
             </div>
           </section>}
         </div>
@@ -359,6 +382,7 @@ function ArticlePage() {
         )}
       </PageFrame>
       {showSave && <AddToCollectionDialog postId={postId} title={postData.title} isBookmarked={Boolean(postData.isBookmarked)} saveMode returnFocusRef={saveTriggerRef} onClose={() => setShowSave(false)} />}
+      {showSeries && <AddToSeriesDialog postId={postId} title={postData.title} format="article" returnFocusRef={seriesTriggerRef} onClose={() => setShowSeries(false)} />}
       {shortReadId && <ShortReadModal postId={shortReadId} onClose={() => setShortReadId(null)} />}
     </div>
   )

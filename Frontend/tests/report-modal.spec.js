@@ -65,7 +65,7 @@ for (const width of [320, 1280]) for (const [kind, path, label, endpoint] of ent
     const details = dialog.getByRole('textbox')
     await expect(details).toBeVisible()
     if (kind !== 'question' && kind !== 'answer') {
-      await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible()
+      await expect(dialog.getByRole('button', { name: 'Close report dialog' })).toBeVisible()
       await expect(dialog.getByText('Reports are private and help the moderation team review harmful content.')).toBeVisible()
     }
     await details.fill('Preserved context.')

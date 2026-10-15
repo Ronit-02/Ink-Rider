@@ -15,6 +15,8 @@ Security is a continuous release requirement, not a one-time certification. Ink-
 - Logs, tests, documentation, build artifacts, and repositories must not disclose secrets or private content.
 - Dependencies, production headers, transport configuration, and deployment behavior require review before release.
 
+The frontend page CSP and hosting header allow the existing Google Fonts stylesheet origin (`fonts.googleapis.com`) under `style-src` and its font-file origin (`fonts.gstatic.com`) under `font-src`; the remaining directives stay scoped as before.
+
 ## Verification boundary
 
 Source-level tests and build checks provide useful but incomplete evidence.

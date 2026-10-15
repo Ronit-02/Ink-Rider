@@ -1,14 +1,17 @@
 import { useSelector } from 'react-redux'
 import retainRetryView from '@/shared/utils/retainRetryView'
 import ReadingHistoryPage from '@/features/discovery/pages/ReadingHistory'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import PageFrame from '@/shared/components/layout/PageFrame'
 import PageHeader from '@/shared/components/ui/PageHeader'
 import Pill from '@/shared/components/ui/Pill'
 import Button from '@/shared/components/ui/Button'
 import FilterBar from '@/shared/components/ui/FilterBar'
+import { availableFilterOptions } from '@/shared/utils/availableFilterOptions'
 import DiscoveryPostCard from '@/features/discovery/components/DiscoveryPostCard'
+import SeriesCard from '@/features/discovery/components/SeriesCard'
+import { useOwnedSeries } from '@/features/discovery/hooks/useShortSeries'
 import CollectionCard from '../components/CollectionCard'
 import { PostCardSkeleton } from '@/shared/components/ui/Skeleton'
 import { fetchBookmarks } from '@/features/user/api/profile'
@@ -94,7 +97,7 @@ function SavedContent() {
         <Pill label="Stories" role="tab" ariaControls="saved-tabpanel" tabIndex={section === 'stories' ? 0 : -1} active={section === 'stories'} onKeyDown={handleSectionKeyDown} onClick={() => updateFilter('savedSection', 'stories', 'stories')} />
         <Pill label="Shorts" role="tab" ariaControls="saved-tabpanel" tabIndex={section === 'shorts' ? 0 : -1} active={section === 'shorts'} onKeyDown={handleSectionKeyDown} onClick={() => updateFilter('savedSection', 'shorts', 'stories')} />
       </div>
-      <FilterBar label="Saved reads" options={[]} sortOptions={[{ id: 'latest', label: 'Latest saved' }, { id: 'popular', label: 'Most appreciated' }]} sortValue={sort} onSortChange={value => updateFilter('savedSort', value, 'latest')} onReset={resetFilters} />
+      {savedStories.length > 0 && <FilterBar label="Saved reads" options={[]} sortOptions={[{ id: 'latest', label: 'Latest saved' }, { id: 'popular', label: 'Most appreciated' }]} sortValue={sort} onSortChange={value => updateFilter('savedSort', value, 'latest')} onReset={resetFilters} />}
     </div>
     <div id="saved-tabpanel" role="tabpanel" aria-label={`${section === 'stories' ? 'Stories' : 'Shorts'} content`}>
       {stories.isPending ? <div role="status" aria-label="Loading saved stories" className="space-y-4"><PostCardSkeleton compact /><PostCardSkeleton compact /><PostCardSkeleton compact /></div> : stories.isError ? <div className="py-12 text-center"><p role="alert" className="text-[13px] text-[var(--color-danger)]">Saved stories could not be loaded.</p><Button className="mt-4" variant="secondary" onClick={() => stories.refetch()} aria-busy={stories.isFetching} disabled={stories.isFetching}>Try again</Button></div> : <SavedStoryList posts={savedStories} shorts={section === 'shorts'} />}
@@ -107,9 +110,11 @@ function LibraryCollections() {
   const section = params.get('collectionSection') === 'saved' ? 'saved' : 'mine'
   const sections = ['mine', 'saved']
   const sort = ['latest', 'popular'].includes(params.get('collectionSort')) ? params.get('collectionSort') : 'latest'
-  const visibility = ['public', 'unlisted', 'private'].includes(params.get('collectionVisibility')) ? params.get('collectionVisibility') : 'all'
   const mine = retainRetryView(useCollections(true, sort))
   const saved = retainRetryView(useSavedCollections(sort))
+  const source = (section === 'mine' ? mine : saved).data?.pages.flatMap(page => page.data) || []
+  const visibilityOptions = availableFilterOptions([{ id: 'all', label: 'All collections' }, { id: 'public', label: 'Public' }, { id: 'unlisted', label: 'Unlisted' }, { id: 'private', label: 'Private' }], source, item => [item.visibility], params.get('collectionVisibility'), (section === 'mine' ? mine : saved).hasNextPage)
+  const visibility = visibilityOptions.some(option => option.id === params.get('collectionVisibility')) ? params.get('collectionVisibility') : 'all'
   const owned = (mine.data?.pages.flatMap(page => page.data) || []).filter(item => visibility === 'all' || item.visibility === visibility)
   const savedItems = (saved.data?.pages.flatMap(page => page.data) || []).filter(item => visibility === 'all' || item.visibility === visibility)
   const update = (key, value, defaultValue) => setParams(current => {
@@ -138,7 +143,7 @@ function LibraryCollections() {
         <Pill label="My collections" role="tab" ariaControls="library-collections-panel" tabIndex={section === 'mine' ? 0 : -1} active={section === 'mine'} onKeyDown={handleSectionKeyDown} onClick={() => update('collectionSection', 'mine', 'mine')} />
         <Pill label="Saved collections" role="tab" ariaControls="library-collections-panel" tabIndex={section === 'saved' ? 0 : -1} active={section === 'saved'} onKeyDown={handleSectionKeyDown} onClick={() => update('collectionSection', 'saved', 'mine')} />
       </div>
-      <FilterBar label="Collections" options={[{ id: 'all', label: 'All collections' }, { id: 'public', label: 'Public' }, { id: 'unlisted', label: 'Unlisted' }, { id: 'private', label: 'Private' }]} value={visibility} onChange={value => update('collectionVisibility', value, 'all')} sortOptions={[{ id: 'latest', label: 'Newest collections' }, { id: 'popular', label: 'Most saved' }]} sortValue={sort} onSortChange={value => update('collectionSort', value, 'latest')} onReset={() => setParams(current => { const next = new URLSearchParams(current); next.delete('collectionVisibility'); next.delete('collectionSort'); return next })} />
+      {source.length > 0 && <FilterBar label="Collections" options={visibilityOptions.length > 2 || visibility !== 'all' ? visibilityOptions : []} value={visibility} onChange={value => update('collectionVisibility', value, 'all')} sortOptions={[{ id: 'latest', label: 'Newest collections' }, { id: 'popular', label: 'Most saved' }]} sortValue={sort} onSortChange={value => update('collectionSort', value, 'latest')} onReset={() => setParams(current => { const next = new URLSearchParams(current); next.delete('collectionVisibility'); next.delete('collectionSort'); return next })} />}
     </div>
     <div id="library-collections-panel" role="tabpanel" aria-label={section === 'mine' ? 'My collections content' : 'Saved collections content'}>
       {section === 'mine' ? list(mine, owned, 'My collections', 'Collections you create will appear here.') : list(saved, savedItems, 'Saved collections', 'Collections you save will appear here.')}
@@ -146,10 +151,37 @@ function LibraryCollections() {
   </>
 }
 
+function LibrarySeries() {
+  const [params, setParams] = useSearchParams()
+  const type = params.get('seriesType') === 'short' ? 'short' : 'article'
+  const query = retainRetryView(useOwnedSeries(type))
+  const items = query.data?.pages.flatMap(page => page.data) || []
+  const setType = nextType => setParams(current => {
+    const next = new URLSearchParams(current)
+    if (nextType === 'article') next.delete('seriesType')
+    else next.set('seriesType', nextType)
+    return next
+  })
+  return <section aria-label="My series">
+    <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
+      <div role="tablist" aria-label="Series type" className="flex gap-2">
+        {['article', 'short'].map(item => <Pill key={item} label={item === 'article' ? 'Stories' : 'Shorts'} role="tab" ariaControls="library-series-panel" tabIndex={type === item ? 0 : -1} active={type === item} onClick={() => setType(item)} onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const next = event.key === 'Home' ? 'article' : event.key === 'End' ? 'short' : type === 'article' ? 'short' : 'article'; setType(next); requestAnimationFrame(() => document.querySelector(`[role="tab"][aria-controls="library-series-panel"][aria-selected="true"]`)?.focus()) }} />)}
+      </div>
+      <Link to={`/series?type=${type}`} className="button-target inline-flex min-h-11 items-center rounded-full border border-[var(--color-border)] px-4 py-2 text-[13px] font-medium text-[var(--color-text)]">Browse or create series</Link>
+    </div>
+    <div id="library-series-panel" role="tabpanel" aria-label={`My ${type === 'short' ? 'short' : 'story'} series`}>
+      {query.isPending && <div role="status" aria-label="Loading my series"><PostCardSkeleton compact /><PostCardSkeleton compact /></div>}
+      {query.isError && <div className="py-8 text-center"><p role="alert" className="text-[13px] text-[var(--color-danger)]">Your series could not be loaded.</p><Button variant="secondary" className="mt-3" onClick={() => query.refetch()}>Try again</Button></div>}
+      {!query.isPending && !query.isError && (items.length ? <div className="card-grid card-grid--series gap-4">{items.map(item => <SeriesCard key={item.id} series={item} />)}</div> : <p className="py-8 text-[13px] text-[var(--color-text-muted)]">Series you create will appear here.</p>)}
+      {query.hasNextPage && <div className="pt-7 text-center"><Button variant="secondary" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage} aria-busy={query.isFetchingNextPage}>Load more</Button></div>}
+    </div>
+  </section>
+}
+
 export default function SavedPage() {
   const [params, setParams] = useSearchParams()
-  const tab = ['saved', 'history', 'collections'].includes(params.get('libraryTab')) ? params.get('libraryTab') : params.get('savedSection') === 'collections' ? 'collections' : 'saved'
-  const tabs = ['saved', 'collections', 'history']
+  const tab = ['saved', 'history', 'collections', 'series'].includes(params.get('libraryTab')) ? params.get('libraryTab') : params.get('savedSection') === 'collections' ? 'collections' : 'saved'
+  const tabs = ['saved', 'collections', 'series', 'history']
   const setTab = nextTab => {
     const next = new URLSearchParams(params)
     if (next.get('savedSection') === 'collections') next.delete('savedSection')
@@ -165,12 +197,12 @@ export default function SavedPage() {
     requestAnimationFrame(() => document.querySelectorAll('[role="tab"][aria-controls="library-tabpanel"]')[index]?.focus())
   }
   return <PageFrame>
-    <PageHeader eyebrow="Reading" title="Library" description="Find saved stories and collections, continue reading, or revisit past reads." />
+    <PageHeader eyebrow="Reading" title="Library" description="Find saved stories, collections, and your series, or revisit past reads." />
     <div role="tablist" aria-label="Library sections" className="mb-8 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-[var(--color-border)]">
-      {tabs.map(item => <button key={item} type="button" role="tab" aria-controls="library-tabpanel" aria-selected={tab === item} tabIndex={tab === item ? 0 : -1} onClick={() => setTab(item)} onKeyDown={handleTabKeyDown} className={`button-target inline-flex min-h-11 shrink-0 items-center rounded-t-[10px] border-b-2 px-3 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0 ${tab === item ? 'border-[var(--color-accent)] text-[var(--color-text)]' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}>{item === 'saved' ? 'Saved' : item === 'history' ? 'History' : 'Collections'}</button>)}
+      {tabs.map(item => <button key={item} type="button" role="tab" aria-controls="library-tabpanel" aria-selected={tab === item} tabIndex={tab === item ? 0 : -1} onClick={() => setTab(item)} onKeyDown={handleTabKeyDown} className={`button-target inline-flex min-h-11 shrink-0 items-center rounded-t-[10px] border-b-2 px-3 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 sm:min-h-0 ${tab === item ? 'border-[var(--color-accent)] text-[var(--color-text)]' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}>{item === 'saved' ? 'Saved' : item === 'history' ? 'History' : item === 'series' ? 'Series' : 'Collections'}</button>)}
     </div>
-    <div id="library-tabpanel" role="tabpanel" aria-label={tab === 'saved' ? 'Saved content' : tab === 'history' ? 'History content' : 'Collections content'}>
-      {tab === 'saved' ? <SavedContent /> : tab === 'history' ? <ReadingHistoryPage embedded /> : <LibraryCollections />}
+    <div id="library-tabpanel" role="tabpanel" aria-label={tab === 'saved' ? 'Saved content' : tab === 'history' ? 'History content' : tab === 'series' ? 'Series content' : 'Collections content'}>
+      {tab === 'saved' ? <SavedContent /> : tab === 'history' ? <ReadingHistoryPage embedded /> : tab === 'series' ? <LibrarySeries /> : <LibraryCollections />}
     </div>
   </PageFrame>
 }

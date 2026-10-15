@@ -21,7 +21,7 @@ export default function AuthorMeta({ author, readTime, date, size = 'sm', stacke
     {date && readTime && <span aria-hidden="true">·</span>}
     {readTime && <span className="whitespace-nowrap">{readTime}</span>}
   </div>
-  const name = <span className={`${article ? 'text-[14px] leading-5 font-semibold text-(--color-text)' : `${textSize} text-(--color-text-secondary) font-medium ${compactMobile ? 'max-[540px]:text-(--color-text-muted)' : ''}`} min-w-0 break-words hover:text-(--color-text) transition-colors capitalize`}>
+  const name = <span className={`${article ? 'text-[14px] leading-5 font-semibold text-(--color-text)' : `${textSize} text-(--color-text-secondary) font-medium ${compactMobile ? 'max-[540px]:text-(--color-text-muted)' : ''}`} min-w-0 break-words hover:text-(--color-text) transition-colors`}>
       {author.username}
     </span>
   const authorContent = <>

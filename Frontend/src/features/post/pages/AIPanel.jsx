@@ -4,15 +4,15 @@ import { fetchPostSummary, startMembershipCheckout } from '@/features/membership
 import Button from '@/shared/components/ui/Button'
 import IconButton from '@/shared/components/ui/IconButton'
 
-const SummaryIcon = ({ active }) => (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={active ? 'var(--color-text-inverted)' : 'var(--color-text-muted)'} strokeWidth="2">
+const SummaryIcon = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
     <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
   </svg>
 )
 
-const AudioIcon = ({ active }) => (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={active ? 'var(--color-text-inverted)' : 'var(--color-text-muted)'} strokeWidth="2">
+const AudioIcon = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
     <path d="M15.54 8.46a5 5 0 010 7.07" />
   </svg>
@@ -22,14 +22,14 @@ export function AIStickyButtons({ onSummary, onAudio, showSummary, readAloud }) 
   return (
     <div role="group" aria-label="Article tools" className="flex flex-row flex-wrap gap-[10px] xl:sticky xl:top-20 xl:flex-col">
       {[
-        { fn: onSummary, active: showSummary, icon: <SummaryIcon active={showSummary} />, title: 'Article overview' },
-        { fn: onAudio, active: readAloud, icon: <AudioIcon active={readAloud} />, title: 'Read aloud' },
+        { fn: onSummary, active: showSummary, icon: <SummaryIcon />, title: 'Article overview' },
+        { fn: onAudio, active: readAloud, icon: <AudioIcon />, title: 'Read aloud' },
       ].map(button => (
-        <button type="button" key={button.title} onClick={button.fn} title={button.title} aria-label={button.title} aria-pressed={button.active}
-          className={`button-size-md px-3 gap-2 xl:p-0 xl:w-11 rounded-[10px] flex items-center justify-center cursor-pointer border transition-all duration-150 ${button.active ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-[var(--color-text-inverted)]' : 'bg-[var(--color-bg-alt)] border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}>
-          {button.icon}
-          <span className="text-[12px] xl:hidden">{button.title}</span>
-        </button>
+        <Button key={button.title} onClick={button.fn} title={button.title} aria-label={button.title} aria-pressed={button.active}
+          variant={button.active ? 'primary' : 'secondary'} leadingIcon={button.icon}
+          className="!px-3 xl:!p-0 xl:!w-11 hover:opacity-80">
+          <span className="xl:hidden">{button.title}</span>
+        </Button>
       ))}
     </div>
   )

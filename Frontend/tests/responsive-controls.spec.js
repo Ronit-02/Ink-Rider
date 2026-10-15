@@ -160,7 +160,10 @@ test('shared filters expose phone-sized controls without changing desktop sizing
       return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
     }
     if (url.pathname === '/api/post/feed') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [
+        { id: 'science', title: 'Science story', tags: ['science'], format: 'article', author: { username: 'Writer' } },
+        { id: 'design', title: 'Design story', tags: ['design'], format: 'article', author: { username: 'Writer' } },
+      ], meta: { nextCursor: null } }) })
     }
     if (url.pathname === '/api/collection') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
@@ -199,7 +202,10 @@ test('search filters expose phone-sized topic and select controls', async ({ pag
       return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
     }
     if (url.pathname === '/api/search') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { posts: [], writers: [], shorts: [] }, meta: { query: 'city', type: 'all' } }) })
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { posts: [
+        { id: 'science', title: 'Science city', tags: ['science'], createdAt: new Date(Date.now() - 2 * 86400000).toISOString(), author: { username: 'Writer' } },
+        { id: 'travel', title: 'Travel city', tags: ['travel'], createdAt: new Date(Date.now() - 30 * 86400000).toISOString(), author: { username: 'Writer' } },
+      ], writers: [], shorts: [] }, meta: { query: 'city', type: 'posts' } }) })
     }
     return route.abort('blockedbyclient')
   })
@@ -462,7 +468,7 @@ test('short-read comments remain inline without a redundant footer button', asyn
   await expect(page.getByRole('dialog').getByRole('heading', { name: 'Start with the street' })).toHaveAttribute('id', 'short-read-title')
   await expect(page.locator('h1')).toHaveCount(1)
   await expect(page.getByRole('button', { name: 'View 0 comments' })).toHaveCount(0)
-  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Comments (0)' })).toBeVisible()
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Comments (0)' })).toBeVisible()
 })
 
 test('competition detail back navigation exposes a phone-sized target', async ({ page }) => {
@@ -514,7 +520,10 @@ test('filter reset clears topic and sort state together and uses the topic label
       return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ message: 'Signed out' }) })
     }
     if (url.pathname === '/api/collection') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [
+        { id: 'public', title: 'Public collection', visibility: 'public', author: { username: 'Writer' } },
+        { id: 'private', title: 'Private collection', visibility: 'private', author: { username: 'Writer' } },
+      ], meta: { nextCursor: null } }) })
     }
     return route.abort('blockedbyclient')
   })
@@ -524,7 +533,7 @@ test('filter reset clears topic and sort state together and uses the topic label
   await expect(trigger).toBeVisible()
   await trigger.click()
 
-  const dialog = page.getByRole('dialog', { name: 'Filter by topic' })
+  const dialog = page.getByRole('dialog', { name: 'Filter by visibility' })
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: 'Reset filters' }).click()
   await expect(page).toHaveURL(/\/collections\/?$/)

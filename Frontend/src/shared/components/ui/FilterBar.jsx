@@ -5,13 +5,13 @@ import Pill from './Pill'
 export default function FilterBar({ label = 'Filter', options, value, onChange, sortOptions = [], sortValue, onSortChange, onReset }) {
   const defaultValue = options[0]?.id
   const defaultSort = sortOptions[0]?.id
-  const activeFilterCount = (value !== defaultValue ? 1 : 0) + (sortOptions.length > 0 && sortValue !== defaultSort ? 1 : 0)
+  const activeFilterCount = (options.length > 0 && value !== defaultValue ? 1 : 0) + (sortOptions.length > 0 && sortValue !== defaultSort ? 1 : 0)
   const resetFilters = () => {
     if (onReset) {
       onReset()
       return
     }
-    onChange(defaultValue)
+    if (options.length > 0) onChange?.(defaultValue)
     if (sortOptions.length > 0) onSortChange?.(defaultSort)
   }
   return <div className="flex min-w-max flex-1 justify-end"><FilterPopover activeFilterCount={activeFilterCount} title={`Filter by ${label.toLowerCase()}`} onClear={resetFilters}>

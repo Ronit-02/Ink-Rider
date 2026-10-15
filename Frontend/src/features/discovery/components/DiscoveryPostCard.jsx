@@ -6,6 +6,7 @@ import Tag from '@/shared/components/ui/Tag'
 import PostEngagementControls from './PostEngagementControls'
 import ShortCard from './ShortCard'
 import PostCardMenu from './PostCardMenu'
+import useFittingPills from '@/shared/hooks/useFittingPills'
 
 export { PostCardMenu }
 
@@ -17,6 +18,8 @@ export default function DiscoveryPostCard(props) {
 
 function DiscoveryCard({ post, onHide, onOpen, comfortable = false, variant = 'list', flushTop = true }) {
   const [isHidden, setIsHidden] = useState(false)
+  const tags = post.tags?.slice(0, 3) || []
+  const { containerRef: tagsRef, visibleCount: visibleTags } = useFittingPills(tags, !isHidden)
   const hasListCover = Boolean(post.image && variant !== 'grid')
   const authorHandle = post.author?.handle || post.author?.username?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
   const handleOpen = event => {
@@ -45,9 +48,9 @@ function DiscoveryCard({ post, onHide, onOpen, comfortable = false, variant = 'l
           <Link to={`/post/${post.id}`} onClick={handleOpen} className="rounded-[4px] after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2"><span className={hasListCover ? 'max-[540px]:line-clamp-2' : ''}>{post.title}</span></Link>
         </h2>
         {post.excerpt && <p className={`${variant === 'list' ? `max-[540px]:hidden ${!hasListCover ? 'max-md:order-[-2]' : ''}` : ''} mt-3 text-[13px] leading-[1.65] break-words line-clamp-3 text-[var(--color-text-secondary)]`}>{post.excerpt}</p>}
-        <div className={`${variant === 'list' ? hasListCover ? `mt-auto pt-3 min-[540px]:pt-5 ${comfortable ? 'max-[540px]:pt-2' : ''} max-[540px]:grid max-[540px]:grid-cols-[minmax(0,1fr)_auto] max-[540px]:items-start max-[540px]:gap-x-3` : 'mt-auto pt-3 md:pt-5 max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:items-start max-md:gap-x-3' : 'mt-auto pt-5'} flex flex-wrap items-center gap-x-2 gap-y-2`}>
-          {variant !== 'grid' && <div className={`${variant === 'list' ? hasListCover ? 'max-[540px]:py-[7px]' : 'max-md:py-[7px]' : ''} flex min-w-0 flex-wrap gap-2 [&>a]:relative [&>a]:z-10 [&>a]:max-w-full [&>a]:whitespace-normal [&>a]:break-words [&>span]:max-w-full [&>span]:break-words`}>
-            {post.tags?.slice(0, 3).map(tag => <Tag key={tag} label={tag} clickable />)}
+        <div className={`${variant === 'list' ? hasListCover ? `mt-auto pt-3 min-[540px]:pt-5 ${comfortable ? 'max-[540px]:pt-2' : ''} max-[540px]:grid max-[540px]:grid-cols-[minmax(0,1fr)_auto] max-[540px]:items-start max-[540px]:gap-x-3` : 'mt-auto pt-3 md:pt-5 max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:items-start max-md:gap-x-3' : 'mt-auto pt-5'} flex flex-nowrap items-center gap-x-2`}>
+          {variant !== 'grid' && <div ref={tagsRef} className={`${variant === 'list' ? hasListCover ? 'max-[540px]:py-[7px]' : 'max-md:py-[7px]' : ''} flex min-w-0 flex-1 flex-nowrap gap-2 overflow-hidden`}>
+            {tags.map((tag, index) => <span key={tag} aria-hidden={index >= visibleTags} className={`relative z-10 shrink-0 ${index >= visibleTags ? 'invisible' : ''}`}><Tag label={tag} clickable={index < visibleTags} /></span>)}
           </div>}
           <PostEngagementControls post={post} />
         </div>

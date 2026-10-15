@@ -1,5 +1,9 @@
 # Comment actions
 
+## Disclosure appearance — 2026-10-15
+
+The existing borderless Comments (count) disclosure on article and short readers now gives its chevron a small muted circular surface and accent hover feedback. Its serif label, target size, collapse behavior, and comment API remain unchanged. The current article composer placement is described below.
+
 ## One-row comment composer — 2026-10-13
 
 The shared Add a comment field starts at one row on article and compact short-reader surfaces. It grows as text wraps or new lines are entered and returns to one row when cleared. Both surfaces reuse `CommentsSection`; no route, API, schema, or stored-data change is needed.
@@ -12,7 +16,7 @@ Changed implementation: `Frontend/src/features/post/pages/CommentsSection.jsx`, 
 
 ## Comments heading disclosure — 2026-10-12
 
-The user's correction replaces the separate Show/Hide row with the existing serif Comments (count) heading as a borderless content-width disclosure control, retaining 22 px article or 17 px compact display typography. A scoped layout places the chevron 8 px after the label on both surfaces. In post detail, Add a comment and guest sign-in sit above the disclosure and stay visible outside the hidden discussion wrapper. In short-reader modals, the disclosure stays above and hides both the compact composer or guest prompt and discussion. Successful posting reveals confirmed content; deferred reads, mounted thread state, mutation failure retention, and count/cache behavior remain intact. The standalone Comments dialog keeps its heading above the expanded composer.
+The user's correction replaces the separate Show/Hide row with the existing serif Comments (count) heading as a borderless content-width disclosure control, retaining 22 px article or 17 px compact display typography. A scoped layout places the chevron 8 px after the label on both surfaces. In post detail, Add a comment and guest sign-in sit inside the disclosure and appear when it expands. In short-reader modals, the disclosure stays above and hides both the compact composer or guest prompt and discussion. Successful posting reveals confirmed content; deferred reads, mounted thread state, mutation failure retention, and count/cache behavior remain intact. The standalone Comments dialog keeps its heading above the expanded composer.
 
 Audit: CommentsSection owns state and useComments read gating; shared Button/buttonStyles owns the additive disclosure presentation. Existing Express routes/controllers, engagement service, and Mongoose comments/likes retain contracts, ownership, pagination, and counters. Surrounding article/author layout, fonts/theme, other Button variants, APIs, schemas, and unrelated changes remain preserved. The correction supersedes the earlier bordered Show/Hide row in this session; no optional refactor or approval decision remains.
 
@@ -20,9 +24,9 @@ Changed implementation: `Frontend/src/features/post/pages/CommentsSection.jsx` a
 
 ## Comment modals and collapsed discussions — 2026-10-12
 
-Article discussion lists start collapsed behind the Comments (count) heading disclosure, with aria-expanded and aria-controls; the composer remains visible. Its comment read waits for expansion; hiding retains mounted composer/thread state and drafts. Existing compact CommentsModal and short-reader surfaces remain expanded because opening them explicitly requests the discussion. Replies retain their existing initially collapsed View replies (count) / Hide replies control, now with aria-controls. Posting a reply still reveals the confirmed thread. Inline reply forms have 16 px bottom margin.
+Article composer and discussion list start collapsed behind the Comments (count) heading disclosure, with aria-expanded and aria-controls. Its comment read waits for expansion; hiding retains mounted composer/thread state and drafts. Existing compact CommentsModal and short-reader surfaces remain expanded because opening them explicitly requests the discussion. Replies retain their existing initially collapsed View replies (count) / Hide replies control, now with aria-controls. Posting a reply still reveals the confirmed thread. Inline reply forms have 16 px bottom margin.
 
-Owner Edit and Delete now open CommentActionDialog, reusing ModalLayer, ModalHeader, Button, theme tokens, and useDialogFocus. Edit starts with the existing text and 1,000-character limit; Delete requires explicit confirmation. Both have Close, Cancel, Escape, keyboard focus containment, bounded internal scrolling, pending dismissal/repeat protection, and failure/retry. The backdrop retains the form. Successful writes refresh the existing queries and post counters before closing; deleting a disappearing row moves focus to the comments disclosure or composer. Edit/delete also work above an already-open Comments dialog.
+Owner Edit and Delete now open CommentActionDialog, reusing ModalLayer, ModalHeader, Button, theme tokens, and useDialogFocus. Edit starts with the existing text and 1,000-character limit; Delete requires explicit confirmation. Both have Close, Escape, keyboard focus containment, bounded internal scrolling, pending dismissal/repeat protection, and failure/retry. The backdrop retains the form. Successful writes refresh the existing queries and post counters before closing; deleting a disappearing row moves focus to the comments disclosure or composer. Edit/delete also work above an already-open Comments dialog.
 
 Comment reads omit deleted leaves and entirely deleted branches before cursor-page limits, while retaining deleted ancestors needed to reach live descendants. Direct reply counts use the same visibility rule. Stored deletion markers, existing deletion idempotency, active-comment totals, owner/post authorization, routes, response fields, and schemas remain intact. The frontend additionally suppresses deleted rows with zero visible replies. This changes public visibility without physically removing thread records or introducing a data migration.
 
@@ -85,3 +89,7 @@ All 14 distinct mocked-API Chrome checks completed across focused runs: four com
 The database integration suite skipped because its opt-in service is disabled. New real-HTTP persistence coverage is present but unrun. Live persistence, external providers, physical phones, assistive technology, and other browser engines are not claimed as verified. No approval decision remains.
 
 The subsequent 2026-10-10 heart-icon adjustment passed all four focused comment-action browser checks, including visible count-only text and outlined/filled SVG states at 320/1280 px. Production build, artifact validation, focused spec lint, and scoped whitespace checks passed. Changed files for this adjustment: CommentItem.tsx, comment-actions.spec.js, this audit, UI rules, and progress tracker; backend behavior is unchanged.
+
+### Short reader comments control — 2026-10-16
+
+The short reader uses a Comment action beside Like in its four-action footer to expand and collapse the same inline comments section. The standalone Comments heading/disclosure no longer occupies a footer row. The shared CommentsSection accepts a controlled expanded state and hidden heading for this reader; article and other comments presentations retain their prior behavior.

@@ -23,7 +23,9 @@ for (const width of [300, 320, 350, 390, 768, 1280]) {
   test(`trending filter label stays intact at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })
     await page.route(url => url.pathname.startsWith('/api/'), route => {
-      if (new URL(route.request().url()).pathname === '/api/auth/refresh-token') return route.fulfill({ status: 401, json: { message: 'Signed out' } })
+      const path = new URL(route.request().url()).pathname
+      if (path === '/api/auth/refresh-token') return route.fulfill({ status: 401, json: { message: 'Signed out' } })
+      if (path === '/api/post/feed') return route.fulfill({ json: { data: [article, story], meta: { nextCursor: null } } })
       return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
     })
     await page.goto('/explore/trending?trendingTopic=science&trendingSort=latest')

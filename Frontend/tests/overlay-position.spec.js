@@ -81,7 +81,7 @@ for (const width of [320, 390, 1280]) {
 
 for (const [path, button, name] of [
   ['/collections', 'Create collection', 'Create a collection'],
-  ['/shorts', 'Create a series', 'Create a short series'],
+  ['/series?type=short', 'Create a series', 'Create a short series'],
   ['/explore/questions', 'Ask a question', 'Ask the community'],
   [`/explore/competitions/${id}`, 'Add your entry', 'Submit an article'],
 ]) {
@@ -99,14 +99,14 @@ for (const [path, button, name] of [
     expect(box.y).toBeGreaterThanOrEqual(0)
     expect(box.y + box.height).toBeLessThanOrEqual(360)
     await expect(panel).toHaveCSS('overflow-y', 'auto')
-    const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true })
-    await cancel.scrollIntoViewIfNeeded()
-    await expect(cancel).toBeInViewport()
-    expect(await cancel.evaluate(element => {
+    const close = dialog.getByRole('button', { name: 'Close', exact: true })
+    await close.scrollIntoViewIfNeeded()
+    await expect(close).toBeInViewport()
+    expect(await close.evaluate(element => {
       const box = element.getBoundingClientRect()
       return element.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2))
     })).toBe(true)
-    await cancel.click()
+    await close.click()
     await expect(dialog).toHaveCount(0)
     await expect(trigger).toBeFocused()
   })
@@ -121,6 +121,6 @@ test('collection delete confirmation escapes the clipped card and stays scrollab
   const dialog = page.getByRole('dialog', { name: 'Delete collection?' })
   await expect(dialog).toBeVisible()
   expect(await dialog.evaluate(element => element.matches(':modal') && element.parentElement === document.body)).toBe(true)
-  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Cancel delete' }).click()
   await expect(dialog).toHaveCount(0)
 })

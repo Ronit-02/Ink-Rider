@@ -11,6 +11,7 @@ import { SearchIcon } from '@/shared/icons'
 import useDialogFocus from '@/shared/hooks/useDialogFocus'
 import { searchDiscovery } from '../api/search'
 import { fetchDiscoveryFeed } from '../api/feed'
+import { getTrendingSearches, suggestedSearchTopics } from '../searchPrompts'
 
 type PostSuggestion = { id: string; title: string; image?: string; author?: { username?: string } }
 type QuerySuggestion = { text: string; articleCount: number }
@@ -24,30 +25,27 @@ type Props = {
   onClose: () => void
 }
 
-const suggestedTopics = ['Travel', 'AI', 'Science', 'Entrepreneurship', 'Lifestyle', 'Career']
-
 export default function MobileSearchDialog({ initialQuery, origin, onClose }: Props) {
   const navigate = useNavigate()
   const reducedMotion = useReducedMotion()
   const viewportStyle = useOverlayViewport()
   const dialogRef = useRef<HTMLDialogElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [expandedWidth, setExpandedWidth] = useState(() => window.innerWidth - 32)
   const [closing, setClosing] = useState(false)
   const requestClose = useCallback(() => setClosing(true), [])
-  const focusDialogRef = useDialogFocus(requestClose, inputRef)
+  const focusDialogRef = useDialogFocus(requestClose, inputRef, true, false)
   const [input, setInput] = useState(initialQuery)
   const [query, setQuery] = useState(initialQuery.trim())
   const [activeIndex, setActiveIndex] = useState(-1)
   const listId = useId()
   const popular = retainRetryView(useQuery<PopularResponse>({
-    queryKey: ['mobile-search-popular-stories'],
+    queryKey: ['search-popular-stories'],
     queryFn: () => fetchDiscoveryFeed({ mode: 'popular', sort: 'popular', cursor: null }),
     enabled: !input.trim(),
     staleTime: 60_000,
     retry: false,
   }))
-  const trendingSearches = [...new Set((popular.data?.data || []).map(post => post.title))].slice(0, 4)
+  const trendingSearches = getTrendingSearches(popular.data?.data)
   const result = retainRetryView(useQuery<SearchResponse>({
     queryKey: ['search-suggestions', 'content-v1', query],
     queryFn: () => searchDiscovery({ query, type: 'all', suggestions: true, limit: 5 }),
@@ -63,18 +61,15 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
   useEffect(() => {
     const dialog = dialogRef.current
     dialog?.showModal()
-    inputRef.current?.focus()
+    inputRef.current?.focus({ preventScroll: true })
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     // Return to the navbar on desktop resize rather than leave a hidden modal.
     const media = window.matchMedia('(min-width: 768px)')
     const handleResize = () => { if (media.matches) onClose() }
-    const updateWidth = () => setExpandedWidth(window.innerWidth - 32)
     media.addEventListener('change', handleResize)
-    window.addEventListener('resize', updateWidth)
     return () => {
       media.removeEventListener('change', handleResize)
-      window.removeEventListener('resize', updateWidth)
       document.body.style.overflow = previousOverflow
       dialog?.close()
     }
@@ -116,9 +111,9 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
           const active = items[activeIndex]
           if (active) openSuggestion(active)
           else search()
-        }} initial={reducedMotion ? false : { x: origin.left - 16, width: origin.width, height: 38 }} animate={closing ? { x: origin.left - 16, width: origin.width, height: 38 } : { x: 0, width: expandedWidth, height: 46 }} transition={{ duration: reducedMotion ? 0 : 0.28, ease: [0.2, 0, 0, 1] }}
-          className="flex items-center gap-2 overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] pl-[14px] pr-1 focus-within:border-[var(--color-focus)]">
-          <span aria-hidden="true" className="shrink-0"><SearchIcon /></span>
+        }} initial={reducedMotion ? false : { x: origin.left - 16, width: origin.width, height: 38 }} animate={closing ? { x: origin.left - 16, width: origin.width, height: 38 } : { x: 0, width: '100%', height: 46 }} transition={{ duration: reducedMotion ? 0 : 0.28, ease: [0.2, 0, 0, 1] }}
+          className="flex items-center overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] pl-[14px] pr-1 focus-within:border-[var(--color-focus)]">
+          <span aria-hidden="true" className="mr-2 shrink-0"><SearchIcon /></span>
           <input ref={inputRef} type="text" enterKeyHint="search" autoComplete="off" maxLength={100} value={input} placeholder="Search posts and writers…" aria-label="Search posts and writers" role="combobox" aria-autocomplete="list" aria-controls={listId} aria-expanded={input.trim().length > 0} aria-activedescendant={activeIndex >= 0 && items[activeIndex] ? `${listId}-${activeIndex}` : undefined}
             onChange={event => { setInput(event.target.value); setActiveIndex(-1) }}
             onKeyDown={event => {
@@ -148,16 +143,14 @@ export default function MobileSearchDialog({ initialQuery, origin, onClose }: Pr
         {!input.trim() ? <>
         <section aria-labelledby={`${listId}-trending`} className="mb-7">
           <h2 id={`${listId}-trending`} className="text-[15px] font-semibold">Trending searches</h2>
-          <p className="mt-2 text-[12px] text-[var(--color-text-secondary)]">Suggestions from popular stories on Ink Rider.</p>
           {popular.isPending ? <p role="status" className="py-4 text-[13px] text-[var(--color-text-muted)]">Loading suggestions…</p>
             : popular.isError ? <div className="py-4 text-[13px] text-[var(--color-text-muted)]"><p>Trending suggestions are unavailable.</p><button type="button" onClick={() => popular.refetch()} className="min-h-11 underline underline-offset-2" aria-busy={popular.isFetching} disabled={popular.isFetching}>Try again</button></div>
               : !trendingSearches.length ? <p className="py-4 text-[13px] text-[var(--color-text-muted)]">Explore a topic below while popular stories build up.</p>
-                : <ul aria-label="Trending searches" className="mt-3 list-none p-0">{trendingSearches.map(title => <li key={title}><button type="button" onClick={() => { setInput(title.slice(0, 100)); setActiveIndex(-1); inputRef.current?.focus() }} className="flex min-h-11 w-full items-center gap-3 border-b border-[var(--color-border-light)] py-3 text-left text-[13px] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"><span aria-hidden="true" className="shrink-0"><SearchIcon /></span><span>{title}</span></button></li>)}</ul>}
+                : <ul aria-label="Trending searches" className="mt-3 list-none p-0">{trendingSearches.map(title => <li key={title}><button type="button" onClick={() => search(title.slice(0, 100))} className="flex min-h-11 w-full items-center gap-3 border-b border-[var(--color-border-light)] py-3 text-left text-[13px] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"><span aria-hidden="true" className="shrink-0"><SearchIcon /></span><span>{title}</span></button></li>)}</ul>}
         </section>
         <section aria-labelledby={`${listId}-topics`}>
           <h2 id={`${listId}-topics`} className="text-[15px] font-semibold">What are you curious about?</h2>
-          <p className="mt-2 text-[13px] text-[var(--color-text-secondary)]">Try a topic, or search for a story or writer.</p>
-          <ul aria-label="Suggested topics" className="mt-3 list-none p-0">{suggestedTopics.map(topic => <li key={topic}><button type="button" onClick={() => { setInput(topic); setActiveIndex(-1); inputRef.current?.focus() }} className="flex min-h-11 w-full items-center border-b border-[var(--color-border-light)] py-3 text-left text-[13px] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]">{topic}</button></li>)}</ul>
+          <ul aria-label="Suggested topics" className="mt-3 list-none p-0">{suggestedSearchTopics.map(topic => <li key={topic}><button type="button" onClick={() => search(topic)} className="flex min-h-11 w-full items-center gap-3 border-b border-[var(--color-border-light)] py-3 text-left text-[13px] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"><span aria-hidden="true" className="shrink-0 text-[var(--color-text-secondary)]"><SearchIcon /></span><span>{topic}</span></button></li>)}</ul>
         </section></> : <>
           <h2 className="mb-3 text-[15px] font-semibold">Suggestions</h2>
           <div role="status" aria-live="polite" className="text-[13px] text-[var(--color-text-secondary)]">

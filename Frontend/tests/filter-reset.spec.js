@@ -161,9 +161,18 @@ for (const surface of surfaces) {
     test(`${surface.path} resets topic and sort together at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 735 })
       await page.route(url => url.pathname.startsWith('/api/'), route => {
-        if (new URL(route.request().url()).pathname === '/api/auth/refresh-token') {
+        const path = new URL(route.request().url()).pathname
+        if (path === '/api/auth/refresh-token') {
           return route.fulfill({ status: 401, json: { message: 'Signed out' } })
         }
+        if (path === '/api/post/feed') return route.fulfill({ json: { data: [
+          { id: 'science', title: 'Science story', tags: ['science'], format: 'article', author: { username: 'Writer' } },
+          { id: 'design', title: 'Design story', tags: ['design'], format: 'article', author: { username: 'Writer' } },
+        ], meta: { nextCursor: null } } })
+        if (path === '/api/question') return route.fulfill({ json: { data: [
+          { id: 'science', text: 'Science question?', tags: ['science'], author: { username: 'Reader' }, responsePosts: [], upvotesCount: 1, answersCount: 0 },
+          { id: 'design', text: 'Design question?', tags: ['design'], author: { username: 'Reader' }, responsePosts: [], upvotesCount: 1, answersCount: 0 },
+        ], meta: { nextCursor: null } } })
         return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
       })
       await page.goto(`${surface.path}?${surface.topic}=science&${surface.sort}=${surface.alternateSort}&keep=reader`)
@@ -204,3 +213,24 @@ for (const surface of surfaces) {
     })
   }
 }
+
+test('short reads reset topic and sort together', async ({ page }) => {
+  await page.route(url => url.pathname.startsWith('/api/'), route => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/api/auth/refresh-token') return route.fulfill({ status: 401, json: { message: 'Signed out' } })
+    if (path === '/api/post/shorts') return route.fulfill({ json: { data: [
+      { id: 'science', title: 'Science short', tags: ['science'], format: 'short', author: { username: 'Writer' } },
+      { id: 'design', title: 'Design short', tags: ['design'], format: 'short', author: { username: 'Writer' } },
+    ], meta: { nextCursor: null } } })
+    return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+  })
+  await page.goto('/shorts?shortTopic=science&shortSort=popular&keep=reader')
+  const trigger = page.getByRole('button', { name: 'Filters (2 active)' })
+  await trigger.click()
+  const dialog = page.getByRole('dialog', { name: 'Filter by topic' })
+  await dialog.getByRole('button', { name: 'Reset filters' }).click()
+  await expect(page).toHaveURL('/shorts?keep=reader')
+  await expect(dialog.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(dialog.getByRole('combobox', { name: 'Sort' })).toHaveText('Latest')
+  await expect(dialog.getByRole('button', { name: 'Reset filters' })).toBeDisabled()
+})

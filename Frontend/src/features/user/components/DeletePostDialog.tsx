@@ -32,7 +32,6 @@ export default function DeletePostDialog({ post, onClose }: Props) {
       <p className="mt-3 text-[13px] leading-5 text-[var(--color-text-secondary)]">Permanently delete “{post.title}”? Its comments and pending reports will be deleted, and it will disappear from saved lists. This cannot be undone.</p>
       {remove.isError && <p role="alert" className="mt-3 text-[13px] text-[var(--color-danger)]">The post could not be deleted. Please try again.</p>}
       <div className="mt-6 flex justify-end gap-2">
-        <Button variant="secondary" onClick={dismiss} disabled={remove.isPending}>Cancel</Button>
         <Button onClick={() => remove.mutate()} disabled={remove.isPending} aria-busy={remove.isPending} className="!bg-[var(--color-danger)] !border-[var(--color-danger)]">Delete post</Button>
       </div>
     </section>

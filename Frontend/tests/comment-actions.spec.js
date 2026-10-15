@@ -4,17 +4,19 @@ const postId = '507f1f77bcf86cd799439012'
 const parentId = '507f1f77bcf86cd799439013'
 const date = '2026-10-10T00:00:00Z'
 
-test('composer posts while the discussion is collapsed and reveals the confirmed comment', async ({ page }) => {
+test('article composer opens with the discussion and reveals the confirmed comment', async ({ page }) => {
   const state = await fixture(page, { noReplies: true })
   await page.goto(`/post/${postId}`)
   const section = page.getByRole('region', { name: /^Comments \(/ })
   const toggle = section.getByRole('button', { name: /^Comments \(/ })
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(section.getByLabel('Add a comment')).toBeHidden()
   expect(state.reads).toEqual([])
-  await section.getByLabel('Add a comment').fill('Posted without expanding first')
+  await toggle.click()
+  await section.getByLabel('Add a comment').fill('Posted after expanding')
   await section.getByRole('button', { name: 'Comment', exact: true }).click()
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-  await expect(section.getByText('Posted without expanding first', { exact: true })).toBeVisible()
+  await expect(section.getByText('Posted after expanding', { exact: true })).toBeVisible()
   await expect(section.getByLabel('Add a comment')).toHaveValue('')
 })
 
@@ -36,9 +38,10 @@ for (const width of [320, 1280]) {
     expect(toggleBounds.height).toBeGreaterThanOrEqual(44)
     const chevron = toggle.locator('[data-disclosure-chevron]')
     await expect(chevron).toBeVisible()
-    await expect(section.getByLabel('Add a comment')).toBeVisible()
+    await expect(section.getByLabel('Add a comment')).toBeHidden()
     expect(state.reads).toEqual([])
     await toggle.press('Enter')
+    await expect(section.getByLabel('Add a comment')).toBeVisible()
     const hideToggle = section.getByRole('button', { name: /^Comments \(/  })
     await expect(hideToggle).toHaveAttribute('aria-expanded', 'true')
     await expect(hideToggle.locator('[data-disclosure-chevron]')).toHaveCSS('rotate', '180deg')
@@ -46,12 +49,12 @@ for (const width of [320, 1280]) {
     const input = section.getByLabel('Add a comment')
     await input.fill('Keep this draft')
     await section.getByRole('button', { name: /^Comments \(/  }).click()
-    await expect(input).toBeVisible()
+    await expect(input).toBeHidden()
     await expect(section.locator('article').first()).toBeHidden()
     await toggle.click()
     await expect(input).toHaveValue('Keep this draft')
     await hideToggle.press('Space')
-    await expect(input).toBeVisible()
+    await expect(input).toBeHidden()
     await expect(section.locator('article').first()).toBeHidden()
     await toggle.press('Space')
     await expect(input).toHaveValue('Keep this draft')
@@ -339,7 +342,7 @@ for (const width of [320, 1280]) {
     expect(state.requests.find(r => r.method === 'POST').body.parentCommentId).toBe(parentId)
     // The original comment stays first; newly created replies have their own owner controls.
     await comment.getByRole('button', { name: 'Delete', exact: true }).first().click()
-    await page.getByRole('dialog', { name: 'Delete comment?', exact: true }).getByRole('button', { name: 'Cancel delete' }).click()
+    await page.getByRole('dialog', { name: 'Delete comment?', exact: true }).getByRole('button', { name: 'Close comment action' }).click()
     expect(state.requests.filter(r => r.method === 'DELETE' && !r.path.endsWith('/like'))).toHaveLength(0)
     await comment.getByRole('button', { name: 'Delete', exact: true }).first().click()
     state.fail = 'DELETE'

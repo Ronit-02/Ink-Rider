@@ -240,6 +240,37 @@ test('failed session refresh opens one sign-in modal without navigating away', a
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
+test('expiring access token refreshes once before parallel API reads', async ({ page }) => {
+  const expiringToken = `header.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 5 })).toString('base64url')}.signature`
+  const freshToken = `header.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url')}.signature`
+  let refreshes = 0
+  const authorization = []
+  await page.route(url => url.pathname.startsWith('/api/'), route => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/api/auth/refresh-token') return route.fulfill({ json: {
+      accessToken: ++refreshes === 1 ? expiringToken : freshToken,
+      user: 'Reader', email: 'reader@example.test', role: 'regular',
+    } })
+    if (['/api/v1/notifications', '/api/post/shorts', '/api/post/feed'].includes(path)) {
+      authorization.push(route.request().headers().authorization)
+    }
+    return route.fulfill({ json: { data: [], meta: { unreadCount: 0, nextCursor: null } } })
+  })
+  await page.goto('/help')
+  await expect(page.getByRole('button', { name: 'Open account menu' })).toBeVisible()
+  await page.evaluate(async () => {
+    const { default: api } = await import('/src/app/api.js')
+    await Promise.all([
+      api.get('/api/v1/notifications'),
+      api.get('/api/post/shorts'),
+      api.get('/api/post/feed'),
+    ])
+  })
+  expect(refreshes).toBe(2)
+  expect(authorization.length).toBeGreaterThanOrEqual(3)
+  expect(authorization.every(value => value === `Bearer ${freshToken}`)).toBe(true)
+})
+
   test('account sign-in opens the modal and retains its full originating URL', async ({ page }) => {
     await mockAuth(page)
     const url = '/shorts?shortSort=popular#reading'

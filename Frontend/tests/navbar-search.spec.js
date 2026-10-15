@@ -20,6 +20,32 @@ const searchResponse = {
   meta: { query: 'maya', type: 'all' },
 }
 
+for (const width of [768, 1280]) {
+  test(`empty desktop search offers trending searches and topics at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await page.route(url => url.pathname.startsWith('/api/'), route => {
+      const url = new URL(route.request().url())
+      if (url.pathname === '/api/auth/refresh-token') return route.fulfill({ status: 401, json: { message: 'Signed out' } })
+      if (url.pathname === '/api/post/feed' && url.searchParams.get('mode') === 'popular') return route.fulfill({ json: { data: [{ id: 'popular-story', title: 'A story about science' }] } })
+      if (url.pathname === '/api/search') return route.fulfill({ json: searchResponse })
+      return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+    })
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    const search = page.getByRole('navigation', { name: 'Global navigation' }).getByRole('combobox')
+    await search.click()
+    const suggestions = page.getByRole('listbox', { name: 'Search suggestions' })
+    await expect(suggestions.getByRole('group', { name: 'Trending searches' }).getByRole('option', { name: 'A story about science' })).toBeVisible()
+    await expect(suggestions.getByRole('group', { name: 'Suggested topics' }).getByRole('option')).toHaveCount(6)
+    await search.press('ArrowDown')
+    await search.press('Enter')
+    await expect(page).toHaveURL(/\/search\?q=A%20story%20about%20science$/)
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await search.click()
+    await suggestions.getByRole('group', { name: 'Suggested topics' }).getByRole('option', { name: 'Science' }).click()
+    await expect(page).toHaveURL(/\/search\?q=Science$/)
+  })
+}
+
 for (const loggedIn of [false, true]) {
   test(`mobile header search and Profile choices work for ${loggedIn ? 'members' : 'guests'}`, async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('ink-theme', 'light'))
@@ -119,7 +145,7 @@ test('global search suggestions support combobox keyboard navigation', async ({ 
   await expect(search).toHaveValue('')
   await expect(search).toBeFocused()
   await expect(search).not.toHaveAttribute('aria-activedescendant', /.+/)
-  await expect(suggestions).toBeHidden()
+  await expect(suggestions.getByRole('group', { name: 'Suggested topics' }).getByRole('option')).toHaveCount(6)
   await expect(page).toHaveURL(/\/$/)
   await search.fill('maya')
   await expect(suggestions).toBeVisible()

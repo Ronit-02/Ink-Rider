@@ -14,7 +14,7 @@ const FOCUSABLE_SELECTOR = [
  * Keeps keyboard focus inside a modal and returns it to the opening control.
  * The dialog owns its close behavior so this hook stays reusable across features.
  */
-export default function useDialogFocus(onClose, initialFocusRef, enabled = true) {
+export default function useDialogFocus(onClose, initialFocusRef, enabled = true, restoreFocus = true) {
   const dialogRef = useRef(null)
   const previousFocusRef = useRef(null)
   const onCloseRef = useRef(onClose)
@@ -71,9 +71,9 @@ export default function useDialogFocus(onClose, initialFocusRef, enabled = true)
     dialog.addEventListener('keydown', handleKeyDown)
     return () => {
       dialog.removeEventListener('keydown', handleKeyDown)
-      previousFocusRef.current?.focus()
+      if (restoreFocus) previousFocusRef.current?.focus()
     }
-  }, [enabled, initialFocusRef])
+  }, [enabled, initialFocusRef, restoreFocus])
 
   return dialogRef
 }

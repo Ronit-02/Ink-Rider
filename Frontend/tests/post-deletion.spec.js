@@ -45,7 +45,7 @@ for (const width of [320, 1280]) {
     const dialog = page.getByRole('dialog', { name: 'Delete post?' })
     await expect(dialog).toBeVisible()
     await expect(dialog.getByText(/comments and pending reports/)).toBeVisible()
-    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Cancel delete' }).click()
     await expect(dialog).toHaveCount(0)
     await expect(opener).toBeFocused()
     expect(attempts).toBe(0)
