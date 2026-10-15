@@ -508,10 +508,93 @@ test('collections preserve explicit item order, visibility, and repairable save 
   assert.ok(Collection.schema.indexes().some(([fields]) => fields.visibility === 1 && fields.createdAt === -1));
 });
 
-test('short series enforce ordered progression and single-series membership', () => {
+test('short series retain ordered progression and allow shared posts', () => {
   assert.ok(ShortSeries.schema.path('items'));
   assert.ok(ShortSeries.schema.path('visibility'));
-  assert.ok(ShortSeries.schema.indexes().some(([fields, options]) => fields['items.post'] === 1 && options.unique));
+  assert.deepEqual(ShortSeries.schema.path('type').enumValues, ['article', 'short']);
+  assert.equal(new ShortSeries({ title: 'Legacy series' }).type, 'short');
+  assert.ok(!ShortSeries.schema.indexes().some(([fields, options]) => fields['items.post'] === 1 && options.unique));
+});
+
+test('series creation scopes existing published posts to one format', async t => {
+  const { createSeries } = require('../controllers/short-series.controller');
+  const authorId = new mongoose.Types.ObjectId().toString();
+  const postIds = [new mongoose.Types.ObjectId().toString(), new mongoose.Types.ObjectId().toString()];
+  let requestedPosts;
+  let created;
+  t.mock.method(Post, 'find', query => {
+    requestedPosts = query;
+    return { select: async () => postIds.map(id => ({ _id: id })) };
+  });
+  t.mock.method(ShortSeries, 'create', async value => { created = value; return { _id: new mongoose.Types.ObjectId() }; });
+  const response = { status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+  await createSeries({ auth: { userId: authorId }, body: { title: 'A reading path', type: 'article', postIds } }, response);
+  assert.equal(response.statusCode, 201);
+  assert.deepEqual(requestedPosts.format, { $in: ['article', null] });
+  assert.deepEqual(requestedPosts.publicationStatus, { $ne: 'unpublished' });
+  assert.equal(created.type, 'article');
+  assert.deepEqual(created.items.map(item => item.post), postIds);
+  t.mock.restoreAll();
+});
+
+test('series creation rejects a mixed-format selection', async t => {
+  const { createSeries } = require('../controllers/short-series.controller');
+  const postIds = [new mongoose.Types.ObjectId().toString(), new mongoose.Types.ObjectId().toString()];
+  t.mock.method(Post, 'find', () => ({ select: async () => [{ _id: postIds[0] }] }));
+  const response = { status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+  await createSeries({ auth: { userId: new mongoose.Types.ObjectId().toString() }, body: { title: 'Mixed parts', type: 'article', postIds } }, response);
+  assert.equal(response.statusCode, 400);
+  assert.match(response.body.message, /published stories/);
+});
+
+test('series eligible-post route ignores Express next and honors article or short query type', async t => {
+  const { getEligiblePosts } = require('../controllers/short-series.controller');
+  const authorId = new mongoose.Types.ObjectId().toString();
+  const requestedPosts = [];
+  t.mock.method(Post, 'find', query => {
+    requestedPosts.push(query);
+    return { sort: () => ({ select: async () => [] }) };
+  });
+  const makeResponse = () => ({ status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } });
+  const articleResponse = makeResponse();
+  const shortResponse = makeResponse();
+  await getEligiblePosts({ query: { type: 'article' }, auth: { userId: authorId } }, articleResponse, () => {});
+  await getEligiblePosts({ query: { type: 'short' }, auth: { userId: authorId } }, shortResponse, () => {});
+  assert.equal(articleResponse.statusCode, 200);
+  assert.equal(shortResponse.statusCode, 200);
+  assert.deepEqual(requestedPosts[0].format, { $in: ['article', null] });
+  assert.equal(requestedPosts[1].format, 'short');
+  assert.equal(Object.hasOwn(requestedPosts[0], '_id'), false);
+  t.mock.restoreAll();
+});
+
+test('series item append keeps owner, format, release, capacity, and membership rules', async t => {
+  const { addSeriesItem } = require('../controllers/short-series.controller');
+  const authorId = new mongoose.Types.ObjectId().toString();
+  const seriesId = new mongoose.Types.ObjectId().toString();
+  const postId = new mongoose.Types.ObjectId();
+  const series = { _id: new mongoose.Types.ObjectId(seriesId), type: 'article', items: [{ post: new mongoose.Types.ObjectId(), position: 0 }, { post: new mongoose.Types.ObjectId(), position: 1 }] };
+  let requestedPost;
+  let update;
+  t.mock.method(ShortSeries, 'findOne', query => {
+    assert.equal(query.author, authorId);
+    return { select: async () => series };
+  });
+  t.mock.method(Post, 'findOne', query => {
+    requestedPost = query;
+    return { select: async () => ({ _id: postId }) };
+  });
+  t.mock.method(ShortSeries, 'updateOne', async (filter, operation) => { update = { filter, operation }; return { modifiedCount: 1 }; });
+  const response = { status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+  await addSeriesItem({ params: { id: seriesId }, auth: { userId: authorId }, body: { postId: postId.toString() } }, response);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.data.added, true);
+  assert.equal(requestedPost.author, authorId);
+  assert.deepEqual(requestedPost.format, { $in: ['article', null] });
+  assert.deepEqual(requestedPost.publicationStatus, { $ne: 'unpublished' });
+  assert.equal(update.operation.$push.items.post.toString(), postId.toString());
+  assert.equal(update.operation.$push.items.position, 2);
+  t.mock.restoreAll();
 });
 
 test('deterministic recommendations prioritize explicit affinity and expose reasons', () => {

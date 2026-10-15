@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
 import Tag from '@/shared/components/ui/Tag'
 import ImageBox from '@/shared/components/ui/ImageBox'
+import useFittingPills from '@/shared/hooks/useFittingPills'
 
 function BookmarkIcon({ filled }) {
   return (
@@ -15,6 +16,8 @@ function BookmarkIcon({ filled }) {
 export default function HorizontalCard({ article }) {
   const navigate = useNavigate()
   const [saved, setSaved] = useState(false)
+  const tags = article.tags || []
+  const { containerRef: tagsRef, visibleCount: visibleTags } = useFittingPills(tags)
 
   return (
     <div
@@ -42,11 +45,11 @@ export default function HorizontalCard({ article }) {
           {article.excerpt}
         </p>
 
-        <div className="flex items-center gap-2 mt-[10px]">
+        <div className="mt-[10px] flex min-w-0 flex-nowrap items-center gap-2">
           {/* Clickable tags */}
-          {article.tags?.length > 0 && (
-            <div className="flex gap-[6px] flex-wrap">
-              {article.tags.map(t => <Tag key={t} label={t} clickable />)}
+          {tags.length > 0 && (
+            <div ref={tagsRef} className="flex min-w-0 flex-1 flex-nowrap gap-[6px] overflow-hidden">
+              {tags.map((tag, index) => <span key={tag} aria-hidden={index >= visibleTags} className={`shrink-0 ${index >= visibleTags ? 'invisible' : ''}`}><Tag label={tag} clickable /></span>)}
             </div>
           )}
 

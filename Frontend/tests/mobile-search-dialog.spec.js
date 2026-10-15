@@ -45,7 +45,7 @@ test('mobile search expands into a full-screen modal with topics, live results a
   await expect(dialog.getByRole('button', { name: 'Close search' })).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(input).toBeFocused()
-  await dialog.getByRole('button', { name: 'Science', exact: true }).click()
+  await input.fill('Science')
   await expect(input).toHaveValue('Science')
   await expect(dialog.getByRole('option')).toHaveCount(2)
   await expect(dialog.getByRole('button', { name: 'Close search' })).toBeInViewport()
@@ -57,13 +57,13 @@ test('mobile search expands into a full-screen modal with topics, live results a
   await expect(dialog.getByRole('option').last()).toHaveAttribute('aria-selected', 'true')
   await input.press('Escape')
   await expect(dialog).toHaveCount(0)
-  await expect(trigger).toBeFocused()
+  await expect(trigger).not.toBeFocused()
   await trigger.click()
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: 'Close search' }).click()
   expect(await dialog.count()).toBe(1)
   await expect(dialog).toHaveCount(0)
-  await expect(trigger).toBeFocused()
+  await expect(trigger).not.toBeFocused()
   await trigger.click()
   await input.fill('Maya')
   await expect(dialog.getByRole('option')).toHaveCount(2)
@@ -74,14 +74,27 @@ test('mobile search expands into a full-screen modal with topics, live results a
   await expect(dialog).toHaveCount(0)
 })
 
-test('trending rows seed live search from the popular feed', async ({ page }) => {
+test('mobile search opens focused when the navbar field receives focus directly', async ({ page }) => {
+  const trigger = page.getByRole('navigation', { name: 'Global navigation' }).getByRole('combobox')
+  await trigger.focus()
+  const dialog = page.getByRole('dialog', { name: 'Search Ink Rider' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('combobox')).toBeFocused()
+})
+
+test('trending searches and suggested topics open results directly', async ({ page }) => {
   await page.getByRole('navigation', { name: 'Global navigation' }).getByRole('combobox').click()
   const dialog = page.getByRole('dialog', { name: 'Search Ink Rider' })
   const row = dialog.getByRole('list', { name: 'Trending searches' }).getByRole('button', { name: 'A story about science' })
   await expect.poll(() => row.evaluate(element => getComputedStyle(element.parentElement.parentElement).listStyleType)).toBe('none')
   await row.click()
-  await expect(dialog.getByRole('combobox')).toHaveValue('A story about science')
-  await expect(dialog.getByRole('option')).toHaveCount(2)
+  await expect(page).toHaveURL(/\/search\?q=A%20story%20about%20science$/)
+  await expect(dialog).toHaveCount(0)
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await page.getByRole('navigation', { name: 'Global navigation' }).getByRole('combobox').click()
+  await dialog.getByRole('list', { name: 'Suggested topics' }).getByRole('button', { name: 'Science' }).click()
+  await expect(page).toHaveURL(/\/search\?q=Science$/)
+  await expect(dialog).toHaveCount(0)
 })
 
 test('empty and failed suggestions remain recoverable; all results navigation works', async ({ page }) => {
@@ -114,4 +127,32 @@ test('reduced motion and desktop resize keep modal search usable', async ({ page
   await expect(dialog).toBeVisible()
   await page.setViewportSize({ width: 1280, height: 800 })
   await expect(dialog).toHaveCount(0)
+})
+
+test('clear and submit stay adjacent and the search field fits a keyboard-sized viewport', async ({ page }) => {
+  await page.getByRole('navigation', { name: 'Global navigation' }).getByRole('combobox').click()
+  const dialog = page.getByRole('dialog', { name: 'Search Ink Rider' })
+  const input = dialog.getByRole('combobox')
+  await input.fill('science')
+  const clear = dialog.getByRole('button', { name: 'Clear search' })
+  const submit = dialog.getByRole('button', { name: 'Search', exact: true })
+  await expect.poll(async () => {
+    const clearBounds = await clear.boundingBox()
+    const submitBounds = await submit.boundingBox()
+    return Math.round(submitBounds.x - clearBounds.x - clearBounds.width)
+  }).toBe(0)
+
+  await page.setViewportSize({ width: 320, height: 360 })
+  await expect(input).toBeFocused()
+  await expect.poll(async () => {
+    const dialogBounds = await dialog.boundingBox()
+    const formBounds = await dialog.getByRole('search').boundingBox()
+    return {
+      dialogHeight: Math.round(dialogBounds.height),
+      formInside: formBounds.x >= dialogBounds.x && formBounds.x + formBounds.width <= dialogBounds.x + dialogBounds.width,
+    }
+  }).toEqual({ dialogHeight: 360, formInside: true })
+  await expect(clear).toBeInViewport()
+  await expect(submit).toBeInViewport()
+  await expect(dialog.getByRole('option').first()).toBeVisible()
 })

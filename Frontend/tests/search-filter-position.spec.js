@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 const readerQuestion = {
   id: '507f1f77bcf86cd799439011', text: 'How can coastal cities adapt to rising seas?',
   context: 'Readers want practical evidence.', tags: ['coastal resilience', 'science'],
-  author: { username: 'Maya Sen', handle: 'maya-sen' }, createdAt: '2026-09-08T00:00:00Z',
+  author: { username: 'Maya Sen', handle: 'maya-sen' }, createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
   upvotesCount: 4, isUpvoted: false, answersCount: 1, responsePosts: [{ _id: 'response', title: 'A coastal response' }],
 }
 
@@ -19,7 +19,10 @@ async function mockQuestionSearch(page, { signedIn = false } = {}) {
     if (url.pathname === '/api/search') {
       searches.push(Object.fromEntries(url.searchParams))
       if (url.searchParams.get('q') === 'unavailable' && searches.filter(item => item.q === 'unavailable').length === 1) return route.fulfill({ status: 500, json: { message: 'Try again' } })
-      const questions = url.searchParams.get('q') === 'absent' ? [] : [{ ...readerQuestion, upvotesCount: count, isUpvoted: selected }]
+      const questions = url.searchParams.get('q') === 'absent' ? [] : [
+        { ...readerQuestion, upvotesCount: count, isUpvoted: selected },
+        { ...readerQuestion, id: '507f1f77bcf86cd799439012', text: 'How can neighborhoods share public space?', tags: ['design'], responsePosts: [], createdAt: new Date(Date.now() - 30 * 86400000).toISOString() },
+      ]
       return route.fulfill({ json: { data: { questions, posts: [], writers: [], shorts: [] } } })
     }
     if (url.pathname === `/api/question/${readerQuestion.id}/upvote`) {
@@ -106,6 +109,33 @@ test('question search shows empty/error recovery and refreshes votes after confi
   expect(votes).toEqual(['PUT', 'DELETE', 'DELETE'])
 })
 
+test('question feed toggles an existing upvote without a reload', async ({ page }) => {
+  let selected = true
+  const methods = []
+  await page.route(url => url.pathname.startsWith('/api/'), route => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/api/auth/refresh-token') return route.fulfill({ json: { accessToken: 'question-feed-token', user: 'Reader', email: 'reader@example.test', role: 'regular' } })
+    if (path === '/api/question') return route.fulfill({ json: { data: [{ ...readerQuestion, isUpvoted: selected, upvotesCount: selected ? 5 : 4 }], meta: { nextCursor: null } } })
+    if (path === `/api/question/${readerQuestion.id}/upvote`) {
+      methods.push(route.request().method())
+      selected = route.request().method() === 'PUT'
+      return route.fulfill({ json: { data: { isUpvoted: selected, upvotesCount: selected ? 5 : 4 } } })
+    }
+    return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+  })
+  await page.goto('/explore/questions')
+  const removeVote = page.getByRole('button', { name: 'Remove upvote from question' })
+  await expect(removeVote).toHaveAttribute('aria-pressed', 'true')
+  await removeVote.click()
+  const addVote = page.getByRole('button', { name: 'Upvote question', exact: true })
+  await expect(addVote).toHaveAttribute('aria-pressed', 'false')
+  await expect(addVote).toContainText('4')
+  await addVote.click()
+  await expect(removeVote).toHaveAttribute('aria-pressed', 'true')
+  await expect(removeVote).toContainText('5')
+  expect(methods).toEqual(['DELETE', 'PUT'])
+})
+
 for (const width of [320, 369, 390, 1280]) {
   test(`search filter panel stays pinned and visible as results change at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 735 })
@@ -118,7 +148,7 @@ for (const width of [320, 369, 390, 1280]) {
           title: `Practical curiosity ${index + 1}`,
           abstract: 'Explore a practical approach to science and everyday curiosity.',
           author: { id: '507f1f77bcf86cd799439011', username: 'Leila Noor', handle: 'leila-noor' },
-          createdAt: '2026-09-08T00:00:00Z', readTime: '1 min read', tags: ['science'], likesCount: 29, commentsCount: 0,
+          createdAt: new Date(Date.now() - (index === 0 ? 2 : 30) * 86400000).toISOString(), readTime: '1 min read', tags: [index === 0 ? 'ai' : 'science'], likesCount: 29, commentsCount: 0,
         }))
         return route.fulfill({ json: { data: { posts, writers: [], shorts: [] } } })
       }

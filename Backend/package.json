@@ -22,7 +22,8 @@
     "migrate:profiles": "node scripts/backfill-profiles.js",
     "migrate:post-topics": "node scripts/backfill-post-topics.js",
     "migrate:question-normalization": "node scripts/backfill-question-normalization.js",
-    "migrate:collections": "node scripts/migrate-collections.js"
+    "migrate:collections": "node scripts/migrate-collections.js",
+    "migrate:series-membership": "node scripts/migrate-series-membership.js"
   },
   "keywords": [],
   "author": "",

@@ -24,7 +24,7 @@ const surfaces = [
   ['post', `/post/${id}`, post.title], ['author', '/author/maya-sen', writer.displayName],
   ['collections', '/collections', collection.title], ['collection', `/collections/${id}`, collection.title],
   ['saved', '/saved', 'Library'], ['writing', '/studio', 'Writing studio'], ['shorts', '/shorts', 'Short reads'],
-  ['series', `/shorts/series/${id}`, series.title], ['history', '/history', 'Reading history'],
+  ['series-index', '/series', 'Series'], ['series', `/shorts/series/${id}`, series.title], ['series-new-detail', `/series/${id}`, series.title], ['history', '/history', 'Reading history'],
   ['opportunities', '/opportunities', 'Answer what readers are asking for'],
   ['members', '/members', 'Closer to the creative process'],
   ['membership', '/membership', 'Go deeper with the writers you love'],
@@ -38,7 +38,7 @@ async function mockApi(page, { guest = false, failure, hold = false } = {}) {
     const p = url.pathname
     if (p === '/api/auth/refresh-token') return route.fulfill(guest ? { status: 401, json: { message: 'Signed out' } } : { json: { accessToken: 'alignment-fixture', user: 'Maya Sen', email: 'reader@example.test', role: 'admin' } })
     if (p === '/api/auth/login') return route.fulfill({ status: 403, json: { code: 'EMAIL_NOT_VERIFIED', message: 'Verify email' } })
-    const details = [`/api/post/${id}`, '/api/writer/maya-sen', `/api/question/${id}`, `/api/competition/${id}`, `/api/collection/${id}`, `/api/short-series/${id}`, '/api/v1/reading-history', '/api/search']
+    const details = [`/api/post/${id}`, '/api/writer/maya-sen', `/api/question/${id}`, `/api/competition/${id}`, `/api/collection/${id}`, `/api/short-series/${id}`, '/api/series', '/api/v1/reading-history', '/api/search']
     if (details.includes(p)) {
       if (hold) return
       if (failure) return route.fulfill({ status: failure, json: { message: 'Unavailable' } })
@@ -55,6 +55,7 @@ async function mockApi(page, { guest = false, failure, hold = false } = {}) {
     if (p === '/api/collection') data = [collection]
     if (p === `/api/collection/${id}`) data = collection
     if (p === '/api/short-series') data = [series]
+    if (p === '/api/series') data = [series]
     if (p === `/api/short-series/${id}`) data = series
     if (p === '/api/v1/reading-history') data = { continueReading: [], history: [{ ...post, progress: 50, lastReadAt: post.createdAt }] }
     if (p === '/api/v1/onboarding') data = { topics: ['science', 'travel', 'design'].map(slug => ({ slug, displayName: slug })), suggestedWriters: [writer], selectedTopicSlugs: ['science', 'travel', 'design'], followedWriterIds: [] }
@@ -205,8 +206,36 @@ for (const width of [320, 1280]) {
 test('route inventory requires an explicit alignment audit for new pages', async () => {
   const app = await fs.readFile(path.resolve('src/App.jsx'), 'utf8')
   const routes = [...new Set([...app.matchAll(/<Route\s+path="([^"]+)"/g)].map(match => match[1]))].sort()
-  expect(routes).toEqual(['/', '/login', '/signup', '/onboarding', '/explore', 'trending', 'questions', 'competitions', '/explore/competitions/:id', '/explore/questions/:id', '/opportunities', '/search', '/post/:id', '/author', '/author/:handle', '/collections', '/saved', '/collections/:id', '/shorts', '/shorts/series/:id', '/history', '/members', '/notifications', '/membership', '/staff', '/write', '/writing', '/studio', '/profile', '/profile/edit', '/settings', '/help', '*'].sort())
+  expect(routes).toEqual(['/', '/login', '/signup', '/onboarding', '/explore', 'trending', 'questions', 'competitions', '/explore/competitions/:id', '/explore/questions/:id', '/opportunities', '/search', '/post/:id', '/author', '/author/:handle', '/collections', '/saved', '/collections/:id', '/shorts', '/series', '/series/:id', '/shorts/series/:id', '/history', '/members', '/notifications', '/membership', '/staff', '/write', '/writing', '/studio', '/profile', '/profile/edit', '/settings', '/help', '*'].sort())
 })
+
+for (const width of [320, 605, 1280]) {
+  test(`page-header actions align with headings at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await mockApi(page)
+    for (const [url, actionName] of [
+      ['/collections', 'Create collection'],
+      ['/series', 'Create a series'],
+      ['/shorts', 'Browse series'],
+      ['/explore/questions', 'Ask a question'],
+      ['/studio', 'Write a post'],
+    ]) {
+      await page.goto(url)
+      const action = page.getByRole(actionName === 'Browse series' ? 'link' : 'button', { name: actionName, exact: true })
+      await expect(action).toBeVisible()
+      const alignment = await action.evaluate(node => {
+        const actionWrap = node.closest('header')?.lastElementChild
+        const header = node.closest('header')
+        const titleWrap = header?.firstElementChild
+        const rect = element => element.getBoundingClientRect()
+        return { header: rect(header), title: rect(titleWrap), action: rect(actionWrap) }
+      })
+      expect(alignment.action.x).toBeGreaterThanOrEqual(alignment.title.x + alignment.title.width - 1)
+      expect(Math.abs(alignment.action.y + alignment.action.height / 2 - (alignment.title.y + alignment.title.height / 2))).toBeLessThanOrEqual(1)
+      expect(alignment.action.x + alignment.action.width).toBeLessThanOrEqual(alignment.header.x + alignment.header.width + 1)
+    }
+  })
+}
 
 for (const width of [320, 1280]) {
   test(`secondary page panels retain their frame at ${width}px`, async ({ page }) => {

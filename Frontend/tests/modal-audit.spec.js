@@ -30,7 +30,7 @@ const surfaces = [
   { key: 'short', path: '/shorts', trigger: title, name: title, close: 'Close short read', dirty: 'Add a comment' },
   { key: 'question', path: '/explore/questions', trigger: 'Ask a question', name: 'Ask the community', close: 'Close', dirty: 'Question' },
   { key: 'collection', path: '/collections', trigger: 'Create collection', name: 'Create a collection', close: 'Close', dirty: 'Title' },
-  { key: 'series', path: '/shorts', trigger: 'Create a series', name: 'Create a short series', close: 'Close', dirty: 'Title' },
+  { key: 'series', path: '/series?type=short', trigger: 'Create a series', name: 'Create a short series', close: 'Close', dirty: 'Title' },
   { key: 'entry', path: `/explore/competitions/${id}`, trigger: 'Add your entry', name: 'Submit an article', close: 'Close', dirty: /Author note/ },
   { key: 'delete', path: '/collections', trigger: 'More options for Audit collection', name: 'Delete collection?', close: 'Cancel delete' },
 ]

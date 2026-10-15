@@ -1,5 +1,11 @@
 # Back-button visual audit
 
+## Scroll restoration — 2026-10-16
+
+AppLayout records the independent `#main-content` scroll offset under each React Router history-entry key in tab-scoped session storage (most recent 50 entries). New entries start at the top. Browser Back/Forward and the shared Back button restore the destination entry's offset; the departing entry remains available for Forward. Restoration waits briefly for asynchronously rendered content to become tall enough and stops when the reader starts scrolling. The existing Back destinations, focus target, page layout, and backend contracts are unchanged. Focused browser checks were added at phone and desktop widths. Frontend lint, build, and scoped whitespace checks passed on 2026-10-16; browser execution was blocked by sandbox loopback access after Playwright's bundled Chromium and ffmpeg were found missing. No browser pass is claimed.
+
+The 2026-10-15 Series detail route `/series/:id` uses the existing shell Back row. A fresh direct entry returns to `/series`; the legacy `/shorts/series/:id` fallback remains `/shorts`. The Series index is a primary page without Back. The shared styling and history behavior remain unchanged.
+
 ## Sticky Back row — 2026-10-10
 
 The existing AppLayout Back row now uses `position: sticky; top: 0` inside the independent application scroll container. That container starts below the fixed 56 px navbar, so Back stays visible beneath it throughout scrolling without a second control, scroll listener, or route/component restructuring. The row uses the existing opaque page-background token and layer 20, below navigation and overlays. The arrow/label styling, focus treatment, initial spacing, eligible routes, guest History exclusion, history navigation, and direct-entry parent fallbacks are preserved. Onboarding keeps its feature-owned previous-step control.
@@ -20,7 +26,7 @@ The requested separate `/profile/edit` route opts into the existing shell Back r
 
 ## Inventory
 
-The 2026-10-14 Reader demand correction opts `/opportunities` into the shared AppLayout Back row. History returns to the preceding page; a fresh entry falls back to Profile, where the Find reader demand link lives. Its existing PageFrame, typography, question actions, APIs, and data remain unchanged. This supersedes the earlier primary-route exclusion below.
+The 2026-10-14 Reader demand correction opts `/opportunities` into the shared AppLayout Back row. History returns to the preceding page; a fresh entry falls back to Profile. The Find reader demand link now lives in Writing studio Ideas. Its existing PageFrame, typography, question actions, APIs, and data remain unchanged. This supersedes the earlier primary-route exclusion below.
 
 | Surface | Placement owner | Completed placement |
 |---|---|---|

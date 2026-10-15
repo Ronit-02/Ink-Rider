@@ -34,7 +34,7 @@ Writers can enter themed, timed, collaborative, and reader-choice competitions. 
 
 ### Short and deep reading can coexist
 
-Writers can publish long-form articles or focused short reads. Short series and depth links help a reader move from a quick explanation to a fuller treatment without turning every idea into the same content format.
+Writers can publish long-form articles or focused short reads. Separate story and short series offer ordered reading paths; depth links help a reader move from a quick explanation to a fuller treatment.
 
 ## Who it is for
 
@@ -44,7 +44,7 @@ Readers discover articles and short reads, follow writers, save stories, create 
 
 ### Writers
 
-Writers use the same account. There is no application process or progressive role system. Any signed-in member can draft, publish, respond to questions, build a public profile, enter competitions, create short series, host eligible member experiences, and view writing analytics.
+Writers use the same account. There is no application process or progressive role system. Any signed-in member can draft, publish, respond to questions, build a public profile, enter competitions, create story or short series, host eligible member experiences, and view writing analytics.
 
 ### Community participants
 
@@ -86,7 +86,7 @@ Staff review reports, competition activity, and aggregate fraud signals. Moderat
 - Structured article blocks and cover images
 - Preview, immediate publication, scheduling, editing, and unpublishing
 - Immutable published revisions
-- Long-form articles, short reads, and ordered short series
+- Long-form articles, short reads, and separate ordered story or short series
 - Writer profiles and performance analytics
 
 ### Participate and organize

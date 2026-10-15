@@ -67,7 +67,7 @@ test('search results has no page search form and modal arrow submits the query',
   await expect(main.getByRole('textbox')).toHaveCount(0)
   await expect(main.getByRole('button', { name: 'Search', exact: true })).toHaveCount(0)
   await expect(main.getByRole('heading', { name: 'Search results' })).toBeVisible()
-  await expect(main.getByRole('button', { name: 'Filters' })).toBeVisible()
+  await expect(main.getByRole('button', { name: 'Filters' })).toHaveCount(0)
   await page.getByRole('navigation', { name: 'Global navigation' }).getByRole('combobox').click()
   const dialog = page.getByRole('dialog', { name: 'Search Ink Rider' })
   await dialog.getByRole('combobox').fill('Travel')

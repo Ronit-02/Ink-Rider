@@ -26,6 +26,7 @@ router.use('/writer',      writerRoute);
 router.use('/search',      searchRoute);
 router.use('/v1',          v1Route);
 router.use('/short-series', shortSeriesRoute);
+router.use('/series', shortSeriesRoute);
 router.use('/drafts', draftRoute);
 router.use('/staff', staffRoute);
 

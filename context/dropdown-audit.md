@@ -1,5 +1,9 @@
 # Dropdown reuse and design audit — 2026-10-12
 
+## Search filter dropdown clearance — 2026-10-15
+
+The filter popover now keeps its header and Reset action fixed around a scrollable choices region, while the outer panel allows nested Select lists to extend beyond that region. ViewportPopover exposes an optional overflow setting for this existing use case; other callers retain auto scrolling. This prevents Time and Sort choices in Search filters from being clipped by the panel's scroll boundary without changing filter values, URLs, or API calls. Browser geometry remains unverified in the current sandbox; dated checks are in the progress tracker.
+
 ## Author-page filters — 2026-10-12
 
 Added the requested Filters button beside the existing Articles heading, reusing FilterBar, FilterPopover, Pill, and Select. The existing public writer response already supplies released post/short formats, dates, and appreciation counts, so filtering/sorting is presentation-only and needs no backend, schema, or API change. PageFrame, profile header, DM Sans controls, Libre Baskerville headings, semantic themes, card layout, readers, and follow/support/request interactions remain preserved. No optional refactor or approval decision remains. Current URL, sorting, and empty-state rules belong to UI rules.

@@ -1,5 +1,13 @@
 # Account grouping audit — 2026-10-12
 
+## Profile controls and reader demand — 2026-10-15
+
+The duplicate Account shortcut and sign-out section was removed from the signed-in Profile, including its phone presentation. The existing mobile Account sheet continues to own account navigation and sign-out. Profile's Edit profile button now uses the shared PenIcon inside a 44 px secondary button with the same accessible name and edit route. The Find reader demand action moved from the Profile header to the existing Writing studio Ideas heading, retaining `/opportunities`. No backend route, API, schema, or stored-data change was needed. Implementation is confined to `Frontend/src/features/user/pages/Profile/index.jsx`; the focused account test and owning documentation were updated. Verification on 2026-10-15: frontend lint and production build passed; four focused mocked-API Chrome checks passed at 320 and 1280 px across account navigation, Ideas content/link, icon-only Edit profile access, and the existing edit flow. Live persistence, physical devices, assistive technology, and other browser engines were not exercised.
+
+## Writing studio Ideas tab — 2026-10-15
+
+After user review, reader-question suggestions moved out of Analytics into a fourth, URL-backed Ideas tab after Drafts. The tab uses compact rows based on the existing writer opportunities presentation: fit reason, linked question, optional context, and reader interest, with a link to the full opportunities page. Analytics remains the default and contains only analytics. This supersedes the three-tab order and placement described in the dated entries below. Existing owner-post, draft, entitlement, question-opportunity, editor, and route APIs remain unchanged. Verification on 2026-10-15: frontend lint, production build, and scoped whitespace checks passed. Two focused mocked-API Chrome account-flow checks passed at 320/1280 px, covering Ideas tab content, URL persistence, existing tab behavior, and account navigation; Ideas screenshots at both widths were reviewed. Live persistence, physical devices, assistive technology, and other browser engines were not exercised.
+
 ## Writing studio published status controls — 2026-10-14
 
 The Published tab no longer renders the All/Published/Scheduled/Unpublished status button group. It shows the selected Stories or Shorts category using the existing owner rows/cards and management actions; status labels and actions remain on each item. Existing post reads, routes, filters on other account surfaces, APIs, and stored data remain unchanged.

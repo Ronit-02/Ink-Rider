@@ -13,4 +13,5 @@ export { default as XIcon } from './XIcon';
 export { default as MembershipIcon } from './MembershipIcon';
 export { default as UserIcon } from './UserIcon';
 export { default as ShortsIcon } from './ShortsIcon';
+export { default as SeriesIcon } from './SeriesIcon';
 export { default as SettingsIcon } from './SettingsIcon';

@@ -47,6 +47,8 @@ Recommendation learning distinguishes viewed content from intentional interactio
 
 ## Public contract principles
 
+Owner series addition extends the existing format-specific series contract with authenticated `POST /api/series/:id/items`. It accepts one publicly released post owned by the series writer, preserves the 50-part limit and one-series-per-post invariant, appends without replacing the existing order, and returns already-present success for retry safety. Owned series lists may accept `postId` and expose `containsPost`; post summaries and detail expose viewer-relative `isOwner` so the action is not offered on another writer's work. Existing creation/update routes, schema, stored records, and legacy short-series routes remain unchanged.
+
 Picked-post collection addition extends the existing ordered reference model with an authenticated owner-scoped operation. It accepts publicly released posts and shorts from any writer, appends without overwriting the existing order, prevents duplicates under repeated/concurrent additions, and retains the existing collection size bound. Legacy reference arrays remain readable and convert only on a targeted append. Existing collection creation/read/update contracts and schemas are preserved. The frontend reuses existing creation for create-with-story and partitions the private picker cache by viewer. Behavior and verification are owned by [collection items audit](collection-items-audit.md).
 
 Comment lists and direct reply counts exclude deleted leaves and entirely deleted branches, while retaining deleted ancestors needed to reach surviving replies. Visibility filtering occurs before cursor limits. Existing soft-deletion records, mutation authorization/idempotency, response fields, active-comment totals, and schemas remain preserved. UI behavior and verification are owned by [comment actions audit](comment-actions-audit.md).
@@ -78,7 +80,11 @@ Ink-Rider maintains identity, content, community, discovery, and optional member
 
 ## Format propagation in reading summaries
 
-Post.format remains the stored source of truth. The existing discovery presenter emits format with an article default for legacy data; search/writer/competition/question projections retain it, and short-series detail entries reuse discovery summaries. The frontend dispatches cards and canonical readers by format, with no new routes or database model. Collection grouping is a presentation concern; its existing combined postIds ordering API remains unchanged.
+Post.format remains the stored source of truth. The existing discovery presenter emits format with an article default for legacy data; search/writer/competition/question projections retain it, and series detail entries reuse discovery summaries. The frontend dispatches cards and canonical readers by format. Collection grouping is a presentation concern; its existing combined postIds ordering API remains unchanged.
+
+## Story and short series
+
+Series retain the existing ordered short-series records. A published post may belong to multiple series, with its position stored separately in each. A `type` field distinguishes article/story series from short series; older records without it read as short series. The existing `/api/short-series` API remains available, and `/api/series` exposes the same controller for the dedicated browser. List requests filter one type at a time. Create and update validate owner, public release, one format per series, two to fifty unique entries, and duplicate-free membership within each series. The eligible-post read is owner scoped and format scoped. The post reader supplies series progression for articles and shorts. Existing `/shorts/series/:id` links remain supported alongside `/series/:id`.
 
 ## Story summary state
 

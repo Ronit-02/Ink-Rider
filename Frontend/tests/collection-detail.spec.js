@@ -129,6 +129,33 @@ for (const width of [320, 1280]) {
   })
 }
 
+for (const width of [390, 1280]) {
+  test(`collection header keeps title, actions, and curator spacing stable at ${width}px`, async ({ page }) => {
+    await page.route(url => url.pathname.startsWith('/api/'), route => {
+      const pathname = new URL(route.request().url()).pathname
+      if (pathname === '/api/auth/refresh-token') return route.fulfill({ json: { accessToken: 'collection-owner', user: 'Maya Sen', email: 'maya@example.test', role: 'regular' } })
+      if (pathname === `/api/collection/${collectionId}`) return route.fulfill({ json: { data: { ...collection, title: 'A much longer collection title that wraps over several lines without changing the header layout', description: 'A deliberately longer description confirms that additional wrapped content does not move the collection actions or curator profile into an uneven layout.', posts: [], savedCount: 2, followersCount: 1 } } })
+      return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+    })
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto(`/collections/${collectionId}`)
+
+    const title = page.getByRole('heading', { level: 1 })
+    const actions = page.getByRole('button', { name: 'Edit collection' })
+    const curator = page.getByRole('link', { name: "View Maya Sen's profile" })
+    const [titleBounds, actionBounds, curatorBounds] = await Promise.all([title.boundingBox(), actions.boundingBox(), curator.boundingBox()])
+
+    expect(titleBounds.y + titleBounds.height).toBeLessThan(curatorBounds.y)
+    if (width < 1024) {
+      expect(curatorBounds.x + curatorBounds.width).toBeLessThanOrEqual(actionBounds.x)
+      expect(Math.abs((curatorBounds.y + curatorBounds.height / 2) - (actionBounds.y + actionBounds.height / 2))).toBeLessThanOrEqual(1)
+    } else {
+      expect(actionBounds.x).toBeGreaterThan(titleBounds.x + titleBounds.width)
+      expect(actionBounds.y).toBeLessThan(curatorBounds.y)
+    }
+  })
+}
+
 for (const width of [320, 1280]) {
   test(`collection detail uses save/share icons and omits follow at ${width}px`, async ({ page }) => {
     let isSaved = false

@@ -1,27 +1,116 @@
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import retainRetryView from '@/shared/utils/retainRetryView'
-import ShortCard from '@/features/discovery/components/ShortCard'
-import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import ShortReadModal from '@/features/discovery/components/ShortReadModal'
+import PostCardMenu from '@/features/discovery/components/PostCardMenu'
+import ImageBox from '@/shared/components/ui/ImageBox'
 import Button from '@/shared/components/ui/Button'
-import { useShortSeriesDetail, useUpdateShortSeries } from '../hooks/useShortSeries'
-
+import Select from '@/shared/components/ui/Select'
+import ModalLayer from '@/shared/components/ui/ModalLayer'
+import ModalHeader from '@/shared/components/ui/ModalHeader'
+import useDialogFocus from '@/shared/hooks/useDialogFocus'
+import ShareMenu from '@/shared/components/ui/ShareMenu'
+import { PenIcon, ShareIcon } from '@/shared/icons'
 import { ListSkeleton } from '@/shared/components/ui/Skeleton'
 import MissingResourceState from '@/shared/components/ui/MissingResourceState'
 import isMissingResourceError from '@/shared/errors/isMissingResourceError'
 import PageFrame from '@/shared/components/layout/PageFrame'
+import { useDeleteShortSeries, useEligibleSeriesPosts, useShortSeriesDetail, useUpdateShortSeries } from '../hooks/useShortSeries'
+
+function DeleteSeriesConfirmation({ series, deletion, triggerRef, onClose, onDeleted }) {
+  const closeRef = useRef(null)
+  const dismiss = () => { if (!deletion.isPending) onClose() }
+  const dialogRef = useDialogFocus(dismiss, closeRef)
+  return <ModalLayer onDismiss={dismiss} returnFocusRef={triggerRef} aria-labelledby="series-delete-title" className="grid place-items-center p-4">
+    <section ref={dialogRef} tabIndex={-1} className="w-full max-w-[420px] overflow-y-auto rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-menu)]">
+      <ModalHeader title="Delete series?" titleId="series-delete-title" onClose={dismiss} closeLabel="Close delete series" closeRef={closeRef} className="-mx-6 -mt-6" />
+      <p className="mt-3 text-[13px] leading-5 text-[var(--color-text-secondary)]">This permanently removes “{series.title}”. Posts in the series are not deleted.</p>
+      {deletion.isError && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">Could not delete series. Try again.</p>}
+      <div className="mt-6 flex justify-end"><Button onClick={() => deletion.mutate(undefined, { onSuccess: onDeleted })} disabled={deletion.isPending} aria-busy={deletion.isPending} className="!bg-[var(--color-danger)] !border-[var(--color-danger)]">Delete series</Button></div>
+    </section>
+  </ModalLayer>
+}
+
+function SeriesContent({ series, id }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const update = useUpdateShortSeries(id)
+  const deletion = useDeleteShortSeries(id)
+  const type = series.type || 'short'
+  const eligible = useEligibleSeriesPosts(type, id, series.isOwner)
+  const [draftEntries, setDraftEntries] = useState(null)
+  const [editOpen, setEditOpen] = useState(() => Boolean(series.isOwner && location.state?.openEditSeries))
+  useEffect(() => {
+    if (location.state?.openEditSeries) navigate(location.pathname + location.search + location.hash, { replace: true, state: null })
+  }, [location.hash, location.pathname, location.search, location.state, navigate])
+  const [shareOpen, setShareOpen] = useState(false)
+  const shareTriggerRef = useRef(null)
+  const deleteTriggerRef = useRef(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [shortReadId, setShortReadId] = useState(null)
+  const entries = draftEntries || series.entries
+  const move = (index, direction) => setDraftEntries(current => {
+    const next = [...(current || series.entries)]
+    const target = index + direction
+    if (target < 0 || target >= next.length) return current
+    ;[next[index], next[target]] = [next[target], next[index]]
+    return next
+  })
+  const remove = postId => setDraftEntries(current => (current || series.entries).filter(entry => entry.id !== postId))
+  const add = post => setDraftEntries(current => [...(current || series.entries), { ...post, format: type, author: series.author }])
+  const save = () => update.mutate({ title: series.title, description: series.description, visibility: series.visibility, type, postIds: entries.map(entry => entry.id) }, { onSuccess: () => { setDraftEntries(null); setEditOpen(false) } })
+  const available = (eligible.data || []).filter(post => !entries.some(entry => entry.id === post.id))
+  const editButton = className => <button type="button" onClick={() => setEditOpen(true)} aria-label="Edit series" title="Edit series" aria-haspopup="dialog" className={`${className} h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]`}><PenIcon /></button>
+  const shareButton = className => <button type="button" onClick={event => { shareTriggerRef.current = event.currentTarget; setShareOpen(true) }} aria-label="Share this series" title="Share this series" aria-haspopup="dialog" className={`${className} h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]`}><ShareIcon /></button>
+  const actions = className => <div className={`${className} items-center gap-2`}>{series.isOwner && editButton('flex')}{shareButton('flex')}</div>
+
+  return <PageFrame>
+    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-accent)]">{type === 'short' ? 'Short series' : 'Story series'}</p>
+    <div className="mt-3 flex items-center justify-between gap-6"><h1 className="min-w-0 text-[clamp(32px,5vw,52px)] leading-[1.03] tracking-[-0.05em] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{series.title}</h1>{actions('hidden sm:flex')}</div>
+    <p className="mt-4 text-[14px] leading-7 text-[var(--color-text-secondary)]">{series.description}</p>
+    <p className="mt-3 text-[12px] text-[var(--color-text-muted)]">{entries.length} parts · by {series.author.username}</p>
+    <div className="mt-4 flex justify-end sm:hidden">{actions('flex')}</div>
+    {shareOpen && <ShareMenu anchorRef={shareTriggerRef} onClose={({ restoreFocus = false } = {}) => { setShareOpen(false); if (restoreFocus) requestAnimationFrame(() => shareTriggerRef.current?.focus()) }} id="series-share-menu" label="Share series" contentName="Series" url={`${window.location.origin}/series/${id}`} />}
+    <ol className="mt-10 border-t border-[var(--color-border)]">{entries.map((entry, index) => <li key={entry.id} className="grid grid-cols-[2rem_minmax(0,1fr)_2.75rem] items-start gap-x-3 border-b border-[var(--color-border)] py-5 sm:grid-cols-[3rem_minmax(0,1fr)_2.75rem] sm:gap-x-5 sm:py-6">
+      <span className="pt-1 text-[12px] font-semibold text-[var(--color-text-muted)] sm:text-[13px]">{String(index + 1).padStart(2, '0')}</span>
+      <div className={`min-w-0 ${type === 'article' && entry.image ? 'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6' : ''}`}>
+        <div className="min-w-0 flex-1">
+          <h2 className="break-words text-[19px] font-bold leading-[1.25] tracking-[-0.035em] text-[var(--color-text)] sm:text-[22px]" style={{ fontFamily: 'var(--font-display)' }}><Link to={`/post/${entry.id}`} onClick={event => { if (type !== 'short' || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); setShortReadId(entry.id) }} className="rounded-[4px] hover:text-[var(--color-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">{entry.title}</Link></h2>
+          {entry.excerpt && <p className="mt-2 line-clamp-2 break-words text-[13px] leading-[1.6] text-[var(--color-text-secondary)]">{entry.excerpt}</p>}
+          <p className="mt-3 text-[12px] text-[var(--color-text-muted)]">{entry.readTime || (type === 'short' ? 'Short read' : 'Post')}</p>
+        </div>
+        {type === 'article' && entry.image && <Link to={`/post/${entry.id}`} aria-label={`Read ${entry.title}`} className="order-first block w-full shrink-0 rounded-[8px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] sm:order-last sm:w-40 lg:w-48"><ImageBox src={entry.image} alt="" height="auto" aspectRatio="16 / 9" radius="8px" /></Link>}
+      </div>
+      <PostCardMenu post={{ ...entry, format: type, author: entry.author || series.author }} variant={type} />
+    </li>)}</ol>
+    {type === 'short' && shortReadId && <ShortReadModal postId={shortReadId} onClose={() => setShortReadId(null)} listIds={series.entries.map(entry => entry.id)} inSeriesView />}
+    {editOpen && <ModalLayer onDismiss={() => { if (!deletion.isPending && !deleteOpen) setEditOpen(false) }} aria-labelledby="series-edit-title" className="grid place-items-center p-4">
+      <section className="w-full max-w-[640px] overflow-y-auto rounded-[20px] border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+        <ModalHeader title="Edit series" titleId="series-edit-title" subtitle="Reorder, remove, or add writing to this series." onClose={() => { if (!deletion.isPending && !deleteOpen) setEditOpen(false) }} closeLabel="Close edit series" className="-mx-6 -mt-6" />
+        <div className="mt-6">
+          <h2 className="text-[13px] font-semibold text-[var(--color-text)]">Series order</h2>
+          <ol className="mt-3 border-t border-[var(--color-border)]">{entries.map((entry, index) => <li key={entry.id} className="flex items-center gap-3 border-b border-[var(--color-border)] py-3"><span className="w-6 shrink-0 text-[11px] text-[var(--color-text-muted)]">{String(index + 1).padStart(2, '0')}</span><span className="min-w-0 flex-1 text-[13px] text-[var(--color-text)]">{entry.title}</span><button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={`Move ${entry.title} earlier`} className="button-target h-11 min-h-11 w-11 min-w-11 rounded-full border border-[var(--color-border)] disabled:opacity-30">↑</button><button type="button" onClick={() => move(index, 1)} disabled={index === entries.length - 1} aria-label={`Move ${entry.title} later`} className="button-target h-11 min-h-11 w-11 min-w-11 rounded-full border border-[var(--color-border)] disabled:opacity-30">↓</button><button type="button" onClick={() => remove(entry.id)} aria-label={`Remove ${entry.title} from series`} className="button-target h-11 min-h-11 w-11 min-w-11 rounded-full border border-[var(--color-border)]">×</button></li>)}</ol>
+          <h2 className="mt-6 text-[13px] font-semibold text-[var(--color-text)]">Add {type === 'short' ? 'shorts' : 'stories'}</h2>
+          {eligible.isPending && <p role="status" className="mt-3 text-[12px] text-[var(--color-text-muted)]">Loading your writing…</p>}
+          {eligible.isError && <div className="mt-3"><p role="alert" className="text-[12px] text-[var(--color-danger)]">Your writing could not be loaded.</p><Button variant="secondary" className="mt-2" onClick={() => eligible.refetch()}>Try again</Button></div>}
+          {!eligible.isPending && !eligible.isError && (available.length > 0 ? <div className="mt-3"><Select id="series-add-writing" label={`Choose a ${type === 'short' ? 'short' : 'story'} to add`} value="" options={available.map(post => ({ value: post.id, label: post.title }))} onChange={postId => { const post = available.find(item => item.id === postId); if (post && entries.length < 50) add(post) }} disabled={entries.length >= 50 || update.isPending || deletion.isPending} className="max-w-none" /></div> : <p className="mt-3 text-[12px] text-[var(--color-text-muted)]">No other published {type === 'short' ? 'shorts' : 'stories'} are available to add.</p>)}
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3"><Button ref={deleteTriggerRef} variant="secondary" onClick={() => setDeleteOpen(true)} disabled={update.isPending || deletion.isPending} className="!text-[var(--color-danger)]">Delete series</Button><Button onClick={save} disabled={!draftEntries || entries.length < 2 || update.isPending || deletion.isPending} aria-busy={update.isPending} className="ml-auto">Save series</Button></div>
+          {draftEntries && entries.length < 2 && <p className="mt-3 text-[12px] text-[var(--color-text-secondary)]">A series needs at least two parts.</p>}{update.isError && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">Could not save series</p>}
+        </div>
+      </section>
+    </ModalLayer>}
+    {deleteOpen && <DeleteSeriesConfirmation series={series} deletion={deletion} triggerRef={deleteTriggerRef} onClose={() => setDeleteOpen(false)} onDeleted={() => navigate('/series', { replace: true })} />}
+  </PageFrame>
+}
 
 export default function ShortSeriesDetail() {
   const { id } = useParams()
+  const legacyPath = useLocation().pathname.startsWith('/shorts/series/')
   const query = retainRetryView(useShortSeriesDetail(id))
-  const update = useUpdateShortSeries(id)
-  const [entryOverrides, setEntries] = useState([])
-
-  if (query.isPending) return <PageFrame><ListSkeleton count={4} label="Loading short series" /></PageFrame>
-  if (query.isError && isMissingResourceError(query.error)) return <MissingResourceState eyebrow="Short series unavailable" title="This short series is no longer available" detail="It may have been removed, made private, or the link may be incorrect. Explore other short reads instead." recoveryTo="/shorts" recoveryLabel="Explore short reads" />
+  if (query.isPending) return <PageFrame><ListSkeleton count={4} label="Loading series" /></PageFrame>
+  if (query.isError && isMissingResourceError(query.error)) return legacyPath
+    ? <MissingResourceState eyebrow="Short series unavailable" title="This short series is no longer available" detail="It may have been removed, made private, or the link may be incorrect. Explore other short reads instead." recoveryTo="/shorts" recoveryLabel="Explore short reads" />
+    : <MissingResourceState eyebrow="Series unavailable" title="This series is no longer available" detail="It may have been removed, made private, or the link may be incorrect. Explore other series instead." recoveryTo="/series" recoveryLabel="Explore series" />
   if (query.isError) return <PageFrame><div><p role="alert" className="text-[13px] text-[var(--color-danger)]">This series could not be loaded.</p><Button variant="secondary" className="mt-4" onClick={() => query.refetch()} aria-busy={query.isFetching} disabled={query.isFetching}>Try again</Button></div></PageFrame>
-  const series = query.data
-  const entries = entryOverrides.length ? entryOverrides.map(item => series.entries.find(entry => entry.id === item.id)).filter(Boolean) : series.entries
-  const move = (index, direction) => setEntries(current => { const next = [...(current.length ? current : series.entries)]; const target = index + direction; if (target < 0 || target >= next.length) return current; [next[index], next[target]] = [next[target], next[index]]; return next })
-  const saveOrder = () => update.mutate({ title: series.title, description: series.description, visibility: series.visibility, postIds: entries.map(entry => entry.id) })
-  return <PageFrame><p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-accent)]">Learning series</p><h1 className="mt-3 text-[clamp(32px,5vw,52px)] leading-[1.03] tracking-[-0.05em] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{series.title}</h1><p className="mt-4 text-[14px] leading-7 text-[var(--color-text-secondary)]">{series.description}</p><p className="mt-3 text-[12px] text-[var(--color-text-muted)]">{series.entriesCount} parts · by {series.author.username}</p><ol className="mt-10 border-t border-[var(--color-border)]">{entries.map((entry, index) => <li key={entry.id} className="flex flex-wrap items-center gap-4 py-5 border-b border-[var(--color-border)]"><span className="w-8 text-[13px] font-semibold text-[var(--color-text-muted)]">{String(index + 1).padStart(2, '0')}</span><div className="min-w-0 flex-1 basis-[240px]"><ShortCard post={{ ...entry, format: 'short', author: entry.author || series.author }} /></div>{series.isOwner && <div className="ml-auto flex gap-1"><button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={`Move ${entry.title} earlier`} className="button-target min-h-11 min-w-11 rounded-full border border-[var(--color-border)] disabled:opacity-30 h-11 w-11 sm:min-h-0 sm:min-w-0">↑</button><button type="button" onClick={() => move(index, 1)} disabled={index === entries.length - 1} aria-label={`Move ${entry.title} later`} className="button-target min-h-11 min-w-11 rounded-full border border-[var(--color-border)] disabled:opacity-30 h-11 w-11 sm:min-h-0 sm:min-w-0">↓</button></div>}</li>)}</ol>{series.isOwner && <div className="mt-6 flex items-center gap-3"><Button className="min-h-10 sm:min-h-0" onClick={saveOrder} disabled={update.isPending} aria-busy={update.isPending}>{'Save reading order'}</Button>{update.isSuccess && <span className="text-[12px] text-[var(--color-text-secondary)]">Order saved</span>}{update.isError && <span className="text-[12px] text-[var(--color-danger)]">Could not save order</span>}</div>}</PageFrame>
+  return <SeriesContent key={id} id={id} series={query.data} />
 }

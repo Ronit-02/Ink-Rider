@@ -134,7 +134,7 @@ export default function HomePage() {
         </p>
       </header>
 
-      <div className="relative mb-8">
+      <div className="sticky top-0 z-20 mb-8 bg-[var(--color-bg)] pt-3">
         <div ref={feedTabsRef} role="tablist" aria-label="Discovery feeds" onScroll={() => {
           const tabs = feedTabsRef.current
           if (tabs) setHasMoreFeedTabs(tabs.scrollLeft + tabs.clientWidth < tabs.scrollWidth - 2)

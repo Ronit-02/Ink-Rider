@@ -1,5 +1,289 @@
 # Ink-Rider progress tracker
 
+## Four-column short-card experiment — 2026-10-16
+
+Shared short-card grids now cap at four columns while retaining the 170 px minimum and narrow-screen overrides. Wide-screen short cards grow into the freed space. Existing card content, actions, routes, and APIs are unchanged. Frontend production build passed on 2026-10-16; browser geometry was not checked.
+
+## Writing studio reader demand action — 2026-10-16
+
+Moved Find reader demand to the Writing studio header immediately before Write a post. The actions stack below 380 px and can wrap on smaller layouts. Kept the Ideas tab and its reader-question panel, removing only the Ideas from readers heading. The opportunities page remains available. Focused lint and frontend build passed on 2026-10-16; browser geometry was not verified.
+
+## Stable content-grid columns — 2026-10-16
+
+Shared card and collection grids now reserve their responsive columns regardless of item count by using `auto-fill` rather than collapsing unused tracks. Series, collections, posts, shorts, competition entries, and home short layouts keep their existing min widths and breakpoints; profile stat grids use the same stable-column behavior. One-item and three-item browser checks at 390, 768, and 1200 px passed for the shared card-grid variants using the actual grid CSS in Chrome. Frontend lint, production build, and scoped whitespace check passed on 2026-10-16. A source search found no remaining `auto-fit` rules under `Frontend/src`.
+
+## Create series and collection title guidance — 2026-10-16
+
+The Create series modal now states the two-character title minimum beside its character count. In both Create series and Create collection, hovering over the disabled Create button while the title is too short shows that requirement. Existing validation and submission behavior remain. Focused ESLint and the frontend production build passed on 2026-10-16; browser hover behavior was not checked.
+
+## Post-series cover previews — 2026-10-16
+
+Post-series detail rows display an existing cover image when one is present, using the shared image component and a 16:9 ratio. Covers sit beside the row text on wider screens and stack above it on phones; coverless posts and short-series rows keep the compact text layout. The series API already supplies the image, so no backend or schema change was needed. Verification on 2026-10-16: frontend lint, production build, test syntax, and scoped whitespace check passed. The updated 320/390/1280 px browser fixture has not run because the local Chrome environment denied access to the Vite server during the preceding series-layout attempt.
+
+## Compact series detail items — 2026-10-16
+
+Series detail now renders short and post entries as numbered compact rows with title, bounded preview, reading time, and the shared item action menu. Short selection still opens the ordered short reader; article selection still follows the post route. The layout uses a three-column row down to 320 px without changing APIs, schemas, series editing, or discovery cards. Verification on 2026-10-16: frontend lint and production build passed. The focused Chrome run launched but could not load the local Vite server because the browser reported `ERR_NETWORK_ACCESS_DENIED`; layout and interactions remain unverified in a browser.
+
+## Application scroll restoration — 2026-10-16
+
+AppLayout now saves the independent main scroll offset by React Router history-entry key in tab-scoped session storage (capped at 50 entries). New entries start at the top; browser or in-app Back and browser Forward restore their own positions, with a short wait for asynchronously rendered page height. Existing routes, Back destinations, styling, APIs, and schemas are unchanged. Frontend lint, build, and scoped whitespace checks passed on 2026-10-16. Two focused browser assertions were added but could not execute: bundled Playwright Chromium and ffmpeg are missing, and installed Chrome was denied loopback access in this sandbox. Browser behavior remains unverified here.
+
+## Format-separated recommendations — 2026-10-16
+
+Article detail writer recommendations, question detail published responses, Member Hub early releases, and Explore Trending now place posts and short reads in separately titled sections when both appear. The existing format-specific cards and grids are reused. A source audit found Home's dedicated Short reads inserts and format filters or sections on Search, Author, Profile, Collections, Library, and History. Frontend `npm run build` passed on 2026-10-16 in the current working tree. Browser layout and live API data were not exercised in this check.
+
+## Reusable series posts — 2026-10-16
+
+Published posts and shorts can now be selected for multiple series. Eligible-post reads no longer exclude entries in other series; create, update, and append enforce ownership, format, release, capacity, and no duplicate within the same series. The Add to series dialog blocks only an already-containing selected series. Removed the unique membership index from the schema and added the idempotent `npm run migrate:series-membership` command for deployed databases. Five focused series contract tests passed; one listener-backed test and the full suite could not run because local TCP binds were denied. Frontend build and scoped lint passed. Live database migration was not run in this workspace.
+
+## Collection edit deletion confirmation — 2026-10-16
+
+Delete collection in the Edit collection modal now opens a separate confirmation modal above the editor, matching the series deletion flow. Closing it returns to editing, and the existing delete mutation runs only from the confirmation action. Focused ESLint and frontend production build passed on 2026-10-16; browser interaction was not verified.
+
+## Create collection title hint — 2026-10-16
+
+The Create collection modal now states the two-character title minimum beside its character count. Existing validation, button state, payload, and API remain unchanged. Focused ESLint and the frontend production build passed on 2026-10-16.
+
+## Series edit deletion confirmation — 2026-10-16
+
+Delete series in the Edit series modal now opens a separate confirmation modal above the editor. Its header Close returns to editing without deleting; the owner-scoped delete mutation runs only from the confirmation action. The prior inline confirmation is removed. Existing series edit controls, route, API, and data model remain. Frontend lint and production build passed on 2026-10-16, and a focused mocked-API browser assertion was added. Browser execution was not verified because the managed API server could not connect to MongoDB.
+
+## Owner edit actions in card menus — 2026-10-16
+
+Series and collection card three-dot menus now show Edit series or Edit collection only for owner records. Activating Edit navigates to that item's detail route and opens its existing owner edit modal, then clears the one-time navigation state. No new editor, API, schema, or stored-data change was needed. Focused owner-menu assertions were added for both cards; frontend lint and production build passed on 2026-10-16. Browser execution could not start because the managed API server could not connect to MongoDB.
+
+## Owned collection menu — 2026-10-16
+
+The collection-card three-dot menu omits Save collection and Remove from saved when the collection belongs to the signed-in viewer. Share, owner Delete, and Not interested remain. The detail page already hid its save button for owners; no API or schema change was needed. Frontend lint, production build, and focused Playwright test discovery passed on 2026-10-16. The focused browser check could not start because the managed API server could not connect to MongoDB.
+
+## Modal Cancel button cleanup — 2026-10-16
+
+Dismiss-only Cancel buttons were removed from all active modal forms and confirmation dialogs that already have a header Close icon: collection and series creation/edit/deletion, question creation, competition entry, publishing, draft/post/comment deletion, comment editing, and reporting. Primary actions, Back in series creation, pending guards, errors, and Escape/backdrop behavior remain. Page-level Edit profile and inline comment-composer Cancel controls remain because they do not dismiss a modal. Focused modal specs were updated to use header Close. Frontend lint and production build passed on 2026-10-16; browser interaction was not verified.
+
+## Series card options — 2026-10-16
+
+Series cards now have the shared three-dot menu with Share link, owner-only Delete series with confirmation, and Not interested to hide the card locally. The card still opens series detail from its body. Existing series detail editing and API contracts are reused; no new save/report capability is introduced. Frontend lint and production build passed on 2026-10-16. Browser interaction and live deletion were not verified.
+
+Collection card three-dot controls now have a theme-surface circular backing, border, and shadow so cover images do not obscure their dots on narrow screens. Frontend lint and production build passed on 2026-10-16; browser appearance was not verified.
+
+## Series next-item readers — 2026-10-16
+
+Short and full-post readers now name the next item in their series and offer Open next short/post in series after the body. The short series detail page supplies its ordered short IDs to the existing reader, enabling its wheel, touch, and Up/Down progression across those list cards. Existing post detail series data, routes, API, schema, card styles, and unrelated reader entry points remain unchanged. Verification on 2026-10-16: frontend lint, production build, and scoped whitespace check passed. Focused Playwright checks could not start because the managed API server could not connect to MongoDB; browser behavior remains unverified locally.
+
+## Category fitting across preview lists — 2026-10-16
+
+QuestionCard in Explore/Search, OpportunityCard on reader demand, and the unused ArticleCard, FeaturedCard, and HorizontalCard previews now keep category pills within one row and show only complete pills that fit. DiscoveryPostCard uses the same shared fitting hook; detailed readers, category navigation, routes, API contracts, and stored data remain unchanged. Verification on 2026-10-16: frontend lint and production build passed; three focused mocked-API Chrome resize checks passed for DiscoveryPostCard, QuestionCard, and OpportunityCard at 320/1280 px; seven existing question/opportunity browser checks passed. The three dormant article components compiled but have no current app route for browser checks.
+
+## Article card category fitting — 2026-10-15
+
+Article list cards now keep categories on one footer line beside the existing engagement controls. The card measures available width and shows only whole category pills that fit, updating as the card resizes. Existing card routes, controls, typography, and backend data remain unchanged. Verification on 2026-10-15: frontend lint and production build passed; a focused mocked-API Chrome check passed at 320 and 1280 px, including shrink and grow. The broader six-width card-control suite passed at 768/1280 px but four narrower cases failed on existing metadata/cover-position assertions before reaching category checks; those assertions need separate reconciliation with the current card layout.
+
+## Google Fonts CSP allowance — 2026-10-15
+
+The development page CSP and production hosting header now allow the existing Google Fonts stylesheet and font-file origins, resolving the reported stylesheet CSP block without changing font choices or page styling. Verification on 2026-10-15: frontend production build passed, and the generated HTML, hosting header, and bundled CSS font import were checked for matching origins. Live Google Fonts delivery and a deployed-host browser check were not exercised.
+
+## Access-token focus refetch — 2026-10-15
+
+The frontend API client now refreshes expiring access tokens before sending requests. This covers simultaneous notification, shorts, and discovery-feed refetches after a tab regains focus, while retaining the existing 401 fallback. No backend route, API contract, schema, or UI change was made. Verification on 2026-10-15: frontend lint and production build passed; one focused mocked-API Chrome test passed, asserting a single shared refresh and valid authorization on parallel reads. A failed or revoked refresh still requires sign-in; live session behavior was not exercised.
+
+## Series detail editing modal — 2026-10-15
+
+Series owners now edit reorder, remove, add, and save actions inside an Edit series modal on series detail. The detail page keeps its existing read presentation, cards, routes, API payloads, and owner gating; non-owners are unchanged. Updated `Frontend/src/features/discovery/pages/ShortSeriesDetail.jsx` and the series UI rules. Frontend lint and production build passed on 2026-10-15. Focused browser persistence and live provider flows were not exercised.
+
+## Collection grid width and content-safe sizing — 2026-10-15
+
+The collection grid now follows the series grid’s 420 px minimum track, producing two columns at wider PageFrame widths and one column when two tracks cannot fit. Collection cards retain the responsive stacked cover/details structure below 640 px and horizontal structure above it, but their height is content-driven with the existing 216 px minimum instead of the series 5:2 constraint; this prevents collection metadata and actions from clipping. Updated `Frontend/src/styles/global.css` and `Frontend/src/features/collection/components/CollectionCard.jsx`; frontend lint and production build should be rerun with focused collection geometry verification.
+
+## Collection card ratio parity across breakpoints — 2026-10-15
+
+Collection cards now follow the same ratio contract as series cards: content-driven stacked cards below 640 px and a 5:2 card ratio from 640 px upward. The existing collection grid columns, cover/details structure, controls, metadata, and desktop navigation remain unchanged. Updated `Frontend/src/styles/global.css` and `Frontend/src/features/collection/components/CollectionCard.jsx`; frontend lint and production build should be rerun with focused collection geometry verification.
+
+## Collection and series narrow cover ratio alignment — 2026-10-15
+
+Collection and series cards now share the same 2:1 full-width cover ratio below 640 px. Their desktop compositions remain unchanged. Updated `Frontend/src/features/discovery/components/SeriesCard.jsx` and `Frontend/src/features/collection/components/CollectionCard.jsx`; frontend lint and production build should be rerun with focused browser geometry verification.
+
+## Stacked narrow collection cards — 2026-10-15
+
+Collection cards now use the same responsive structure as series cards below 640 px: the cover is a full-width 16:9 region above the title and description, followed by collection metadata. At 640 px and above, the existing text-left/cover-right card composition remains unchanged. Updated `Frontend/src/features/collection/components/CollectionCard.jsx` and the collection grid rule in `Frontend/src/styles/global.css`; frontend lint and production build should be rerun with focused collection browser verification.
+
+## Stacked narrow series cards — 2026-10-15
+
+Series cards now use a stacked cover/details composition below 640 px: the existing cover fills the card width above the metadata, title, description, and writer details. At 640 px and above, the existing horizontal card composition and 5:2 ratio remain unchanged. The narrow card height is content-driven instead of forcing the previous compact horizontal ratio. Updated `Frontend/src/features/discovery/components/SeriesCard.jsx` and `Frontend/src/styles/global.css`; frontend lint and production build should be rerun with focused series browser verification.
+
+## Narrow series-card content balance — 2026-10-15
+
+Series cards keep their existing one-column grid and 2:1 ratio on narrow screens, but the phone cover track is now 96 px instead of 112 px and the content padding is 12 px. This gives metadata, titles, and descriptions more usable width in the existing compact composition; tablet/desktop proportions remain unchanged. Updated `Frontend/src/features/discovery/components/SeriesCard.jsx`. Frontend lint and production build should be rerun with focused series browser verification.
+
+## Mobile heading-action spacing — 2026-10-15
+
+Home section heading helpers now use 12 px vertical separation when their action wraps below the title block on narrow screens; the existing 4 px desktop row gap remains unchanged. This closes the remaining title/button spacing issue without changing controls, typography, colors, or section structure. Updated `Frontend/src/features/discovery/pages/Home/HomeSections.jsx` and `Frontend/src/features/discovery/pages/Home/TopQuestionsSection.jsx`. Frontend lint and build should be rerun with the next focused verification.
+
+## Responsive heading actions — 2026-10-15
+
+Shared page headers and the audited repeated Home, Explore, and Profile heading/action rows now use one column below the small-screen breakpoint, placing the existing action or filter on a left-aligned row beneath the heading content. The current desktop/tablet right-column alignment, typography, colors, spacing tokens, controls, routes, APIs, and data flow remain unchanged. Updated `Frontend/src/shared/components/ui/PageHeader.jsx`, the Home section helpers, Explore Trending, Profile, `Frontend/README.md`, and this UI rule/tracker documentation. Verification: frontend lint and production build passed on 2026-10-15; narrow-screen browser geometry should be covered in the next focused run.
+
+## Display title and user-name capitalization — 2026-10-15
+
+API-backed presentation fields now capitalize the first alphabetic character of `title`, `username`, and `displayName` values recursively across posts, shorts, collections, series, component title fields, and identity surfaces. The shared normalizer preserves punctuation, whitespace, the remainder of each value, stored values, and URL handles; the prior CSS `capitalize` behavior on author metadata was removed because it capitalized every word. No route, API contract, schema, persistence, layout, typography, color, or navigation change was made.
+
+Verification on 2026-10-15: the normalization helper was exercised with whitespace/punctuation, Unicode, nested, and handle-preservation cases; frontend lint and production build passed. Browser/live persistence, physical devices, assistive technology, and other engines were not exercised.
+
+## Phone inbox placement — 2026-10-15
+
+The signed-in phone Inbox panel now opens 8 px below and right-aligned with the navbar notification button instead of at viewport center. Mobile keeps native modality, viewport bounds, internal scrolling, focus containment/restoration, and route-background behavior; desktop placement, notification rows/actions, APIs, schemas, typography, colors, and navigation remain unchanged. Changed `Frontend/src/features/notification/pages/NotificationsPage.jsx`, `Frontend/src/shared/components/layout/Navbar.jsx`, `Frontend/tests/notifications-modal.spec.js`, `Frontend/README.md`, `context/notifications-audit.md`, `context/ui-registry.md`, and this tracker. Frontend lint and production build passed on 2026-10-15. The focused Playwright run was interrupted before results, so browser geometry remains unverified in this environment.
+
+## Responsive series grid — 2026-10-15
+
+The Stories and Shorts grids on `/series` now use a dedicated responsive grid modifier whose tracks and cards fill the available PageFrame width instead of inheriting the 360 px post-card cap. After visual review showed excess empty height at 16:9 and too little information in the text-only treatment, the approved card structure became a compact horizontal cover/content composition at 2:1 on narrow screens and 5:2 from 600 px. A follow-up small-layout review found that two tracks at a 633 px viewport compressed and clipped this richer content, so series tracks now require 420 px and that range remains one column. The card uses the existing cover or ImageBox fallback, then presents format/creation month, part count, serif title, description, writer avatar/name, and a View cue. The whole card remains one semantic link; long content stays bounded. Existing tokens, routes, APIs, schemas, stored data, creation/editing flows, and series detail remain unchanged.
+
+Verification on 2026-10-15: frontend lint, production build, and scoped whitespace validation passed. Six focused mocked-API installed-Chrome checks passed, with the layout regression now exercising 390 px, the reported 633 px intermediate width, and 1280 px. The checks confirm one full-width column at the two smaller widths, two sufficiently wide columns on desktop, the 2:1/5:2 ratios, cover/fallback and enriched metadata presentation, and the existing series browsing, creation, editing, and add-to-series flows. The run used the existing installed-Chrome config and a task-owned Vite server outside the sandbox. Live persistence, physical devices, assistive technology, and other browser engines were not exercised.
+
+## Series creation format choice — 2026-10-15
+
+Create a series now opens a neutral first step asking whether the writer wants a Posts or Shorts series. Eligible writing is not requested until a format is chosen, and Back returns to the choice without dismissing the modal. Eligible posts or shorts are selected from an app-styled multi-select dropdown with individual selection, Select all, and Clear all; the former native checkbox list is removed. The removable reading-order list is revealed after the dropdown closes so adding choices cannot grow and recenter the modal beneath the open anchored menu. The eligible read uses the established `/api/short-series` compatibility mount and displays a server-provided recovery message when available. Existing series tabs, creation payloads, eligibility rules, cards, detail editing, schemas, and stored data remain unchanged.
+
+The Shorts choice initially returned `Invalid series type` because Express supplied its `next` callback as the eligibility controller's third argument and the controller interpreted that callback as a forced type. The route handler now delegates to a separate internal typed loader, so query values `article` and `short` are handled normally while the legacy eligible-shorts wrapper can still force `short`.
+
+Verification on 2026-10-15: frontend and backend lint and the frontend production build passed. Five focused mocked-API installed-Chrome checks passed, including no request before format choice, Posts and Shorts dropdowns without checkbox inputs, Select all, visible reading order, Back navigation, existing series editing, list-card actions, and article/short detail appends. A focused Chrome geometry regression also confirms the open dropdown retains its vertical position after one selection and Select all. The focused backend regression confirms the Express route handler accepts both `article` and `short` query types even when Express supplies `next`. Live MongoDB persistence, physical devices, assistive technology, and other browser engines were not exercised.
+
+## Ask-question field spacing — 2026-10-15
+
+The Ask the community modal now uses 24 px vertical spacing between Question, Context, Tags, and Target writers field sections, up from 16 px after the first field. Label-to-input spacing, controls, validation, submission, modal dimensions, backend routes, and stored data remain unchanged. Updated QuestionsTab and the owning UI rule.
+
+Verification on 2026-10-15: frontend lint and production build passed. The focused mocked-API Chrome question-dialog check passed at 390 px, including field interaction, tag selection, submission, and horizontal-overflow assertion. Physical devices and other browser engines were not exercised.
+
+## Add post or short to series — 2026-10-15
+
+Released owner stories and shorts now expose Add to series from shared list-card overflow menus, Writing studio article rows/short cards, full article detail, and the compact short reader. One shared format-aware dialog loads the writer's existing series with pagination and loading/error/empty/full/already-assigned states, then uses a new authenticated append operation. Backend enforcement preserves owner-only published content, matching formats, 50 parts, ordered append, retry-safe already-present responses, and one-series-per-post membership. Existing series creation/edit/reorder, schemas, collection saving, cards, readers, routes, typography, colors, and navigation remain unchanged.
+
+Verification on 2026-10-15: frontend and backend lint passed; frontend production build passed; the focused append contract passed. Four focused mocked-API installed-Chrome checks passed for existing series browsing/editing, article and short list-card actions, already-assigned feedback, and article/short detail appends. The broader name-filtered backend run passed four series contracts including the new append test, while an unrelated HTTP route test could not connect to its task-owned localhost server inside the sandbox. Live MongoDB persistence, physical devices, assistive technology, and other browser engines were not exercised.
+
+## Ask-question tag picker — 2026-10-15
+
+Ask a question now reuses the publishing TagPicker instead of a comma-separated field. The modal offers existing public tag suggestions, custom-tag creation, a selected-tag group, and per-tag removal. The picker applies the question endpoint's optional five-tag/30-character limits while publishing retains its required 20-tag/60-character behavior. Question submission sends the selected tag array through the existing route; no backend or schema changed. Updated TagPicker, QuestionsTab, the focused question-dialog browser spec, UI rules/registry, and modal audit.
+
+Verification on 2026-10-15: frontend lint and production build passed. Four focused mocked-API Chrome checks passed: the question dialog at 390 px plus the existing publishing picker checks at 320 and 1280 px and its 20-tag limit. The question check covers an existing suggestion, custom creation, selected chips, removal, and the submitted array. Live persistence, physical devices, assistive technology, and other browser engines were not exercised.
+
+## Short-reader backdrop focus — 2026-10-15
+
+The existing dimmed backdrop behind the short-read modal now adds a small blur, reducing distraction from the underlying page while keeping the reader, comments, navigation, actions, dismissal, routes, APIs, and stored data unchanged. Updated `Frontend/src/features/discovery/components/ShortReadModal.jsx` and the short-format audit. Focused frontend lint and production-build verification are recorded with this change.
+
+## Collection detail header regions — 2026-10-15
+
+Collection detail now uses explicit responsive grid regions for intro, actions, and curator metadata. Desktop keeps the cover beside a title/description and top-right actions with the curator below; tablet and phone keep the cover above the intro, then place actions and curator in a stable second row. Content length no longer changes element order or causes flex-wrap drift. Existing controls, cover, typography, routes, APIs, and detail content remain unchanged. The focused collection-detail browser spec includes a long-title/description geometry regression at 390 px and 1280 px. Frontend lint and production build passed on 2026-10-15; browser geometry remains unverified in this local environment because the managed test server cannot connect to MongoDB and the installed Playwright browser executable is unavailable.
+
+Below the desktop breakpoint, title and description occupy the first grid row while the curator and actions share the second; the actions are vertically centered against the curator. Desktop keeps title and actions in its first row, with the curator in a second row. Both row transitions use the same 28 px grid gap, including when title or description text wraps.
+
+## Series navigation icon — 2026-10-15
+
+The desktop Sidebar now uses a distinct 16 px ordered-reading Series icon instead of reusing the Collections grid icon. Series and Collections labels, routes, active state, spacing, colors, and mobile navigation remain unchanged. Added the shared icon, registered it in the icon barrel, updated the Sidebar and UI registry. Frontend lint, production build, and whitespace checks passed on 2026-10-15.
+
+## Shorts filter reset — 2026-10-15
+
+Short reads now clears `shortTopic` and `shortSort` atomically when Reset filters is selected. Previously the shared fallback invoked two independent URL updates, letting the latter update retain one active value. Audit of every `FilterBar` consumer found this was the only multi-value surface without an atomic reset handler: Trending, Questions, Collections, Library, History, Profile, and Author already provide one; Competitions has one filter value only. Added focused coverage for Shorts starting with both filters active. Frontend lint, production build, focused Playwright test discovery, and whitespace checks passed on 2026-10-15; browser execution remains outstanding in this local environment.
+
+## Collections category controls — 2026-10-15
+
+The public `/collections` page no longer renders Discover or My collections category buttons and always shows the existing public collection feed. Create collection, visibility/sort filters, pagination, collection cards, detail routes, and backend collection contracts remain unchanged. Personal owned and saved collection lists remain available under Library. Updated the Collections page, its focused layout assertions, and UI rules. Frontend lint and production build passed on 2026-10-15. The focused Playwright command started its test server but did not complete within the local command window, so browser verification remains outstanding.
+
+## Mobile search focus dismissal — 2026-10-15
+
+Closing mobile Search with Close or Escape now blurs the navbar search field. Mobile Search also opts out of the shared dialog hook's trigger-focus restoration, preventing the restored field focus from opening the modal again. Focusing or tapping the mobile navbar field still opens the full-screen dialog and transfers focus directly to its input. Desktop focus behavior remains unchanged. Updated Navbar, the dialog focus hook, the focused mobile search spec, and UI rules. Frontend lint and production build passed; the direct-focus and unfocused-close assertions are covered by the mobile search browser checks.
+
+## Search prompt popover spacing — 2026-10-15
+
+Tightened the empty desktop/tablet search prompt popover spacing so its first heading, trending rows, divider, and topic heading use a consistent vertical rhythm. Existing option minimum targets, prompt content, direct navigation, and typed autocomplete remain unchanged. Updated `Frontend/src/shared/components/layout/Navbar.jsx` only for this spacing correction. Frontend lint and production build passed; the focused prompt checks remain covered by the existing search browser specs.
+
+## Short-reader comment scrolling isolation — 2026-10-15
+
+Expanded comments in the short reader now retain wheel and touch scrolling inside their bounded footer pane without switching to another short. Reading-pane edge gestures, overlay wheel navigation, external Up/Down controls, comment behavior, modal dimensions, routes, APIs, schemas, and stored data are unchanged. Updated ShortReadModal, its focused browser coverage, Frontend README, UI rules/registry, the short-format audit, and this tracker.
+
+Verification on 2026-10-15: focused frontend lint passed. Three mocked-API Chrome checks passed for list edge gestures, overlay wheel navigation, and expanded-comment scrolling; the new comment check confirmed that the comments pane scroll position advances while the active short remains unchanged. Full frontend lint, production build, and whitespace results are recorded after the final verification run.
+
+## Page-wide heading action alignment — 2026-10-15
+
+Expanded the Home heading-action alignment rule across the application. Shared PageHeader actions stay beside headings in the right column and remain vertically centered against their title/description block at narrow and wide widths, covering Collections, Series, Shorts, Questions, Writing studio, and future PageHeader consumers. Local heading/action rows follow the same rule on Home, Profile, Trending, competition detail, and Staff vote review. Heading text wraps within the left column. Button styling, destinations, filters, cards, routes, APIs, and stored data are unchanged. Updated the shared header, bounded local rows, focused browser assertions, Frontend README, UI rules, and this tracker.
+
+Verification on 2026-10-15: frontend lint, production build, and whitespace checks passed. Three mocked-API Chrome checks passed across five shared PageHeader surfaces at 320, 605, and 1280 px, confirming that actions remain to the right, align to the heading block's vertical center, and stay inside the header. The focused Home carousel/description check also passed at 320 px with the same measured placement. Physical devices, other browser engines, and every data-dependent local header state were not exercised.
+
+## Article series progression placement — 2026-10-15
+
+Full article detail now places one series action after the article body, before comments: Next post in the series, or View the series on the final part. The pre-body series panel, title/part metadata, and Previous button are removed from this page. Short-read modal progression, series data/API, article reading tools, comments, and recommendations retain their existing behavior. Changed `Frontend/src/features/post/pages/index.jsx`, the focused article-reading spec, Frontend README, UI rules/registry, and this tracker. Verification on 2026-10-15: two mocked-API Chrome article checks passed for placement, destination, final-part behavior, 44 px target, and existing sharing/reading access; frontend lint, production build, and scoped whitespace checks passed. Live persistence, physical devices, and other engines were not exercised for this placement change.
+
+## Comment disclosure, question voting, and filter dropdowns — 2026-10-15
+
+The article and short-reader Comments disclosure has a clearer circular chevron and hover state. Question feed votes now update the viewer-scoped list cache, so pressing an already selected upvote removes it immediately; the selected control exposes a remove-upvote title. Search filter panels keep their nested Time/Sort dropdowns outside the scrolling choices region to avoid clipping. Existing vote endpoints, routes, schemas, URL filters, typography, and page layouts remain unchanged. Updated the shared disclosure CSS, question vote hook and control, shared filter/popover placement, a focused vote browser spec, and the owning context records.
+
+Verification on 2026-10-15: frontend lint and production build passed. The focused Playwright run could not start through its managed backend because MongoDB was unavailable. A frontend-only installed Chrome run reached the browser but its sandbox denied loopback navigation (`ERR_NETWORK_ACCESS_DENIED`), so vote interaction and dropdown geometry remain browser-unverified.
+
+## Data-backed Filters choices — 2026-10-15
+
+Trending, Questions, Shorts, competitions, Collections, Library History, Search results, and published-writing views now show filter choices from the loaded data in their current tab or section. Search uses an unfiltered result query for availability and omits Filters for Writers. Empty views hide the trigger; a group without a useful choice is omitted while sorting remains available for nonempty lists. Selected values are retained while a paginated list can still load more. Filter panel layout, URL keys/reset scope, routes, APIs, and schemas are unchanged. Source changes are the relevant frontend pages, shared FilterBar, and available-options helper. Focused browser fixtures and assertions for account groups, filter reset, collections, competitions, Search, responsive controls, Trending, and mobile navigation were aligned with data-backed choices.
+
+Verification on 2026-10-15: frontend lint and production build passed; focused Node assertions for tag/enum availability and paginated selected-value retention passed; affected Playwright specs parse. Browser execution was unavailable in this sandbox: the managed backend fails at short-series route registration, the configured Playwright Chromium/ffmpeg binaries are absent, and installed Chrome is denied loopback access. Dynamic choices on later unloaded pages are intentionally unknown until those pages load; the existing bounded Search result response provides availability only for returned results.
+
+## Story and short series — 2026-10-15
+
+Series now have a dedicated `/series` browser with separate Stories and Shorts tabs. Published article posts and short posts can each form format-specific series; the create dialog selects existing eligible writing, and owners can add, remove, and reorder parts on detail. The backend validates format, public release, ownership, unique membership, and the existing two-to-fifty-part bound. Older series default to short, and old detail/API paths remain available. The Shorts page links to its series tab. Verification on 2026-10-15: frontend and backend lint, frontend production build, artifact scan (77 files without source maps), whitespace check, and all 108 backend foundation contracts passed. Twelve focused mocked-API Chrome checks passed for format tabs, owner add/reorder/save, the moved creation dialog at phone and desktop widths, modal error behavior, old missing-series recovery, and route inventory. An existing article metadata browser test failed before article rendering because its fixture aborts the server-availability request; it does not exercise series behavior. Live database persistence, physical devices, assistive technology, and other browser engines were not exercised.
+
+## Profile controls and reader demand — 2026-10-15
+
+Removed the duplicate phone Account buttons from Profile and moved Find reader demand from the Profile header to Writing studio Ideas. Profile editing uses the shared pen icon in a 44 px secondary button with the accessible name Edit profile and the existing edit route. Account navigation and sign-out remain in the mobile Account sheet. Updated the Profile page, focused account-flow checks, Frontend README, project overview, UI rules/registry, account grouping audit, and the back-button audit. Backend routes, APIs, schemas, and stored data did not change.
+
+Verification on 2026-10-15: frontend lint and production build passed. Four focused mocked-API Chrome checks passed at 320/1280 px across account/Ideas navigation and the existing profile-edit flow. The standard Playwright setup could not start its database-backed API; the first local Chrome run lacked sandboxed loopback access, so the completed run used a task-owned Vite server. Live persistence, physical devices, assistive technology, and other browser engines were not exercised.
+
+## Suggested searches across screen sizes — 2026-10-15
+
+Mobile Trending searches and suggested topics now open Search results immediately when selected. The empty desktop/tablet navbar search shows the same Popular-feed titles and topic prompts inside its existing viewport-bounded popover; arrow/Enter and pointer selection navigate directly. Clearing a desktop query restores these prompts. The topic list and popular-feed query cache are shared between both surfaces. Typed phrase/author autocomplete, Search page filters, routes, APIs, and schemas remain unchanged. Changed the mobile search dialog, Navbar, shared prompt module, focused search specs, Frontend README, UI rules, and UI registry.
+
+Verification on 2026-10-15: frontend lint and production build passed. Fourteen of fifteen focused mocked-API Chrome search checks passed, including direct mobile prompt navigation, tablet/desktop empty-query prompts, keyboard navigation, typed suggestions, and narrow viewport behavior. Four focused prompt/clear checks passed again after the final clear-state adjustment. The remaining existing member navbar check fails on a pre-interaction width assertion at 325 px (measured 257 px while its assertion requires over 300 px); this task did not change navbar sizing. Browser checks used installed Chrome and a task-owned Vite server. Live data, physical devices, assistive technology, and other browser engines were not exercised.
+
+## Browse the current Shorts list in the reader — 2026-10-15
+
+The `/shorts` page passes the currently loaded, topic-filtered card order into the existing short reader. The reader now keeps one responsive width and height across loading, short, and long content. Adjacent items enter vertically from below or above over 520 ms; wheel/touch edge gestures and wheel navigation over the overlay outside the modal remain available at every size, while medium and large screens add bounded Up/Down buttons outside the right edge. The inline Previous/Next and page-position strip is removed. The compact comments disclosure and appreciation actions now remain in the fixed footer; expanded comments scroll within its bounded region. Normal content scrolling stays inside a short, and Close returns focus to the opening card without changing the page URL. Existing series progression inside short content and other short entry points remain unchanged. Changed ShortReadModal, its focused browser coverage, Frontend README, UI rules, UI registry, and the short-format audit. Verification on 2026-10-15: scoped lint, production build, and whitespace checks passed; three focused mocked-API Chrome checks passed for 320 px gestures/focus/URL behavior, 1280 px stable dimensions/external controls/footer placement, and overlay wheel navigation. Physical devices and other browser engines remain unverified.
+
+## Mobile search spacing and keyboard viewport — 2026-10-15
+
+Mobile Search now places its 44 px clear and submit targets directly together while retaining the icon-to-input spacing. Its animated field follows the dialog's available width instead of a separate window-width measurement, and input focus avoids browser scrolling as a mobile keyboard opens. Existing search results, suggestions, modal controls, routes, APIs, and schemas remain unchanged. Updated the mobile search component, focused browser spec, Frontend README, UI rules, and UI registry.
+
+Verification on 2026-10-15: frontend lint and production build passed. Five focused mocked-API Chrome checks passed, including clear/submit spacing, focus and form bounds at 320 × 360, existing suggestion/navigation behavior, and reduced motion. The default Playwright headless shell was unavailable and sandboxed loopback access was blocked, so the completed run used installed Chrome and a task-owned local Vite server. A resized desktop browser does not reproduce a physical phone keyboard; physical keyboard behavior and other browser engines remain unverified.
+
+## Home section action alignment — 2026-10-15
+
+Home section actions sit beside their headings at narrow and wide widths; headings and descriptions wrap within the remaining left column. The shared Home section bar covers Writer's picks, Browse categories, Browse collections, Short reads, and Top authors; the Hot Questions header follows the same alignment. Existing action labels, destinations, and styling are retained. Current verification is recorded in the page-wide heading action entry above.
+
+## Compact Home section headers — 2026-10-15
+
+The Home section bar and Hot Questions header keep the heading block and CTA side by side on small screens, allowing the heading and description to wrap within the left column. This changes only the heading layout. Existing section order, card layout, typography, palette, CTA styling and destinations, feeds, routes, APIs, and schemas remain unchanged.
+
+Verification on 2026-10-15: frontend lint, production build, and scoped whitespace checks passed. A mocked-API Chrome geometry check at 320, 390, and 1280 px confirmed the rendered Writer's picks and Browse categories headings and CTAs share a row, descriptions follow beneath, and the page has no horizontal overflow. Browse collections, Short reads, Top authors, and the currently unused Hot Questions header were not rendered by that check; physical devices and other browser engines remain unverified.
+
+## Short preview space and Home feed tabs — 2026-10-15
+
+The sticky Home feed tab row has 12 px of top padding so the controls retain clear space beneath the navigation while scrolling.
+
+ShortCard excerpts now use the remaining space above the existing action footer, then clamp to the number of full lines that fit. The shared behavior applies to standalone and fluid short cards without changing their typography, dimensions, metadata, cover, actions, or reader. Home feed tabs stay sticky at the top of the application scroll pane beneath global navigation; their horizontal scrolling and selection behavior remain. No backend route, API, or schema changed.
+
+Follow-up visual review found that the initial dynamic clamp measured the footer after overflowing text had already displaced it. ShortCard now measures the fixed content-region boundary instead, clips both the content region and its parent, and applies the calculated line count plus an exact maximum height. This keeps even narrow two-column cards from painting excerpt text behind the footer.
+
+Verification on 2026-10-15: frontend lint and production build passed. Five focused mocked-API Chrome checks passed at 390/1280 px for excerpt fit, a 390 px covered short, a long title, and 390 px sticky tabs. The older short-card spacing test could not run against current markup because it assumes four direct children under a two-child wrapper; its failure preceded assertions about this change. Live data, physical devices, assistive technology, and other browser engines were not exercised.
+
+## Application scrollbar visibility — 2026-10-15
+
+The application scroll container now has a 12 px scrollbar instead of the global 4 px treatment. Its track uses the existing alternate background and its thumb/hover use muted/secondary text tokens in both themes, making the thumb easier to grab and distinguish. The stable gutter remains; nested and hidden carousel scrollbars are unchanged. Updated global CSS, UI rules, and the page-alignment audit. Frontend production build passed, and the focused mocked-API Chrome page-origin check passed with scrolling and sidebar resizing. Physical devices and other browser engines were not exercised.
+
+## Home carousel drag and section descriptions — 2026-10-15
+
+Removed the left/right controls from Home story and category carousels, leaving the swipe/drag text cue when overflow exists. Removed scroll snap from these tracks so desktop pointer dragging follows movement continuously; touch scrolling, hidden scrollbars, card interactions, and feed tabs remain. Writer's picks, Browse collections, and Top authors now have short descriptions matching the existing Browse categories and Short reads heading style, including collection loading/error states. Updated HomeSections, the focused Home section spec, Frontend README, and UI rules. Frontend build and focused lint passed. The focused mocked-API Chrome drag/description check passed at 390 px; the two existing Home section checks also passed. Live data, physical touch devices, assistive technology, and other browser engines were not exercised.
+
+## Home spacing, carousels, and Writing studio overview — 2026-10-15
+
+Home's inserted discovery sections now use smaller vertical margins and padding. Writer's picks and Browse categories story/category tracks hide their native horizontal scrollbars, support desktop mouse dragging alongside touch swipes, and show a drag cue with left/right controls only when overflowing. Cards, section order, and feed tabs retain their existing behavior.
+
+Writing studio now opens on Analytics, followed by Published, Drafts, and Ideas. Analytics shows released-post, appreciation, and comment counts from the existing owner post response. Nonmembers can open a membership prompt with View more analytics; members retain detailed post performance through the existing entitlement-gated analytics API. The separate Ideas tab shows up to three ranked open questions from the existing writer opportunities response in compact rows with reason, optional context, reader interest, and question links. It links to all opportunities. Existing routes, schemas, and backend APIs are unchanged.
+
+Changed HomeSections, the shared Writing studio/Profile implementation, focused account-group expectations, Frontend README, project overview, UI rules/registry, account-groups audit, and this tracker. Frontend lint and production build passed on 2026-10-15, and the scoped whitespace check passed. The Ideas tab placement and row layout were revised after user review. Two focused mocked-API Chrome account-flow checks passed at 320/1280 px, covering the Ideas tab, URL persistence, existing tab behavior, and account navigation; Ideas screenshots at both widths were reviewed. The configured API server could not connect to MongoDB, so these checks used a local Vite server and mocked API responses. Live persistence, physical devices, assistive technology, and other browser engines remain unverified.
+
 ## Save dialog collection membership — 2026-10-14
 
 The Save story dialog now identifies owned collections that already contain the current story or short directly in the collection option badge. The existing collection listing accepts an optional post ID and returns `containsPost`; routes, schemas, duplicate-safe append behavior, and modal structure remain unchanged. Updated the collection controller, collection API/query hook, shared Save dialog, focused Add to collection spec, collection audit, and UI rules.
@@ -1018,3 +1302,64 @@ All shared filter triggers now display only the existing filter icon and active-
 
 
 - 2026-10-14: Added durable authenticated article reading checkpoints. The existing reader keeps scroll progress local, rounds saved checkpoints down to 10% increments, sends at most one update per 10 seconds, and flushes on visibility/page exit/unmount. A unique per-user/post `ReadingState` record stores latest progress, last-read time, and completion; History prefers it while preserving legacy interaction-event fallback. Existing routes, UI structure, styles, analytics events, and unrelated working-tree changes remain unchanged. Frontend lint/build and backend lint passed. Backend contract tests were attempted but 25 network-listener cases were blocked by the sandbox (`connect EACCES`); 81 non-network contracts passed.
+
+## 2026-10-16 — Series and publishing follow-up
+
+Added in-modal reading-order controls for selected series writing and an owned Series section in Library. Removed mandatory cover and tag checks from post creation and update in the editor and server. The publishing modal no longer dismisses on backdrop clicks, which prevents native cover-picker cancellation from closing it. Frontend build passed. Backend foundation tests could not fully run in the sandbox because localhost requests returned EACCES. Existing unrelated working-tree changes were preserved.
+# Article reading tool buttons — 2026-10-16
+
+Article overview and Read aloud now use the existing shared Button presentation: rounded 44 px targets, secondary inactive surface and border, primary selected colors, and the standard focus ring. Their mobile labels, wide-screen icon rail, panel placement, membership gating, and behavior remain as before. Changed `Frontend/src/features/post/pages/AIPanel.jsx` and `context/ui-rules.md`. Frontend lint and production build passed on 2026-10-16. The focused Playwright run did not reach test execution because its local web server stalled during startup; browser appearance remains unverified.
+
+# Edit-modal deletion — 2026-10-16
+
+Owners can delete a series or collection from its edit modal after inline confirmation. Collection deletion reuses its existing authenticated API and mutation; series deletion adds an authenticated, owner-scoped `DELETE /api/series/:id` route that returns 404 for other owners. Successful deletion clears list/detail caches and navigates to the matching browse page. The posts remain. Frontend lint and production build, plus backend syntax checks, passed on 2026-10-16. Live database and browser interaction were not verified.
+
+Series detail now has a Share icon beside Edit for owners, and a Share icon for readers. It reuses the shared Share menu and canonical series URL. Frontend lint and production build passed on 2026-10-16; browser interaction was not verified.
+
+The Edit series modal now closes on a successful Save series request and remains open on failure. Frontend lint and production build passed on 2026-10-16; browser interaction was not verified.
+
+The Edit series action row now places Delete series at the left and Save series at the right, with validation and save errors beneath. The old separate delete row and in-modal saved text are absent; delete confirmation remains inline below the actions. Frontend lint and production build passed on 2026-10-16; browser spacing was not verified.
+
+Delete collection now sits at the left of the Edit collection action row, separated from the right-aligned Cancel and Save changes buttons. Its confirmation opens as a separate modal above the editor, as documented in the 2026-10-16 entry above. Frontend lint and production build passed on 2026-10-16; browser interaction was not verified.
+
+## Create collection modal — 2026-10-16
+
+Removed the published-story selection section from the Collections page create modal. Creation submits an empty `postIds` list; title, description, visibility, and later collection-detail editing remain available. Focused ESLint and frontend production build passed on 2026-10-16. Browser interaction was not checked.
+
+### 2026-10-16 — Edit series dropdown
+
+Replaced the Edit series inline add list with the shared dropdown. It filters out writing already in the current series order and shrinks choices immediately after an addition. Focused series browser coverage was updated. Frontend production build passed.
+
+The focused Playwright browser run did not reach a test result in the sandbox and was stopped after the local web server waited without further output. Browser behavior remains unverified in this run; frontend lint and build passed.
+
+### 2026-10-16 — Article series footer layout
+
+Replaced the separated next-title text and button with one reading-column-width link row showing the next title and part count. The final part uses a matching link to the series overview. Updated the focused article reading expectations. Frontend production build and scoped lint passed; browser verification was not run in this change.
+
+### 2026-10-16 — Short series navigation layout
+
+Aligned the short reader's series footer with the article footer: one full-width next-part control with part count and title, and a matching final-part link to the series overview. Updated focused series expectations. Frontend production build and scoped lint passed; browser verification was not run in this change.
+
+### 2026-10-16 — Article content width
+
+Removed the 44rem width cap from the article body and series navigation so both fill the available post content container. Added a desktop width assertion to the article reading spec. Frontend production build and scoped lint passed; browser verification was not run in this change.
+
+### 2026-10-16 — Compact short series strip
+
+Changed the short reader's large in-content series row to a compact footer strip above Comments. The strip remains at the bottom for brief shorts while story content scrolls independently. Updated focused series assertions. Frontend production build and scoped lint passed; browser verification was not run in this change.
+
+### 2026-10-16 — Short reader footer actions
+
+Moved the short reader's Comments disclosure into the action row immediately after Like and removed its Series action. The existing comments pane and composer still expand in place. Updated related browser spec expectations. Frontend production build and scoped lint passed; browser verification was not run in this change.
+
+### 2026-10-16 — Responsive series navigation titles
+
+Clamped next-part titles to one line in article and short-reader navigation. Moved the action cue below the title on narrow layouts, including the compact short strip below 376 px. Added focused layout assertions for long titles at phone width. Frontend production build and scoped lint passed; browser verification was not run in this change.
+
+### 2026-10-16 — Series completion context
+
+Limited the short reader's final-part completion strip to readers opened from the series detail page. Other entry points continue to show next-part navigation when available but omit the completion strip. Added a standalone final-short expectation; frontend production build and scoped lint passed. Browser verification was not run in this change.
+
+### 2026-10-16 — Article comment composer placement
+
+Moved the article Add a comment composer and guest prompt into the existing Comments disclosure. Both now appear with the discussion when expanded; collapsing retains the mounted draft and deferred read behavior. The standalone Comments dialog and short reader retain their current presentations. Updated focused comment expectations. Frontend production build and scoped lint passed; browser verification was not run in this change.

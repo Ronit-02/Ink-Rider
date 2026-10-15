@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 import Button from '@/shared/components/ui/Button'
 import PageHeader from '@/shared/components/ui/PageHeader'
 import FilterBar from '@/shared/components/ui/FilterBar'
+import { availableFilterOptions } from '@/shared/utils/availableFilterOptions'
 import Pill from '@/shared/components/ui/Pill'
 import ReadingHistoryCard from '../components/ReadingHistoryCard'
 import ShortCard from '../components/ShortCard'
@@ -20,9 +21,11 @@ export default function ReadingHistoryPage({ embedded = false }) {
   const Frame = embedded ? Fragment : PageFrame
   const query = retainRetryView(useReadingHistory())
   const [params, setParams] = useSearchParams()
-  const status = ['in-progress', 'completed', 'opened'].includes(params.get('historyStatus')) ? params.get('historyStatus') : 'all'
   const sort = params.get('historySort') === 'oldest' ? 'oldest' : 'recent'
   const format = params.get('historyFormat') === 'short' ? 'short' : 'article'
+  const source = [...(query.data?.continueReading || []), ...(query.data?.history || [])].filter(item => (item.format || 'article') === format)
+  const statusOptions = availableFilterOptions([{ id: 'all', label: 'All reads' }, { id: 'in-progress', label: 'In progress' }, { id: 'completed', label: 'Completed' }, { id: 'opened', label: 'Opened' }], source, item => [item.completed ? 'completed' : item.progress > 0 ? 'in-progress' : 'opened'])
+  const status = statusOptions.some(option => option.id === params.get('historyStatus')) ? params.get('historyStatus') : 'all'
   const formats = ['article', 'short']
   const updateFilter = (key, value, defaultValue) => setParams(current => {
     const next = new URLSearchParams(current)
@@ -56,7 +59,7 @@ export default function ReadingHistoryPage({ embedded = false }) {
       <div className="flex max-w-full gap-2 overflow-x-auto pb-1" role="tablist" aria-label="History formats">
         {formats.map(item => <Pill key={item} label={item === 'article' ? 'Stories' : 'Shorts'} role="tab" ariaControls="history-format-tabpanel" tabIndex={format === item ? 0 : -1} active={format === item} onKeyDown={handleFormatKeyDown} onClick={() => updateFilter('historyFormat', item, 'article')} />)}
       </div>
-      <FilterBar label="Reading status" options={[{ id: 'all', label: 'All reads' }, { id: 'in-progress', label: 'In progress' }, { id: 'completed', label: 'Completed' }, { id: 'opened', label: 'Opened' }]} value={status} onChange={value => updateFilter('historyStatus', value, 'all')} sortOptions={[{ id: 'recent', label: 'Recently read' }, { id: 'oldest', label: 'Oldest read first' }]} sortValue={sort} onSortChange={value => updateFilter('historySort', value, 'recent')} onReset={resetFilters} />
+      {source.length > 0 && <FilterBar label="Reading status" options={statusOptions.length > 2 ? statusOptions : []} value={status} onChange={value => updateFilter('historyStatus', value, 'all')} sortOptions={[{ id: 'recent', label: 'Recently read' }, { id: 'oldest', label: 'Oldest read first' }]} sortValue={sort} onSortChange={value => updateFilter('historySort', value, 'recent')} onReset={resetFilters} />}
     </div>
     <div id="history-format-tabpanel" role="tabpanel" aria-label={`${format === 'article' ? 'Stories' : 'Shorts'} history`}>
     {query.isPending ? <div role="status" aria-label="Loading reading history"><ListSkeleton count={5} role={undefined} /></div> : query.isError ? <div><p role="alert" className="text-[13px] text-[var(--color-danger)]">Reading history could not be loaded.</p><Button className="mt-4" onClick={() => query.refetch()} aria-busy={query.isFetching} disabled={query.isFetching}>Try again</Button></div> : <>

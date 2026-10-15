@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test('ask-community dialog submits through a required semantic form', async ({ page }) => {
+  let submittedQuestion
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const request = route.request()
     const url = new URL(request.url())
@@ -17,6 +18,10 @@ test('ask-community dialog submits through a required semantic form', async ({ p
     if (url.pathname === '/api/question/suggest') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) })
     }
+    if (url.pathname === '/api/v1/tags') {
+      const choices = [{ value: 'science', label: 'Science' }, { value: 'technology', label: 'Technology' }]
+      return route.fulfill({ json: { data: choices.filter(choice => choice.value.includes(url.searchParams.get('q') || '')) } })
+    }
     if (url.pathname === '/api/search' && url.searchParams.get('type') === 'writers') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { writers: [{ id: '507f1f77bcf86cd799439041', displayName: 'Maya Sen', handle: 'maya-sen' }], posts: [], shorts: [] } }) })
     }
@@ -24,6 +29,7 @@ test('ask-community dialog submits through a required semantic form', async ({ p
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { nextCursor: null } }) })
     }
     if (url.pathname === '/api/question' && request.method() === 'POST') {
+      submittedQuestion = request.postDataJSON()
       return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ data: { id: '507f1f77bcf86cd799439040', mergedExisting: false } }) })
     }
     return route.abort('blockedbyclient')
@@ -51,6 +57,17 @@ test('ask-community dialog submits through a required semantic form', async ({ p
   await expect(submit).toHaveAttribute('type', 'submit')
   await expect(submit).toBeDisabled()
 
+  const tagInput = dialog.getByRole('combobox', { name: 'Add a tag' })
+  await expect(tagInput).toHaveAttribute('maxlength', '30')
+  await tagInput.focus()
+  await dialog.getByRole('option', { name: 'Science' }).click()
+  await expect(dialog.getByRole('button', { name: 'Remove science tag' })).toBeVisible()
+  await tagInput.fill('neighborhood memory')
+  await dialog.getByRole('option', { name: 'Add new tag “neighborhood memory”' }).click()
+  await expect(dialog.getByLabel('Selected tags')).toContainText('neighborhood memory')
+  await dialog.getByRole('button', { name: 'Remove science tag' }).click()
+  await expect(dialog.getByRole('button', { name: 'Remove science tag' })).toHaveCount(0)
+
   const targetWriters = dialog.getByLabel('Target writers')
   await targetWriters.fill('maya')
   await expect(dialog.getByRole('button', { name: /Maya Sen.*maya-sen/ })).toBeVisible()
@@ -62,6 +79,7 @@ test('ask-community dialog submits through a required semantic form', async ({ p
   await submit.click()
 
   await expect(dialog.getByRole('heading', { name: 'Your question is now open to writers.' })).toBeVisible()
+  expect(submittedQuestion.tags).toEqual(['neighborhood memory'])
   const hasHorizontalOverflow = await page.evaluate(() => (
     document.documentElement.scrollWidth > document.documentElement.clientWidth
   ))

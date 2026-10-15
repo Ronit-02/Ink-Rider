@@ -11,10 +11,12 @@ import { updatePostCaches } from '../hooks/postCache'
 import { ListSkeleton } from '@/shared/components/ui/Skeleton'
 import useToast from '@/shared/hooks/useToast'
 
-export default function CommentsSection({ postId, initialCount = 0, compact = false, collapsible = !compact }) {
+export default function CommentsSection({ postId, initialCount = 0, compact = false, collapsible = !compact, expanded: controlledExpanded, onExpandedChange, hideHeading = false }) {
   const [text, setText] = useState('')
   const commentInputRef = useRef(null)
-  const [expanded, setExpanded] = useState(!collapsible)
+  const [internalExpanded, setInternalExpanded] = useState(!collapsible)
+  const expanded = controlledExpanded ?? internalExpanded
+  const setExpanded = onExpandedChange || setInternalExpanded
   const inlineCompact = compact && collapsible
   const idPrefix = useId()
   const commentsHeadingId = `${idPrefix}-comments-heading`
@@ -132,13 +134,13 @@ export default function CommentsSection({ postId, initialCount = 0, compact = fa
   )
 
   return (
-    <section aria-labelledby={commentsHeadingId}>
-      {compact && commentsHeading}
-      {!inlineCompact && composer}
-      {!compact && commentsHeading}
+    <section aria-labelledby={hideHeading ? undefined : commentsHeadingId} aria-label={hideHeading ? 'Comments' : undefined}>
+      {compact && !hideHeading && commentsHeading}
+      {!collapsible && composer}
+      {!compact && !hideHeading && commentsHeading}
 
       <div id={`${idPrefix}-comments-body`} hidden={!expanded}>
-      {inlineCompact && composer}
+      {collapsible && composer}
       {commentsQuery.isLoading && (
         <ListSkeleton count={3} label="Loading comments" />
       )}

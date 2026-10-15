@@ -9,6 +9,7 @@ import useToast from '@/shared/hooks/useToast'
 import BookmarkIcon from '@/shared/icons/BookmarkIcon'
 import LinkIcon from '@/shared/icons/LinkIcon'
 import { AddToCollectionDialog } from '@/features/collection'
+import AddToSeriesDialog, { SeriesActionIcon } from './AddToSeriesDialog'
 
 const InfoIcon = () => <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7v1" /></svg>
 const FlagIcon = () => <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M5 21V3h14l-3 5 3 5H5" /></svg>
@@ -21,6 +22,7 @@ export default function PostCardMenu({ post, onHide, variant = 'list', compactMo
   const [reportOpen, setReportOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
+  const [seriesOpen, setSeriesOpen] = useState(false)
   const triggerRef = useRef(null)
   const reportMutation = useReportPost(post.id)
   const reportSubject = variant === 'short' || post.format === 'short' ? 'short' : 'post'
@@ -55,6 +57,7 @@ export default function PostCardMenu({ post, onHide, variant = 'list', compactMo
       />
       {menuOpen && <ActionMenu anchorRef={triggerRef} onClose={closeMenu} id={menuId} label={`Options for ${post.title}`}>
         <ActionMenuItem icon={<BookmarkIcon filled={post.isBookmarked} />} aria-haspopup="dialog" onClick={event => { event.stopPropagation(); requireAuth(() => { closeMenu(); setSaveOpen(true) }) }}>{post.isBookmarked ? 'Saved' : 'Save story'}</ActionMenuItem>
+        {post.canAddToSeries && <ActionMenuItem icon={<SeriesActionIcon />} aria-haspopup="dialog" onClick={event => { event.stopPropagation(); closeMenu(); setSeriesOpen(true) }}>Add to series</ActionMenuItem>}
         <ActionMenuItem icon={<LinkIcon />} onClick={event => { event.stopPropagation(); closeMenu(); setShareOpen(true) }}>Share link</ActionMenuItem>
         {onHide && <>
           <div className="my-1 h-px bg-[var(--color-border)]" />
@@ -70,5 +73,6 @@ export default function PostCardMenu({ post, onHide, variant = 'list', compactMo
     </ReportModal>}
     {shareOpen && <ShareMenu anchorRef={triggerRef} id={`story-share-${instanceId}`} label="Share article" contentName="Story" url={`${window.location.origin}/post/${post.id}`} onClose={({ restoreFocus = false } = {}) => { setShareOpen(false); if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus()) }} />}
     {saveOpen && <AddToCollectionDialog postId={post.id} title={post.title} isBookmarked={Boolean(post.isBookmarked)} saveMode returnFocusRef={triggerRef} onClose={() => setSaveOpen(false)} />}
+    {seriesOpen && <AddToSeriesDialog postId={post.id} title={post.title} format={post.format === 'short' ? 'short' : 'article'} returnFocusRef={triggerRef} onClose={() => setSeriesOpen(false)} />}
   </>
 }

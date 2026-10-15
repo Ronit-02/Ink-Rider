@@ -3,6 +3,7 @@ import store from "./store";
 import { setAccessToken, logout } from "@/features/auth/store/authSlice";
 import refreshToken from "@/features/auth/api/refreshToken";
 import { markServerUnavailable } from "./serverAvailability";
+import { normalizeDisplayText } from "@/shared/utils/capitalizeFirstAlphabetic";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -10,10 +11,35 @@ const api = axios.create({
   timeout: 12000,
 });
 
+const expiresSoon = (token) => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now() + 30_000;
+  } catch {
+    // Mock and legacy tokens without an expiry retain the existing 401 retry.
+    return false;
+  }
+};
+
 // Request Interceptor (attach token to headers)
 api.interceptors.request.use(
-  (config) => {
-    const token = store.getState().auth.token;
+  async (config) => {
+    let token = store.getState().auth.token;
+    if (token && expiresSoon(token)) {
+      try {
+        const response = await refreshToken();
+        if (store.getState().auth.token === token) {
+          store.dispatch(setAccessToken({ token: response.accessToken }));
+        }
+        token = store.getState().auth.token;
+      } catch (error) {
+        if (store.getState().auth.token === token) {
+          store.dispatch(logout());
+          window.dispatchEvent(new Event('ink-rider:sign-in-required'));
+        }
+        return Promise.reject(error);
+      }
+    }
     if(token){
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -28,6 +54,7 @@ api.interceptors.request.use(
 // Response Interceptor (handle 401 / access token errors)
 api.interceptors.response.use(
   (response) => {
+    response.data = normalizeDisplayText(response.data);
     return response;
   },
 

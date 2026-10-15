@@ -26,7 +26,7 @@ const postData = {
     position: 1,
     total: 3,
     previous: { id: '507f1f77bcf86cd799439010' },
-    next: { id: '507f1f77bcf86cd799439013' },
+    next: { id: '507f1f77bcf86cd799439013', title: 'A better next chapter' },
   },
   depthContext: {
     deeper: { id: '507f1f77bcf86cd799439014', title: 'The longer version' },
@@ -49,7 +49,7 @@ test('article progress and sharing preserve keyboard reading access', async ({ p
     if (url.pathname === '/api/v1/events') {
       return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ data: null }) })
     }
-    return route.abort('blockedbyclient')
+    return route.fulfill({ status: 404, json: { message: 'Fixture route unavailable' } })
   })
 
   await page.setViewportSize({ width: 390, height: 844 })
@@ -58,12 +58,28 @@ test('article progress and sharing preserve keyboard reading access', async ({ p
   await expect(page.getByRole('article', { name: 'Article body' })).toBeVisible()
   await expect(page.locator('[data-reading-body="long-form"] p').first()).toHaveCSS('font-size', '17px')
 
-  const previous = page.getByRole('link', { name: '← Previous' })
-  const next = page.getByRole('link', { name: 'Next →' })
-  await expect(previous).toBeVisible()
+  const next = page.getByRole('link', { name: 'Next post in the series: A better next chapter' })
   await expect(next).toBeVisible()
-  expect((await previous.boundingBox())?.height).toBeGreaterThanOrEqual(40)
-  expect((await next.boundingBox())?.height).toBeGreaterThanOrEqual(40)
+  await expect(next).toHaveAttribute('href', `/post/${postData.seriesContext.next.id}`)
+  expect((await next.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+  await expect(page.locator('article[aria-label="Article body"] + nav')).toContainText('Up next in this series · Part 3 of 3')
+  await expect(page.locator('article[aria-label="Article body"] + nav')).toContainText('A better next chapter')
+  await page.setViewportSize({ width: 1280, height: 900 })
+  const widths = await page.locator('article[aria-label="Article body"]').evaluate(article => ({ body: article.getBoundingClientRect().width, parent: article.parentElement.getBoundingClientRect().width, series: article.nextElementSibling.getBoundingClientRect().width }))
+  expect(widths.parent).toBeGreaterThan(704)
+  expect(Math.abs(widths.body - widths.parent)).toBeLessThan(2)
+  expect(Math.abs(widths.series - widths.parent)).toBeLessThan(2)
+  await page.locator('[data-series-next-title]').evaluate(node => { node.textContent = 'A much longer next post title that should stay on one line even when the reading area becomes narrow '.repeat(3) })
+  await page.setViewportSize({ width: 320, height: 760 })
+  const nextLayout = await page.locator('article[aria-label="Article body"] + nav').evaluate(nav => {
+    const title = nav.querySelector('[data-series-next-title]')
+    const action = nav.querySelector('[data-series-next-action]')
+    return { titleHeight: title.getBoundingClientRect().height, lineHeight: Number.parseFloat(getComputedStyle(title).lineHeight), clipped: title.scrollWidth > title.clientWidth, titleBottom: title.getBoundingClientRect().bottom, actionTop: action.getBoundingClientRect().top }
+  })
+  expect(nextLayout.titleHeight).toBeLessThan(nextLayout.lineHeight * 1.5)
+  expect(nextLayout.clipped).toBe(true)
+  expect(nextLayout.actionTop).toBeGreaterThan(nextLayout.titleBottom)
+  await expect(page.getByRole('link', { name: '← Previous' })).toHaveCount(0)
 
   const progress = page.locator('[data-reading-progress="true"]')
   await expect(progress).toBeVisible()
@@ -89,6 +105,21 @@ test('article progress and sharing preserve keyboard reading access', async ({ p
     document.documentElement.scrollWidth > document.documentElement.clientWidth
   ))
   expect(hasHorizontalOverflow).toBe(false)
+})
+
+test('final story part ends with a link back to its series', async ({ page }) => {
+  await page.route(url => url.pathname.startsWith('/api/'), route => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/api/auth/refresh-token') return route.fulfill({ status: 401, json: { message: 'Signed out' } })
+    if (path === `/api/post/${postId}`) return route.fulfill({ json: { postData: { ...postData, seriesContext: { ...postData.seriesContext, next: null } } } })
+    if (path === `/api/post/${postId}/comments`) return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+    return route.fulfill({ status: 404, json: { message: 'Fixture route unavailable' } })
+  })
+  await page.goto(`/post/${postId}`)
+  const seriesLink = page.locator('article[aria-label="Article body"] + nav').getByRole('link', { name: 'View the series' })
+  await expect(seriesLink).toBeVisible()
+  await expect(seriesLink).toHaveAttribute('href', `/series/${postData.seriesContext.id}`)
+  await expect(page.getByRole('link', { name: /Next post in the series/ })).toHaveCount(0)
 })
 
 test('published articles expose crawlable canonical, social, and structured metadata', async ({ page }) => {

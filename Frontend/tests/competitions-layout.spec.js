@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test'
 const competitions = [
   { id: 'closed-contest', title: 'Small Details, Big Worlds', description: 'A seeded competition exercising entry, voting, judging, and results states. Discover a fresh perspective through careful observation.', status: 'closed', closeDate: '2026-09-13T12:00:00Z', entriesCount: 2, competitionType: 'theme' },
   { id: 'open-contest', title: 'TomorrowAndItsExtraordinarilyLongUnbrokenPossibilities', description: 'Explore tomorrow through a thoughtful piece of writing.', status: 'open', closeDate: '2026-11-13T12:00:00Z', entriesCount: 1234, competitionType: 'timed' },
+  { id: 'open-theme', title: 'A theme for careful observation', description: 'Explore a shared theme.', status: 'open', closeDate: '2026-11-13T12:00:00Z', entriesCount: 2, competitionType: 'theme' },
 ]
 
 for (const width of [320, 390, 600, 640, 1280]) {
@@ -43,13 +44,14 @@ for (const width of [320, 390, 600, 640, 1280]) {
       expect(layout.heading.x).toBeGreaterThan(layout.image.right)
       expect(layout.fontSize).toBe(12)
     }
-    await page.getByRole('button', { name: 'Active (1)', exact: true }).click()
+    await page.getByRole('button', { name: 'Active (2)', exact: true }).click()
     await expect(page.getByRole('heading', { name: competitions[1].title })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.getByRole('button', { name: 'Filters', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Filter by competition type' })
+    await expect(dialog.getByRole('button', { name: 'Reader choice', exact: true })).toHaveCount(0)
     await dialog.getByRole('button', { name: 'Theme', exact: true }).click()
-    await expect(page.getByText('No active competitions match this filter.')).toBeVisible()
+    await expect(page.getByRole('heading', { name: competitions[2].title })).toBeVisible()
     await dialog.getByRole('button', { name: 'Reset filters' }).click()
     await expect(page).toHaveURL('/explore/competitions?keep=reader')
     await dialog.getByRole('button', { name: 'Close filters' }).press('Escape')

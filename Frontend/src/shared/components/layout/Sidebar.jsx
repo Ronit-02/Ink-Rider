@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { HomeIcon, PenIcon, ChevronDown, ExploreArrow, CollectionIcon, ShortsIcon, MembershipIcon, SettingsIcon } from '@/shared/icons'
+import { HomeIcon, PenIcon, ChevronDown, ExploreArrow, CollectionIcon, ShortsIcon, SeriesIcon, MembershipIcon, SettingsIcon } from '@/shared/icons'
 import { useSelector } from 'react-redux'
 
 const LINKS = [
@@ -17,6 +17,7 @@ const LINKS = [
   { to: '/studio',           label: 'Writing studio', icon: <PenIcon /> },
   { to: '/collections',      label: 'Collections', icon: <CollectionIcon /> },
   { to: '/shorts',           label: 'Short Reads', icon: <ShortsIcon /> },
+  { to: '/series',           label: 'Series', icon: <SeriesIcon /> },
   { to: '/members',          label: 'Member Hub', icon: <MembershipIcon /> },
 ]
 

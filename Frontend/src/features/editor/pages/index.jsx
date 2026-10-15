@@ -130,7 +130,7 @@ function MemberEditor() {
   const hasStory = blocks.some(block => block.type !== 'divider' && String(block.content || '').trim())
   const hasDraftContent = Boolean(title.trim() || blocks.some(block => String(block.content || '').trim()))
   const writingRequirements = [!title.trim() && 'add a title', !hasStory && 'write your story'].filter(Boolean)
-  const publishRequirements = [...writingRequirements, !tags.length && 'choose a tag', format === 'article' && !coverURL && !cover && 'add a cover image', format === 'short' && wordCount > 500 && 'reduce your short to 500 words'].filter(Boolean)
+  const publishRequirements = [...writingRequirements, format === 'short' && wordCount > 500 && 'reduce your short to 500 words'].filter(Boolean)
   const depthOptions = useQuery({ queryKey: ['depth-options'], queryFn: fetchDepthOptions, enabled: loggedIn && format === 'short' })
   const entitlements = useEntitlements(loggedIn)
   const canScheduleEarlyAccess = loggedIn && entitlements.data?.capabilities?.includes('early_access')
@@ -489,8 +489,8 @@ function MemberEditor() {
 
       {/* <HoveringMenu position={menuPosition} onFormat={applyFormatting} /> */}
       <div className="mb-4"><BackButton fallbackTo={loggedIn ? '/studio?writingTab=drafts' : '/'} className="-ml-2" disabled={Boolean(coverURL) || ['waiting', 'saving', 'error', 'conflict'].includes(autosaveStatus)} /></div>
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-[var(--color-border)] pb-5">
-        <div>
+      <header className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-[var(--color-border)] pb-5">
+        <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-accent)]">Editing</p>
           <h1 className="mt-2 text-[24px] font-bold text-[var(--color-text)]" style={{ fontFamily: 'var(--font-display)' }}>{editPostId ? 'Edit' : 'Write'} {format === 'short' ? 'Short' : 'Post'}</h1>
           <p role="status" aria-live="polite" className={`mt-1 text-[12px] ${['conflict', 'error'].includes(autosaveStatus) ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-secondary)]'}`}>
@@ -597,7 +597,7 @@ function MemberEditor() {
         </section>
       </ModalLayer>}
 
-      {publishOpen && <ModalLayer onDismiss={closePublish} returnFocusRef={publishTriggerRef} aria-labelledby="publish-dialog-title" className="grid place-items-center p-4">
+      {publishOpen && <ModalLayer onDismiss={closePublish} dismissOnBackdrop={false} returnFocusRef={publishTriggerRef} aria-labelledby="publish-dialog-title" className="grid place-items-center p-4">
         <section ref={publishDialogRef} tabIndex={-1} className="flex w-full max-w-[560px] flex-col overflow-hidden rounded-[20px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-menu)]">
           <ModalHeader title={editPostId ? 'Update story' : 'Publish story'} titleId="publish-dialog-title" onClose={closePublish} closeLabel="Close publishing options" closeRef={publishCloseRef} />
           <form onSubmit={handleSubmit} className="min-h-0 overflow-y-auto p-4 sm:p-6">
@@ -605,7 +605,7 @@ function MemberEditor() {
           <div className="grid items-start gap-6">
             {/* ── Cover image ── */}
             {format === 'article' && <div>
-              <h2 className="mb-3 text-[13px] font-semibold text-[var(--color-text)]">Cover image <span className="font-normal text-[var(--color-text-secondary)]">(required)</span></h2>
+              <h2 className="mb-3 text-[13px] font-semibold text-[var(--color-text)]">Cover image <span className="font-normal text-[var(--color-text-secondary)]">(optional)</span></h2>
               {cover ? (
                 <div className="relative">
                   <img src={cover} alt="cover" className="w-full h-40 object-cover rounded-[14px] block"/>
@@ -632,7 +632,7 @@ function MemberEditor() {
               />
             </div>}
 
-            <TagPicker tags={tags} onChange={setTags} />
+            <TagPicker tags={tags} onChange={setTags} required={false} />
           </div>
           {(format === 'short' || canScheduleEarlyAccess) && <div className="mt-4 border-t border-[var(--color-border)] pt-4">
             <h3 className="mb-3 text-[12px] font-medium text-[var(--color-text-secondary)]">Publishing options</h3>
@@ -644,7 +644,6 @@ function MemberEditor() {
         </div>
         {isError && <p role="alert" className="mt-3 text-[12px] text-[var(--color-danger)]">{error?.response?.data?.message || 'The post could not be published.'}</p>}
         <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={closePublish} disabled={isPending}>Cancel</Button>
           <Button type="submit" disabled={Boolean(publishRequirements.length) || isPending} data-disabled-reason={isPending ? 'Publication is in progress.' : publishRequirements.length ? `To publish, ${publishRequirements.join(', ')}.` : undefined} aria-busy={isPending}>{editPostId ? 'Update' : 'Publish'}</Button>
         </div>
           </form>

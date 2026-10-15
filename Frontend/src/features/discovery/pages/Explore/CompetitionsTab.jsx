@@ -9,6 +9,9 @@ import FeaturedPostCard from '../../components/FeaturedPostCard'
 import CompetitionImage from '@/features/competition/components/CompetitionImage'
 import Pill from '@/shared/components/ui/Pill'
 import FilterBar from '@/shared/components/ui/FilterBar'
+import { availableFilterOptions } from '@/shared/utils/availableFilterOptions'
+
+const TYPES = [{ id: 'all', label: 'All' }, { id: 'theme', label: 'Theme' }, { id: 'timed', label: 'Timed' }, { id: 'collaborative', label: 'Collaborative' }, { id: 'reader_choice', label: 'Reader choice' }]
 
 const formatDate = value => value ? new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : 'To be announced'
 
@@ -38,7 +41,9 @@ export default function CompetitionsTab() {
 function CompetitionContent({ active, past }) {
   const [params, setParams] = useSearchParams()
   const tab = ['active', 'inactive'].includes(params.get('competitionTab')) ? params.get('competitionTab') : 'active'
-  const competitionType = ['all', 'theme', 'timed', 'collaborative', 'reader_choice'].includes(params.get('competitionType')) ? params.get('competitionType') : 'all'
+  const source = tab === 'active' ? active : past
+  const typeOptions = availableFilterOptions(TYPES, source, item => [item.competitionType])
+  const competitionType = typeOptions.some(option => option.id === params.get('competitionType')) ? params.get('competitionType') : 'all'
   const filteredActive = competitionType === 'all' ? active : active.filter(item => item.competitionType === competitionType)
   const filteredPast = competitionType === 'all' ? past : past.filter(item => item.competitionType === competitionType)
   const winnerCompetition = filteredPast.find(item => item.status === 'closed')
@@ -58,7 +63,7 @@ function CompetitionContent({ active, past }) {
     {winner?.post && <section className="mb-12">{winner.post.format === 'short' ? <><p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">Recent winner · {winner.likesCount} reader votes</p><ShortCard post={{ ...winner.post, id: winner.post._id, image: winner.post.coverImage, author: winner.author }} /></> : <FeaturedPostCard post={{ ...winner.post, id: winner.post._id || winner.post.id, image: winner.post.coverImage || winner.post.image, author: winner.author }} label="Recent winner" readerVotes={winner.likesCount} />}</section>}
     <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
       <div className="flex gap-2"><Pill label={`Active (${filteredActive.length})`} active={tab === 'active'} onClick={() => updateFilter('competitionTab', 'active', 'active')} /><Pill label={`Inactive (${filteredPast.length})`} active={tab === 'inactive'} onClick={() => updateFilter('competitionTab', 'inactive', 'active')} /></div>
-      <FilterBar label="Competition type" value={competitionType} onChange={value => updateFilter('competitionType', value, 'all')} options={[{ id: 'all', label: 'All' }, { id: 'theme', label: 'Theme' }, { id: 'timed', label: 'Timed' }, { id: 'collaborative', label: 'Collaborative' }, { id: 'reader_choice', label: 'Reader choice' }]} />
+      {typeOptions.length > 2 && <FilterBar label="Competition type" value={competitionType} onChange={value => updateFilter('competitionType', value, 'all')} options={typeOptions} />}
     </div>
     {visibleCompetitions.length ? visibleCompetitions.map(item => <CompetitionCard key={item.id} competition={item} />) : <p className="py-8 text-[13px] text-[var(--color-text-muted)]">No {tab === 'active' ? 'active' : 'inactive'} competitions match this filter.</p>}
   </div>

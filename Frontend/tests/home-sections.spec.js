@@ -47,3 +47,54 @@ test('Home replaces loading sections when the API server cannot be reached', asy
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Global navigation' })).toHaveCount(0)
 })
+
+test('Home carousels drag continuously without arrow controls and section headings have descriptions', async ({ page }) => {
+  await page.route(url => url.pathname.startsWith('/api/'), route => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/api/auth/refresh-token') return route.fulfill({ status: 401, json: { message: 'Signed out' } })
+    if (path === '/api/post/feed') return route.fulfill({ json: { data: posts, meta: { nextCursor: null } } })
+    if (path === '/api/post/shorts') return route.fulfill({ json: { data: [], meta: { nextCursor: null } } })
+    if (path === '/api/collection') return route.fulfill({ status: 500, json: { message: 'Unavailable' } })
+    return route.abort('blockedbyclient')
+  })
+  await page.setViewportSize({ width: 320, height: 844 })
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await page.locator('.stream-line').nth(3).scrollIntoViewIfNeeded()
+  await page.getByRole('heading', { name: "Writer's picks" }).scrollIntoViewIfNeeded()
+  await expect(page.getByText('Discover a few stories from writers in your feed.')).toBeVisible()
+  const writerAction = page.getByRole('link', { name: 'View trending' })
+  const writerAlignment = await writerAction.evaluate(node => {
+    const row = node.parentElement.parentElement
+    const button = node.parentElement.getBoundingClientRect()
+    const heading = row.firstElementChild.getBoundingClientRect()
+    const outer = row.getBoundingClientRect()
+    return { button, heading, outer }
+  })
+  expect(writerAlignment.button.x).toBeGreaterThanOrEqual(writerAlignment.heading.x + writerAlignment.heading.width - 1)
+  expect(Math.abs(writerAlignment.button.y + writerAlignment.button.height / 2 - (writerAlignment.heading.y + writerAlignment.heading.height / 2))).toBeLessThanOrEqual(1)
+  expect(writerAlignment.button.x + writerAlignment.button.width).toBeLessThanOrEqual(writerAlignment.outer.x + writerAlignment.outer.width + 1)
+  const track = page.getByRole('region', { name: "Writer's picks stories" })
+  await expect(track).toHaveCSS('scroll-snap-type', 'none')
+  await expect(page.getByText('Swipe or drag ↔').first()).toBeVisible()
+  await expect(page.getByRole('button', { name: /Scroll Writer's picks stories/ })).toHaveCount(0)
+  const box = await track.boundingBox()
+  const y = box.y + Math.min(box.height / 2, 90)
+  await page.mouse.move(box.x + box.width * 0.8, y)
+  await page.mouse.down()
+  const positions = []
+  for (let step = 1; step <= 5; step += 1) {
+    await page.mouse.move(box.x + box.width * 0.8 - step * 25, y)
+    positions.push(await track.evaluate(node => node.scrollLeft))
+  }
+  await page.mouse.up()
+  expect(positions.every((value, index) => index === 0 || value > positions[index - 1])).toBe(true)
+  expect(positions[4] - positions[0]).toBeGreaterThan(80)
+  await page.locator('.stream-line').nth(7).scrollIntoViewIfNeeded()
+  await expect(page.getByText('Follow a thread of curiosity through the latest writing.')).toBeVisible()
+  await page.locator('.stream-line').nth(11).scrollIntoViewIfNeeded()
+  await page.getByRole('heading', { name: 'Browse collections' }).scrollIntoViewIfNeeded()
+  await expect(page.getByText('Explore stories gathered around shared themes.')).toBeVisible()
+  await page.evaluate(() => document.querySelector('[data-app-scroll]')?.scrollBy(0, 700))
+  await page.getByRole('heading', { name: 'Top authors' }).scrollIntoViewIfNeeded()
+  await expect(page.getByText('Meet the writers behind the stories in your feed.')).toBeVisible()
+})

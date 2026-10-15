@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AuthorMeta from '@/shared/components/ui/AuthorMeta'
 import Tag from '@/shared/components/ui/Tag'
 import ImageBox from '@/shared/components/ui/ImageBox'
+import useFittingPills from '@/shared/hooks/useFittingPills'
 
 function BookmarkIcon({ filled }) {
   return (
@@ -15,6 +16,8 @@ function BookmarkIcon({ filled }) {
 export default function ArticleCard({ article }) {
   const navigate   = useNavigate()
   const [saved, setSaved] = useState(false)
+  const tags = article.tags?.slice(0, 2) || []
+  const { containerRef: tagsRef, visibleCount: visibleTags } = useFittingPills(tags)
 
   return (
     <div
@@ -56,9 +59,9 @@ export default function ArticleCard({ article }) {
         </h3>
 
         {/* Tags — each navigates to search */}
-        {article.tags?.length > 0 && (
-          <div className="flex gap-[6px] mt-2 flex-wrap">
-            {article.tags.slice(0, 2).map(t => <Tag key={t} label={t} clickable />)}
+        {tags.length > 0 && (
+          <div ref={tagsRef} className="mt-2 flex min-w-0 flex-nowrap gap-[6px] overflow-hidden">
+            {tags.map((tag, index) => <span key={tag} aria-hidden={index >= visibleTags} className={`shrink-0 ${index >= visibleTags ? 'invisible' : ''}`}><Tag label={tag} clickable /></span>)}
           </div>
         )}
       </div>
